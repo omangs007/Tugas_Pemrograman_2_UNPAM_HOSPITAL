@@ -23,6 +23,7 @@ class EnvironmentTest extends TestCase
 
     public function test_database_session_time_zone_matches_jakarta(): void
     {
+        $this->assertSame('+07:00', DB::selectOne('SELECT @@session.time_zone AS tz')->tz);
         $this->assertSame('07:00:00', DB::selectOne('SELECT TIMEDIFF(NOW(), UTC_TIMESTAMP()) AS d')->d);
     }
 
