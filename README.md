@@ -7,6 +7,17 @@ Laravel 12 + Blade + Bootstrap 5, MariaDB 10.4 melalui XAMPP 8.2.12 (Windows, lo
 - Rencana implementasi per fase: [`docs/superpowers/plans/`](docs/superpowers/plans/)
 - Panduan instalasi lokal: blueprint bagian 16.
 
+## Setup pertama (mesin baru)
+
+Rincian lengkap ada di blueprint bagian 16; ringkasnya, jalankan dari PowerShell (variabel `$PHP`/`$COMPOSER` seperti pada "Perintah harian"):
+
+1. `& $PHP scripts\check-env.php` harus berakhir OK (blueprint 16 §2).
+2. `& $PHP $COMPOSER install`, lalu `npm install` dan `npm run build` (16 §3).
+3. Buat database + user `unpam_app`, lalu salin `.env.example` → `.env` dan `.env.testing.example` → `.env.testing` dengan `DB_PASSWORD` yang sama dengan password user DB (16 §4–§5).
+4. `& $PHP artisan key:generate` dan `& $PHP artisan key:generate --env=testing` (16 §5).
+5. `& $PHP artisan migrate` dan `& $PHP artisan migrate --env=testing`, lalu `& $PHP artisan storage:link` (16 §6).
+6. Pasang VirtualHost Apache dan entri `hosts` untuk `unpam-hospital.test` (16 §7).
+
 ## Perintah harian (PowerShell)
 
 ```powershell
