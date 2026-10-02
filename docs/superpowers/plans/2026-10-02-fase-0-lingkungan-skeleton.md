@@ -1639,3 +1639,30 @@ Laporkan ke koordinator: keluaran Step 4, hasil Task 6 Step 5–6, dan status ka
 - INS-02 (pemasangan): lulus tanpa `migrate --seed` data demo (seeder dibuat mulai fase 1) dan tanpa unggah gambar.
 - INS-03 (VirtualHost): `/` dan `/up` 200, phpMyAdmin 200; `/admin/login` diverifikasi di fase 1.
 - INS-04 (`artisan serve`): `serve=200`.
+
+---
+
+## Catatan Eksekusi (2026-10-02)
+
+Dieksekusi dengan `superpowers:subagent-driven-development` (implementer + reviewer Sonnet 5.5 per tugas, review akhir seluruh cabang, satu gelombang perbaikan + re-review). Cabang `fase-0-lingkungan`: 10 commit (`51c6ea4`..`ba1455b`). Hasil akhir: 26 tes lulus, `pint --test` bersih, `scripts\check-env.php` OK, `http://unpam-hospital.test` 200, `artisan about` = PHP 8.2.12 / Laravel 12.69.3 / local / Asia/Jakarta / id / database mariadb.
+
+### Keputusan (rulings) selama eksekusi
+
+| ID | Keputusan | Biaya bila keliru |
+|---|---|---|
+| R1 | Cabang `fase-0-lingkungan` dibuat koordinator sebelum Task 1; Step 1 Task 1 dilewati | Tidak ada |
+| R2 | Tanpa git worktree; bekerja di `D:\Project Web RS` karena Prelude/VirtualHost terikat path absolut | Checkout `master` berpindah ke cabang fitur selama eksekusi |
+| R3 | Task 6 dipecah: langkah otomatis dulu, langkah manual pemilik (hosts, restart Apache) dikumpulkan di akhir | Laporan gerbang Task 7 menunggu hasil Apache |
+| R4 | `mysql.db` XAMPP rusak: file dicadangkan ke `C:\xampp3\mysql\backup-fase0-mysqldb\` lalu `REPAIR TABLE mysql.db` (dijalankan koordinator atas permintaan pemilik) | Terburuk: 3 baris hak akses bawaan hilang; dapat dipulihkan dari cadangan |
+| R5 | Log Aria tidak bisa ditulis (Errcode 9) → pemilik me-restart MySQL lewat Control Panel, lalu GRANT diulang dan diverifikasi | Bila berulang: hentikan MySQL, pindahkan `aria_log.*` ke cadangan, start lagi |
+| R6 | Smoke test beranda tidak merah di tahap RED (halaman bawaan sudah memuat APP_NAME); RED Task 5 diwakili `FrontendManifestTest` | Bukti TDD lebih lemah untuk satu asersi smoke |
+| R7 | Gelombang perbaikan akhir: I-1/I-2/I-3 (pengaman DB uji & zona waktu sesi) + M-1, M-2, M-4, M-5 | Diff perbaikan sedikit lebih besar |
+| R8 | M-3 (selisih dokumen 10/16 vs `.env.example`/vhost), M-6 (skrip composer bawaan), M-7 ditunda ke fase 1 | Contoh env/dokumen berbeda sampai fase 1 |
+
+### Bawaan (carry) untuk rencana fase berikutnya
+
+- **Fase 1:** rekonsiliasi M-3 (MAIL_FROM_ADDRESS, LOG_CHANNEL di `.env.testing`, `PHP_CLI_SERVER_WORKERS`, `DEMO_PASSWORD`, vhost `ServerAlias`/log `combined` di blueprint 10/16); M-6 (hapus/rapikan skrip `setup`/`post-create-project-cmd` bawaan); manifest Vite menggabungkan `app.scss`/`admin.scss` yang identik — jangan mengandalkan field `src` manifest; opsional: entri `<server name="DB_URL|DB_DATABASE|DB_CONNECTION" force="true"/>` di `phpunit.xml` (pengaman nama DB terselesaikan sudah menutup risikonya).
+- **Fase 2:** advisori npm `quill@2.0.3` GHSA-v3m3-f69x-jf25 (XSS via HTML export) — mitigasi: semua rich text disanitasi `HtmlSanitizer`/purifier saat disimpan; cek ulang advisori saat Quill dipasang.
+- **Fase 5:** `passwords.throttled` berbeda dari `sent`/`user`; `PasswordBroker` hanya mengembalikan *throttled* untuk email terdaftar → potensi enumerasi email. Petakan *throttled* ke pesan generik `passwords.sent` di controller/Form Request reset password.
+- **Minor lain (opsional, kapan saja):** `check-env.php` tanpa status per-cek; `ComposerManifestTest` tidak memeriksa `platform-overrides` lock; uji paritas placeholder `lang/en`↔`lang/id`; frasa `prohibited_unless`/`required_unless` ("salah satu dari :values"); Fontsource hanya subset latin; smoke test belum memeriksa entri `@vite` terhadap manifest.
+- **Operasional XAMPP:** tabel sistem Aria bawaan paket XAMPP 8.2.12 bermasalah — prosedur perbaikan ada di blueprint 16 §13.
