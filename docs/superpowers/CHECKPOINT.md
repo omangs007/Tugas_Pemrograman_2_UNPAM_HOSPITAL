@@ -1,6 +1,6 @@
 # Checkpoint — UNPAM HOSPITAL
 
-**Terakhir diperbarui:** 2026-10-02 (akhir hari kerja) · **Tag git:** `checkpoint/2026-10-02-fase-0`
+**Terakhir diperbarui:** 2026-10-03 (rencana fase 1 selesai, menunggu tinjauan pemilik) · **Tag git:** `checkpoint/2026-10-02-fase-0`
 
 Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah sebelum bekerja.
 
@@ -10,9 +10,9 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 |---|---|
 | Blueprint (spesifikasi) | Selesai & disetujui — `docs/superpowers/specs/2026-10-02-unpam-hospital-blueprint/` (mulai dari `README.md`, lalu `00-keputusan-inti.md`). |
 | Fase 0 — Lingkungan & skeleton | **Selesai**, tervalidasi (review per tugas + review akhir + gelombang perbaikan). Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
-| Cabang git | `fase-0-lingkungan` (11+ commit di atas `master` `79dc99d`), **belum di-merge**. Repo tanpa remote. |
-| Keputusan tertunda pemilik | **Integrasi cabang fase 0**: (1) merge ke `master` lokal, (2) push + PR (butuh remote), atau (3) biarkan dulu. Lalu konfirmasi butir K di `17-keputusan-konfirmasi.md` (semua punya default; terpenting sebelum fase 5: K-07). |
-| Fase berikutnya | **Fase 1 — Fondasi** (blueprint `14-tahapan-implementasi.md` §Fase 1): belum ada rencana implementasi. |
+| Cabang git | `fase-0-lingkungan` **sudah di-merge** ke `master` (fast-forward `7525304`, 2026-10-03; cabang dihapus). Cabang kerja sekarang: **`fase-1-fondasi`** (dari `master`). Repo tanpa remote. |
+| Keputusan pemilik 2026-10-03 | Integrasi fase 0 = merge lokal ke `master`; **K-10 = (a)** urutan fase 0→1→2→3→4→5→6→7→8→9. Butir K lain di `17-keputusan-konfirmasi.md` tetap memakai default (terpenting sebelum fase 5: K-07). |
+| Fase 1 — Fondasi | **Rencana selesai, belum dieksekusi**: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (19 tugas, ±390 langkah; rulings F1-R1–F1-R21). Menunggu tinjauan pemilik, lalu eksekusi `superpowers:subagent-driven-development` dengan subagent Sonnet 5.5 mulai Task 1. |
 
 ## 2. Lingkungan (mesin pemilik)
 
@@ -28,13 +28,13 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"
 $env:Path = "$XAMPP\php;$env:Path"; Set-Location "D:\Project Web RS"
 
-git status; git branch --show-current          # harus bersih, di fase-0-lingkungan
+git status; git branch --show-current          # harus bersih, di fase-1-fondasi
 & $PHP scripts\check-env.php                    # "status": "OK"
 & $PHP artisan test                             # 26 passed
 curl.exe -s -o NUL -w '%{http_code}' http://unpam-hospital.test/   # 200
 ```
 
-Bila semua hijau: putuskan integrasi cabang fase 0, lalu minta Claude menulis rencana **Fase 1** dengan skill `superpowers:writing-plans`, dieksekusi dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
+Bila semua hijau: minta Claude mengeksekusi rencana **Fase 1** (`docs/superpowers/plans/2026-10-03-fase-1-fondasi.md`) dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**, mulai dari tugas pertama yang belum dicentang (cek `git log --oneline` untuk commit `(fase-1)` yang sudah ada).
 
 ## 4. Bawaan (carry) untuk fase berikutnya
 
