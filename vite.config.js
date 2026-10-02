@@ -1,15 +1,27 @@
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
-import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            input: [
+                'resources/scss/app.scss',
+                'resources/scss/admin.scss',
+                'resources/js/app.js',
+                'resources/js/admin.js',
+            ],
             refresh: true,
         }),
-        tailwindcss(),
     ],
+    css: {
+        preprocessorOptions: {
+            scss: {
+                // Bootstrap 5.3 masih memakai @import; sembunyikan peringatan deprecation dari dependensi.
+                quietDeps: true,
+                silenceDeprecations: ['import'],
+            },
+        },
+    },
     server: {
         watch: {
             ignored: ['**/storage/framework/views/**'],
