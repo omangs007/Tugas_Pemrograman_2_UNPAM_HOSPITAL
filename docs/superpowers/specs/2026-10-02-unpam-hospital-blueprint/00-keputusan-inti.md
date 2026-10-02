@@ -50,6 +50,10 @@
 | `chillerlan/php-qrcode` | QR code (SVG) berisi kode booking saja. |
 | Dev: `laravel/pint`, `phpunit/phpunit` ^11 (bawaan skeleton), `fakerphp/faker` | Format kode, pengujian, data contoh. |
 
+**Versi hasil resolusi dengan `platform.php = 8.2.12` (diverifikasi 2026-10-02):** skeleton `laravel/laravel` v12.12.2, `laravel/framework` 12.69.x, `spatie/laravel-permission` **^6.25** (v8 membutuhkan PHP ≥ 8.3 sehingga otomatis ditolak — gunakan dokumentasi v6), `intervention/image` ^3.11, `mews/purifier` ^3.4, `barryvdh/laravel-dompdf` ^3.1 (dompdf 3.1), `chillerlan/php-qrcode` **^6.0**, `phpunit/phpunit` 11.5, `laravel/pint` 1.30. GD XAMPP mendukung JPEG/PNG/WebP/FreeType; ICU `intl` 71.1.
+
+**Peringatan `^` di PowerShell:** `composer.bat`/`npm.cmd` dijalankan oleh cmd.exe yang membuang `^` (mis. `laravel/laravel:^12.0` menjadi `12.0` → skeleton v12.0.0). Selalu panggil Composer sebagai `& C:\xampp3\php\php.exe C:\composer\composer.phar …` dan tulis versi npm sebagai mayor saja (`bootstrap@5`).
+
 Catatan Windows: skeleton Laravel 12 menyertakan `laravel/pail` dan skrip `composer dev` yang memakai pail; pail memerlukan ekstensi `pcntl` yang tidak tersedia di Windows → hapus pail dari skrip `dev` (gunakan `concurrently` untuk `php artisan serve` + `npm run dev` saja).
 
 | Paket npm | Fungsi |

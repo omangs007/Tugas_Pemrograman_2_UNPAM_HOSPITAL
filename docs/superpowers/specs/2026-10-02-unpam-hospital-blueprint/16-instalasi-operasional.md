@@ -186,14 +186,17 @@ $env:Path = "$XAMPP\php;" + $env:Path          # PHP 8.2.12 untuk composer
 composer --version                              # harus menyebut PHP 8.2.12
 node -v; npm -v                                 # v24.12.0 ; 11.6.2
 git -C $APP status --short | Select-Object -First 5
+$COMPOSER = "C:\composer\composer.phar"          # panggil composer.phar langsung (lihat peringatan di bawah)
 ```
+
+> **Peringatan karakter `^` (terverifikasi 2026-10-02).** Di PowerShell, perintah `composer` dan `npm` dijalankan lewat `composer.bat`/`npm.cmd` (cmd.exe), dan **cmd.exe membuang karakter `^`**. Akibatnya `composer create-project "laravel/laravel:^12.0"` terbaca `12.0` dan memasang skeleton lama v12.0.0, bukan rilis 12.x terbaru (v12.12.2 per 2026-10-02). Karena itu panduan ini memanggil **`& $PHP $COMPOSER …`** untuk Composer (memakai PHP 8.2.12 XAMPP sekaligus menjaga `^`), dan untuk npm menulis versi mayor saja (mis. `bootstrap@5`), yang tetap disimpan sebagai `^5.x.y` di `package.json`.
 
 ### 3.2 Buat skeleton Laravel 12 di folder sementara lalu pindahkan
 
 ```powershell
 $TMP = "D:\laravel-tmp"
 if (Test-Path $TMP) { throw "Folder $TMP sudah ada. Ganti nama atau hapus lebih dulu." }
-composer create-project "laravel/laravel:^12.0" $TMP --prefer-dist
+& $PHP $COMPOSER create-project "laravel/laravel:^12.0" $TMP --prefer-dist
 
 # pindahkan semua isi KECUALI yang sudah ada di repo (.git, docs tidak ada di skeleton)
 Get-ChildItem $TMP -Force | Where-Object { $_.Name -ne '.git' } | ForEach-Object {
@@ -220,11 +223,11 @@ Get-ChildItem $APP -Force | Select-Object Name        # periksa: .git, docs, app
 
 ```powershell
 Set-Location $APP
-composer config platform.php 8.2.12                 # dependensi dipilih agar cocok dengan PHP Apache (8.2.12)
-composer require spatie/laravel-permission "intervention/image:^3" mews/purifier barryvdh/laravel-dompdf chillerlan/php-qrcode
-composer remove laravel/pail --dev                  # pail butuh ekstensi pcntl yang tidak ada di Windows
-composer check-platform-reqs                        # semua baris harus 'success'
-composer show laravel/framework laravel/pint phpunit/phpunit fakerphp/faker | Select-String '^(name|versions)'
+& $PHP $COMPOSER config platform.php 8.2.12                 # dependensi dipilih agar cocok dengan PHP Apache (8.2.12)
+& $PHP $COMPOSER require "spatie/laravel-permission:^6.25" "intervention/image:^3.11" "mews/purifier:^3.4" "barryvdh/laravel-dompdf:^3.1" "chillerlan/php-qrcode:^6.0"
+& $PHP $COMPOSER remove laravel/pail --dev                  # pail butuh ekstensi pcntl yang tidak ada di Windows
+& $PHP $COMPOSER check-platform-reqs                        # semua baris harus 'success'
+& $PHP $COMPOSER show laravel/framework laravel/pint phpunit/phpunit fakerphp/faker | Select-String '^(name|versions)'
 ```
 
 `laravel/pint`, `phpunit/phpunit` (^11), dan `fakerphp/faker` sudah ada di `require-dev` skeleton. `intervention/image` ^3 dipakai langsung dengan driver GD (`new ImageManager(new Driver())`) di `MediaService`; paket jembatan Laravel tidak diperlukan.
@@ -247,7 +250,7 @@ Keluaran harus hanya memuat baris `concurrently` baru tanpa kata `pail`. Bila ma
 ```powershell
 npm install
 npm uninstall tailwindcss @tailwindcss/vite                       # hapus Tailwind bawaan skeleton Laravel 12
-npm install bootstrap@^5.3 @popperjs/core bootstrap-icons chart.js@^4 quill@^2 @fontsource/plus-jakarta-sans
+npm install bootstrap@5 @popperjs/core@2 bootstrap-icons@1 chart.js@4 quill@2 @fontsource/plus-jakarta-sans@5   # tanpa ^ (lihat peringatan §3.1)
 npm install --save-dev sass
 npm ls --depth=0
 ```
