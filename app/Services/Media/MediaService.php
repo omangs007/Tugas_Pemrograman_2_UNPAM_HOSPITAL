@@ -10,6 +10,7 @@ use App\Rules\ImageRules;
 use App\Services\Audit\AuditLogger;
 use App\Support\Actor;
 use finfo;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -78,6 +79,83 @@ final class MediaService
                 $uploader !== null ? Actor::staff($uploader) : null,
             );
         });
+    }
+
+    /**
+     * Ganti media koleksi tunggal: berkas + baris baru disimpan dulu, media lama dihapus
+     * SETELAH transaksi commit (DB::afterCommit). Bila transaksi pemanggil di-rollback, media
+     * lama tetap utuh (berkas baru yang sempat tertulis menjadi yatim dan dibersihkan media:prune).
+     *
+     * @param  array<string, mixed>  $meta
+     */
+    public function replace(Model $owner, string $collection, UploadedFile $file, array $meta = [], ?User $uploader = null): Media
+    {
+        $config = $this->configFor($collection);
+
+        if (! $config['single']) {
+            throw new InvalidArgumentException("Koleksi {$collection} bukan koleksi tunggal dan tidak dapat diganti.");
+        }
+
+        $this->assertOwnerPersisted($owner);
+
+        $olds = $this->ownedBy($owner, $collection)->get();
+
+        $media = $this->createMedia($file, $collection, $config, $owner, $meta, $uploader, function (Media $new) use ($olds, $uploader): void {
+            $previous = $olds->first();
+
+            $this->audit->log(
+                'media.replaced',
+                $new,
+                $previous === null ? null : ['media_id' => $previous->id, 'file_name' => $previous->file_name],
+                ['media_id' => $new->id, 'file_name' => $new->file_name],
+                "Gambar koleksi {$new->collection} diganti.",
+                $uploader !== null ? Actor::staff($uploader) : null,
+            );
+        });
+
+        DB::afterCommit(function () use ($olds): void {
+            foreach ($olds as $old) {
+                $this->purge($old);
+            }
+        });
+
+        return $media;
+    }
+
+    /**
+     * Hapus baris media; berkas asli dan thumbnail dihapus setelah transaksi commit.
+     */
+    public function delete(Media $media): void
+    {
+        $disk = $media->disk;
+        $paths = $this->pathsOf($media);
+
+        DB::transaction(function () use ($media, $disk, $paths): void {
+            $this->audit->log(
+                'media.deleted',
+                $media,
+                ['media_id' => $media->id, 'collection' => $media->collection, 'file_name' => $media->file_name],
+                null,
+                "Gambar dihapus dari koleksi {$media->collection}.",
+            );
+
+            $media->delete();
+
+            DB::afterCommit(fn () => Storage::disk($disk)->delete($paths));
+        });
+    }
+
+    /**
+     * Hapus seluruh media milik satu pemilik (dipanggil saat model pemilik dihapus).
+     */
+    public function deleteFor(Model $owner): void
+    {
+        Media::query()
+            ->where('model_type', $owner->getMorphClass())
+            ->where('model_id', $owner->getKey())
+            ->orderBy('id')
+            ->get()
+            ->each(fn (Media $media) => $this->delete($media));
     }
 
     private function createMedia(UploadedFile $file, string $collection, array $config, ?Model $owner, array $meta, ?User $uploader, callable $audit): Media
@@ -244,6 +322,42 @@ final class MediaService
         }
 
         return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function pathsOf(Media $media): array
+    {
+        return array_values(array_filter([
+            $media->directory.'/'.$media->file_name,
+            $media->thumb_path,
+        ]));
+    }
+
+    /**
+     * Hapus baris lalu berkas tanpa audit (jalur internal: audit sudah dicatat pemanggil).
+     */
+    private function purge(Media $media): void
+    {
+        $paths = $this->pathsOf($media);
+        $disk = $media->disk;
+
+        $media->delete();
+        Storage::disk($disk)->delete($paths);
+    }
+
+    /**
+     * @return Builder<Media>
+     */
+    private function ownedBy(Model $owner, string $collection): Builder
+    {
+        return Media::query()
+            ->where('model_type', $owner->getMorphClass())
+            ->where('model_id', $owner->getKey())
+            ->where('collection', $collection)
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     private function encode(ImageInterface $image, string $mime): EncodedImageInterface
