@@ -135,6 +135,14 @@ class FrontendManifestTest extends TestCase
         $this->assertSame(1, $listeners, 'Harus ada tepat satu listener error terdelegasi di seluruh JS');
     }
 
+    public function test_image_preview_uses_data_url_not_blob_url(): void
+    {
+        $preview = $this->read('resources/js/image-preview.js');
+
+        $this->assertStringNotContainsString('createObjectURL', $preview, "CSP produksi img-src 'self' data: tidak mengizinkan blob:, pratinjau harus memakai data URL");
+        $this->assertStringContainsString('readAsDataURL', $preview);
+    }
+
     public function test_no_inline_error_handler_in_scripts_or_views(): void
     {
         $files = array_merge(

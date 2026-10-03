@@ -1,4 +1,5 @@
 // Pratinjau gambar lokal sebelum unggah. Hanya saran: validasi final dilakukan server (00 K).
+// Memakai data URL (FileReader), bukan blob: URL, karena CSP produksi img-src 'self' data: tidak mengizinkan blob:.
 // Markup: [data-image-field] berisi input[data-image-input][data-max-kb], img[data-image-preview], [data-image-warning].
 
 const DEFAULT_MAX_KB = 2048;
@@ -12,12 +13,16 @@ document.querySelectorAll('[data-image-input]').forEach((input) => {
     const preview = field.querySelector('[data-image-preview]');
     const warning = field.querySelector('[data-image-warning]');
     const maxKb = Number.parseInt(input.dataset.maxKb, 10) || DEFAULT_MAX_KB;
-    let objectUrl = null;
+    let token = 0;
+    let reader = null;
 
     const clear = () => {
-        if (objectUrl) {
-            URL.revokeObjectURL(objectUrl);
-            objectUrl = null;
+        // Naikkan token agar hasil baca lama yang terlambat tidak ditampilkan.
+        token += 1;
+
+        if (reader) {
+            reader.abort();
+            reader = null;
         }
 
         if (preview) {
@@ -43,9 +48,19 @@ document.querySelectorAll('[data-image-input]').forEach((input) => {
         const first = files[0];
 
         if (preview && first.type.startsWith('image/')) {
-            objectUrl = URL.createObjectURL(first);
-            preview.src = objectUrl;
-            preview.classList.remove('d-none');
+            const current = token;
+            const pending = new FileReader();
+
+            reader = pending;
+            pending.addEventListener('load', () => {
+                if (current !== token) {
+                    return;
+                }
+
+                preview.src = pending.result;
+                preview.classList.remove('d-none');
+            });
+            pending.readAsDataURL(first);
         }
 
         const oversized = files.filter((file) => file.size / 1024 > maxKb);
