@@ -22,8 +22,8 @@ class DemoUserSeeder extends Seeder
 
     public function run(): void
     {
-        if (app()->environment('production')) {
-            throw new RuntimeException('DemoUserSeeder DILARANG di APP_ENV=production. Akun demo berpassword umum.');
+        if (! app()->environment(['local', 'testing'])) {
+            throw new RuntimeException('DemoUserSeeder DILARANG di APP_ENV='.app()->environment().'. Akun demo berpassword umum.');
         }
 
         // Idempoten (firstOrCreate): membuat DemoUserSeeder dapat dijalankan sendiri pada database kosong.

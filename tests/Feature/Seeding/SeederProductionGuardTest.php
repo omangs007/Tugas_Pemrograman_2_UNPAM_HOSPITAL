@@ -7,6 +7,7 @@ use App\Models\WebsiteSetting;
 use Closure;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
+use Database\Seeders\DemoUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use RuntimeException;
 use Spatie\Permission\Models\Permission;
@@ -85,6 +86,41 @@ class SeederProductionGuardTest extends TestCase
             ->assertExitCode(0);
 
         $this->assertSame(3, User::query()->count());
+    }
+
+    public function test_demo_user_seeder_throws_in_production_and_creates_no_users(): void
+    {
+        $this->assertDemoSeederRejected(DemoUserSeeder::class, 'production');
+    }
+
+    public function test_demo_user_seeder_is_rejected_outside_the_local_and_testing_whitelist(): void
+    {
+        $this->assertDemoSeederRejected(DemoUserSeeder::class, 'staging');
+    }
+
+    public function test_demo_seeder_is_rejected_in_staging(): void
+    {
+        $this->assertDemoSeederRejected(DemoSeeder::class, 'staging');
+    }
+
+    /**
+     * @param  class-string  $seeder
+     */
+    private function assertDemoSeederRejected(string $seeder, string $environment): void
+    {
+        $thrown = null;
+
+        $this->inEnvironment($environment, function () use (&$thrown, $seeder): void {
+            try {
+                $this->app->make($seeder)->run();
+            } catch (RuntimeException $e) {
+                $thrown = $e;
+            }
+        });
+
+        $this->assertInstanceOf(RuntimeException::class, $thrown);
+        $this->assertStringContainsString('DILARANG di APP_ENV='.$environment, $thrown->getMessage());
+        $this->assertSame(0, User::query()->count());
     }
 
     private function inEnvironment(string $environment, Closure $callback): void
