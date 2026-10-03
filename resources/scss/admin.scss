@@ -1,2 +1,7 @@
-// Entri gaya dashboard admin. Tata letak admin dibangun di fase 1.
-@import "bootstrap/scss/bootstrap";
+// Entri gaya dashboard admin. Dimuat lewat resources/js/admin.js (bukan entri Vite sendiri).
+// "_admin" memakai garis bawah eksplisit: "admin" sendiri ambigu antara admin.scss dan _admin.scss.
+@import "variables";
+@import "bootstrap-theme";
+@import "shared";
+@import "_admin";
+@import "print";

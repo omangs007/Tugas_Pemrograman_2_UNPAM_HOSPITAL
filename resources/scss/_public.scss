@@ -1,0 +1,106 @@
+// Gaya situs publik dan portal pasien (app.scss).
+
+.site-topbar {
+  background: $primary;
+  color: #fff;
+  font-size: .875rem;
+
+  a {
+    color: #fff;
+    text-decoration: underline;
+  }
+}
+
+.site-header {
+  background: #fff;
+  box-shadow: $box-shadow-sm;
+
+  .navbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    color: $primary;
+    font-weight: 700;
+
+    img {
+      height: 2.5rem;
+      width: auto;
+    }
+  }
+
+  .nav-link {
+    color: var(--bs-body-color);
+    font-weight: 500;
+    border-bottom: 3px solid transparent;
+
+    &:hover {
+      color: $primary;
+    }
+
+    // Penanda halaman aktif: teks tebal + garis bawah (garis toska muda hanya dekoratif).
+    &[aria-current="page"] {
+      color: $primary;
+      font-weight: 700;
+      border-bottom-color: $teal-light;
+    }
+  }
+}
+
+.site-main {
+  min-height: 50vh;
+}
+
+.section {
+  padding-block: 1.5rem;
+
+  @include media-breakpoint-up(md) {
+    padding-block: 3rem;
+  }
+
+  &.section-alt {
+    background: $light;
+  }
+}
+
+.accent-line {
+  display: inline-block;
+  width: 4rem;
+  height: .25rem;
+  margin-bottom: .75rem;
+  background: $teal-light;
+  border-radius: 1rem;
+}
+
+.cta-block {
+  padding: 2rem 1.5rem;
+  background: $teal-dark;
+  color: #fff;
+  border-radius: $border-radius;
+}
+
+.site-footer {
+  background: $primary;
+  color: #fff;
+
+  a {
+    color: #fff;
+    text-decoration: underline;
+  }
+
+  h2,
+  h3 {
+    color: #fff;
+    font-size: 1.125rem;
+  }
+}
+
+.empty-state {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  color: var(--bs-secondary-color);
+
+  .empty-state-icon {
+    font-size: 2.5rem;
+    color: $teal-dark;
+  }
+}

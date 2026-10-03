@@ -5,10 +5,9 @@ export default defineConfig({
     plugins: [
         laravel({
             input: [
-                'resources/scss/app.scss',
-                'resources/scss/admin.scss',
-                'resources/js/app.js',
-                'resources/js/admin.js',
+                'resources/scss/app.scss', // CSS publik + pasien + auth
+                'resources/js/app.js', // JS publik + pasien + auth (dimuat juga oleh admin.js)
+                'resources/js/admin.js', // JS admin; mengimpor resources/scss/admin.scss
             ],
             refresh: true,
         }),
@@ -18,7 +17,7 @@ export default defineConfig({
             scss: {
                 // Bootstrap 5.3 masih memakai @import; sembunyikan peringatan deprecation dari dependensi.
                 quietDeps: true,
-                silenceDeprecations: ['import'],
+                silenceDeprecations: ['import', 'mixed-decls', 'color-functions', 'global-builtin'],
             },
         },
     },

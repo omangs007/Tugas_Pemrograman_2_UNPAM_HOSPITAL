@@ -1,0 +1,125 @@
+// Gaya dashboard admin (admin.scss). Sidebar mengikuti W-13: lebar 260 px, latar $primary.
+//
+// Struktur markup yang diharapkan (dibangun di Task 14):
+//   <aside id="admin-sidebar" class="admin-sidebar offcanvas-lg offcanvas-start" tabindex="-1" aria-labelledby="admin-sidebar-title">
+//     <div class="offcanvas-header"> ... <button class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#admin-sidebar"> </div>
+//     <div class="offcanvas-body flex-column"> <nav aria-label="Menu admin" class="w-100"> ... </nav> </div>
+//   </aside>
+
+$admin-sidebar-width: 260px;
+
+.admin-shell {
+  display: flex;
+  min-height: 100vh;
+  background: $light;
+}
+
+.admin-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: $zindex-sticky;
+  background: #fff;
+  box-shadow: $box-shadow-sm;
+}
+
+.admin-content {
+  padding: 1rem;
+
+  @include media-breakpoint-up(lg) {
+    padding: 1.5rem;
+  }
+}
+
+.admin-footer {
+  padding: 1rem;
+  color: var(--bs-secondary-color);
+  font-size: .875rem;
+}
+
+// Sidebar: offcanvas di < 992 px (Bootstrap .offcanvas-lg), tetap di >= 992 px.
+.admin-sidebar {
+  --bs-offcanvas-color: #fff;
+  // .offcanvas-lg memaksa latar transparan pada >= lg; timpa dengan !important yang sama (sumber lebih akhir menang).
+  background-color: $primary !important;
+  color: #fff;
+
+  @include media-breakpoint-down(lg) {
+    --bs-offcanvas-width: min(85vw, #{$admin-sidebar-width});
+  }
+
+  @include media-breakpoint-up(lg) {
+    position: sticky;
+    top: 0;
+    flex: 0 0 $admin-sidebar-width;
+    width: $admin-sidebar-width;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .admin-brand {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: 1rem;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .nav-group-label {
+    padding: 1rem 1rem .25rem;
+    color: rgba(#fff, .75);
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+
+  .nav-link {
+    gap: .625rem;
+    margin: .125rem .5rem;
+    padding: .625rem .75rem;
+    color: rgba(#fff, .92);
+    border-left: 4px solid transparent;
+    border-radius: $border-radius;
+
+    &:hover,
+    &:focus-visible {
+      background: rgba(#fff, .12);
+      color: #fff;
+    }
+
+    &:focus-visible {
+      outline-color: #fff;
+    }
+
+    // Item aktif: latar $light, teks $primary; garis toska muda hanya penanda dekoratif.
+    &.active,
+    &[aria-current="page"] {
+      background: $light;
+      color: $primary;
+      font-weight: 600;
+      border-left-color: $teal-light;
+    }
+
+    .bi {
+      flex-shrink: 0;
+    }
+  }
+}
+
+.stat-card {
+  height: 100%;
+  border-radius: $border-radius;
+
+  .stat-card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+}

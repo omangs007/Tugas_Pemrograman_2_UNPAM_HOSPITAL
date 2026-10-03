@@ -1,4 +1,6 @@
-// Entri gaya situs publik dan portal pasien.
-// Fase 0 hanya memastikan pipeline Bootstrap 5 + Sass berjalan; token warna dan
-// tema UNPAM HOSPITAL (blueprint 00 bagian M) ditambahkan di fase 1 lewat _variables.scss.
-@import "bootstrap/scss/bootstrap";
+// Entri gaya situs publik, portal pasien, dan halaman auth.
+@import "variables";
+@import "bootstrap-theme";
+@import "shared";
+@import "public";
+@import "print";

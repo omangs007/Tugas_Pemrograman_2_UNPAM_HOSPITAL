@@ -1,0 +1,41 @@
+// Token desain UNPAM HOSPITAL (blueprint 00 bagian M, 10 §6.5).
+// Diimpor SEBELUM Bootstrap: semua variabel Bootstrap berflag !default, sehingga nilai di sini menang.
+
+// Warna merek
+$primary:          #0A4D8C;   // biru: navbar, sidebar admin, tombol utama, judul (±8,6:1 vs putih)
+$teal-dark:        #0E7C74;   // toska tua (±5,0:1 vs putih)
+$secondary-accent: $teal-dark;
+$teal-light:       #13A89E;   // DEKORASI saja, bukan latar teks putih (±3,0:1)
+$success:          #1E7D45;
+$body-bg:          #FFFFFF;
+$light:            #F3F7FB;
+// $secondary Bootstrap sengaja dibiarkan abu-abu (#6C757D): 00 D memetakan status "cancelled" ke secondary.
+
+// Tipografi
+$font-family-sans-serif: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$font-size-base:       1rem;   // 16 px
+$line-height-base:     1.6;
+$headings-font-weight: 700;
+$headings-line-height: 1.25;
+
+// Bentuk
+$border-radius: .5rem;         // kartu, tombol, input (07 bagian 3)
+$link-color:    $primary;
+
+// Mode gelap di luar ruang lingkup; hindari CSS tak terpakai.
+$enable-dark-mode: false;
+
+// Rasio gambar: bawaan Bootstrap + 3x1 (banner 1200x400) untuk <x-image ratio="3x1">.
+$aspect-ratios: (
+  '1x1':  100%,
+  '4x3':  calc(3 / 4 * 100%),
+  '16x9': calc(9 / 16 * 100%),
+  '21x9': calc(9 / 21 * 100%),
+  '3x1':  calc(1 / 3 * 100%)
+);
+
+// Warna tema tambahan "accent" -> .btn-accent, .text-bg-accent, .bg-accent, .alert-accent.
+// Digabung ke $theme-colors di _bootstrap-theme.scss (setelah variabel Bootstrap dimuat).
+$custom-theme-colors: (
+  'accent': $secondary-accent
+);

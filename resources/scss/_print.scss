@@ -1,0 +1,52 @@
+// Gaya cetak (bukti pendaftaran, laporan). Navigasi dan kontrol disembunyikan.
+
+@media print {
+  .no-print,
+  .skip-link,
+  .site-topbar,
+  .site-header,
+  .site-footer,
+  .admin-sidebar,
+  .admin-topbar,
+  .admin-footer,
+  .alert .btn-close,
+  .btn,
+  nav,
+  form[role="search"],
+  .pagination {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt;
+  }
+
+  .admin-shell,
+  .admin-main {
+    display: block;
+  }
+
+  .admin-content,
+  .container,
+  .container-fluid {
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .card {
+    border: 1px solid #000;
+    box-shadow: none;
+  }
+
+  a {
+    color: #000;
+    text-decoration: none;
+  }
+
+  tr,
+  .card {
+    break-inside: avoid;
+  }
+}
