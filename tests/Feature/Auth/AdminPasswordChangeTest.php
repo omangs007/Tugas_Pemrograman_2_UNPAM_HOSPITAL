@@ -274,4 +274,21 @@ class AdminPasswordChangeTest extends TestCase
             ->assertSee('Ganti Password')
             ->assertSee('href="'.route('admin.password.edit').'"', false);
     }
+
+    public function test_password_routes_are_guarded_without_password_changed_and_the_dashboard_with_it(): void
+    {
+        $routes = Route::getRoutes();
+
+        foreach (['admin.password.edit', 'admin.password.update'] as $name) {
+            $middleware = $routes->getByName($name)->gatherMiddleware();
+
+            foreach (['auth', 'account:staff', 'active'] as $required) {
+                $this->assertContains($required, $middleware, "{$name} harus memakai {$required}.");
+            }
+            $this->assertNotContains('password.changed', $middleware, "{$name} tidak boleh memakai password.changed (pengalihan berulang).");
+        }
+
+        $this->assertNotContains('password.changed', $routes->getByName('admin.logout')->gatherMiddleware());
+        $this->assertContains('password.changed', $routes->getByName('admin.dashboard')->gatherMiddleware());
+    }
 }

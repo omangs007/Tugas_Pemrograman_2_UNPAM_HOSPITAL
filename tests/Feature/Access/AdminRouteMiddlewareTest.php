@@ -14,7 +14,7 @@ class AdminRouteMiddlewareTest extends TestCase
     /** Route yang sengaja berada di luar G-ADMIN penuh. */
     private const EXEMPT = ['admin.login', 'admin.login.store', 'admin.logout', 'admin.password.edit', 'admin.password.update'];
 
-    private const REQUIRED = ['auth', 'account:staff', 'active'];
+    private const REQUIRED = ['auth', 'account:staff', 'active', 'password.changed'];
 
     /**
      * @return list<string>
@@ -54,7 +54,7 @@ class AdminRouteMiddlewareTest extends TestCase
     public function test_the_guard_detects_an_unprotected_admin_route(): void
     {
         Route::middleware('web')->get('/admin/_uji-bocor', fn () => 'bocor')->name('admin.uji.bocor');
-        Route::middleware(['web', 'auth', 'account:staff', 'active'])->get('/admin/_uji-tanpa-izin', fn () => 'x')->name('admin.uji.tanpa-izin');
+        Route::middleware(['web', 'auth', 'account:staff', 'active', 'password.changed'])->get('/admin/_uji-tanpa-izin', fn () => 'x')->name('admin.uji.tanpa-izin');
 
         $violations = $this->violations();
 
