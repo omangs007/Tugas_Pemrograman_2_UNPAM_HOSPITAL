@@ -158,6 +158,49 @@ final class MediaService
             ->each(fn (Media $media) => $this->delete($media));
     }
 
+    /**
+     * Ubah teks alternatif (wajib, maks 255) dan keterangan (opsional, maks 255). Berkas tidak disentuh.
+     */
+    public function updateMeta(Media $media, ?string $altText, ?string $caption): Media
+    {
+        $altText = trim((string) $altText);
+        $caption = $this->nullableTrim($caption);
+        $errors = $this->metaErrors($altText, $caption);
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $media->fill(['alt_text' => $altText, 'caption' => $caption])->save();
+
+        return $media;
+    }
+
+    /**
+     * Atur urutan: sort_order = posisi 1-based sesuai $orderedIds. Semua id harus milik pemilik
+     * dan koleksi yang sama dan tidak boleh ganda.
+     *
+     * @param  array<int, int|string>  $orderedIds
+     */
+    public function reorder(Model $owner, string $collection, array $orderedIds): void
+    {
+        $this->configFor($collection);
+        $this->assertOwnerPersisted($owner);
+
+        $ids = array_map('intval', array_values($orderedIds));
+        $owned = $ids === [] ? [] : $this->ownedBy($owner, $collection)->whereIn('id', $ids)->pluck('id')->all();
+
+        if ($ids === [] || count($ids) !== count(array_unique($ids)) || count($owned) !== count($ids)) {
+            throw ValidationException::withMessages(['ids' => 'Urutan gambar tidak valid.']);
+        }
+
+        DB::transaction(function () use ($ids): void {
+            foreach ($ids as $position => $id) {
+                Media::query()->whereKey($id)->update(['sort_order' => $position + 1]);
+            }
+        });
+    }
+
     private function createMedia(UploadedFile $file, string $collection, array $config, ?Model $owner, array $meta, ?User $uploader, callable $audit): Media
     {
         // $audit dipanggil di dalam transaksi tepat setelah baris media dibuat.
