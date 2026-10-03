@@ -10,9 +10,9 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 |---|---|
 | Blueprint (spesifikasi) | Selesai & disetujui — `docs/superpowers/specs/2026-10-02-unpam-hospital-blueprint/` (mulai dari `README.md`, lalu `00-keputusan-inti.md`). Diperbarui di fase 1: 00 J.6, 06 §14.A, 10 (pratinjau `FileReader`), 11 §3.3/§6.10/§6.11 (`scoped`), 12 V-03, 15 SEK-03, 16 §5/§7, 17 §4 (D-21–D-28). |
 | Fase 0 — Lingkungan & skeleton | **Selesai**, di-merge ke `master`. Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
-| Fase 1 — Fondasi | **Selesai.** Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang: siap merge setelah perbaikan, dan perbaikannya sudah dilakukan. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
-| Cabang git | `fase-1-fondasi` (dari `master`), **belum di-merge**. Repo tanpa remote. |
-| Keputusan tertunda pemilik | (1) Konfirmasi manual login per peran (opsional, lihat §3). (2) **Integrasi cabang fase 1**: merge ke `master` lokal, push + PR (butuh remote), atau biarkan dulu. (3) Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
+| Fase 1 — Fondasi | **Selesai** dan **sudah di-merge** ke `master` (fast-forward `0b87342`, 2026-10-04; cabang `fase-1-fondasi` dihapus). Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang beserta perbaikannya sudah selesai. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
+| Cabang git | `master` (fase 0 + fase 1). Repo tanpa remote. Cabang fase berikutnya dibuat dari `master`. |
+| Keputusan tertunda pemilik | (1) Konfirmasi manual login per peran (opsional, lihat §3). (2) Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
 | Fase berikutnya | **Fase 2 — Master Data** (blueprint `14-tahapan-implementasi.md` §Fase 2). Fase 4a (CMS statis) dan fase 5 (akun pasien) juga hanya membutuhkan fondasi. Rencana implementasinya belum ada. |
 
 Yang sudah ada di aplikasi: enum, akun & peran (Spatie), audit log, media + sanitasi HTML, pengaturan situs, tema & komponen Blade, layout publik/pasien/auth/admin, login/logout staf, ganti password wajib, header keamanan, `StaffAccountService` (aturan mutlak Super Admin), `app:create-super-admin`, `media:prune`, dan seeder demo staf. Area admin fase 1 terdiri dari login, ganti password, dan dasbor sapaan (`route:list --path=admin` menampilkan 6 route).
@@ -32,7 +32,7 @@ Yang sudah ada di aplikasi: enum, akun & peran (Spatie), audit log, media + sani
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"
 $env:Path = "$XAMPP\php;$env:Path"; Set-Location "D:\Project Web RS"
 
-git status; git branch --show-current          # harus bersih, di fase-1-fondasi
+git status; git branch --show-current          # harus bersih, di master
 & $PHP scripts\check-env.php                    # "status": "OK"
 & $PHP artisan test                             # 980 passed
 & $PHP vendor\bin\pint --test                   # PASS
@@ -42,7 +42,7 @@ curl.exe -s -o NUL -w '%{http_code}' http://unpam-hospital.test/admin/login   # 
 
 Konfirmasi manual (opsional, ±5 menit): buka <http://unpam-hospital.test/admin/login>, login sebagai ketiga akun demo, buka menu pengguna lalu **Keluar**. Daftar periksa lengkap ada di rencana fase 1, Task 19 Step 22.
 
-Bila semua hijau: putuskan integrasi cabang fase 1, lalu minta Claude menulis rencana **Fase 2** dengan skill `superpowers:writing-plans` dan mengeksekusinya dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
+Bila semua hijau: minta Claude menulis rencana **Fase 2** dengan skill `superpowers:writing-plans` dan mengeksekusinya dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
 
 ## 4. Bawaan (carry) untuk fase berikutnya
 
