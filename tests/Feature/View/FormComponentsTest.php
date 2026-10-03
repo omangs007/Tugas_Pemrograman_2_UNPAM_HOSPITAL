@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\View;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\InteractsWithFormState;
 use Tests\TestCase;
 
@@ -184,6 +185,34 @@ class FormComponentsTest extends TestCase
             ->assertDontSee('Periksa kembali isian Anda')
             ->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)
             ->assertDontSee('<script>alert(1)</script>', false);
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function controlsWithBracketedName(): array
+    {
+        return [
+            'input' => ['<x-form.input name="items[0][name]" label="Nama item" />'],
+            'select' => ['<x-form.select name="items[0][name]" label="Nama item" :options="[\'a\' => \'Opsi A\']" />'],
+            'textarea' => ['<x-form.textarea name="items[0][name]" label="Nama item" />'],
+            'checkbox' => ['<x-form.checkbox name="items[0][name]" label="Nama item" />'],
+            'radio-group' => ['<x-form.radio-group name="items[0][name]" legend="Nama item" :options="[\'a\' => \'Opsi A\']" />'],
+            'file' => ['<x-form.file name="items[0][name]" label="Nama item" />'],
+        ];
+    }
+
+    #[DataProvider('controlsWithBracketedName')]
+    public function test_every_control_derives_the_same_id_that_errors_summary_links_to(string $control): void
+    {
+        $this->withViewErrors(['items.0.name' => ['Nama item wajib diisi.']]);
+
+        $this->blade($control)
+            ->assertSee('id="items-0-name"', false)
+            ->assertSee('<div id="items-0-name-error" class="invalid-feedback d-block">Nama item wajib diisi.</div>', false);
+
+        $this->blade('<x-form.errors-summary />')
+            ->assertSee('<a href="#items-0-name" class="alert-link">Nama item wajib diisi.</a>', false);
     }
 
     public function test_errors_summary_renders_nothing_without_errors(): void
