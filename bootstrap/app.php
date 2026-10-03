@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureAccountType;
+use App\Http\Middleware\EnsurePasswordChanged;
 use App\Models\User;
 use App\Support\SafeRedirect;
 use Illuminate\Foundation\Application;
@@ -41,6 +42,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'account' => EnsureAccountType::class,
             'active' => EnsureAccountIsActive::class,
+            'password.changed' => EnsurePasswordChanged::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,

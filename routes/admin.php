@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Auth\AdminLoginController;
+use App\Http\Controllers\Auth\AdminPasswordController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,8 +27,14 @@ Route::post('/logout', [AdminLoginController::class, 'destroy'])
     ->middleware(['auth', 'account:staff'])
     ->name('logout');
 
-// G-ADMIN sementara (Task 15 menambah `password.changed`).
+// Ganti password: TANPA `password.changed` agar tidak berulang (00 I.4).
 Route::middleware(['auth', 'account:staff', 'active'])->group(function (): void {
+    Route::get('/ganti-password', [AdminPasswordController::class, 'edit'])->name('password.edit');
+    Route::put('/ganti-password', [AdminPasswordController::class, 'update'])->name('password.update');
+});
+
+// G-ADMIN: semua halaman admin lain.
+Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->group(function (): void {
     Route::get('/', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
