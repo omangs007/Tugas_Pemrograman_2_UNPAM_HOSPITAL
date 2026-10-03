@@ -7,6 +7,7 @@ use App\Services\Settings\SettingsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -33,5 +34,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(fn (User $user, string $ability) => $user->hasRole('super-admin') ? true : null);
 
         Paginator::useBootstrapFive();
+
+        // Pengaturan situs tersedia di semua layout sebagai $site (SettingsService).
+        View::composer(['components.layouts.*'], function ($view): void {
+            $view->with('site', $this->app->make(SettingsService::class));
+        });
     }
 }
