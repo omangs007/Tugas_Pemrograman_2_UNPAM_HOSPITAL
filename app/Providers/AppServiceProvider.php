@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -36,6 +37,9 @@ class AppServiceProvider extends ServiceProvider
         // Super Admin melewati semua Gate/Policy (00 G). Hanya untuk pengguna login;
         // aturan mutlak (peran terkunci, minimal satu Super Admin aktif) ditegakkan di StaffAccountService.
         Gate::before(fn (User $user, string $ability) => $user->hasRole('super-admin') ? true : null);
+
+        // URI resource berbahasa Indonesia: /buat dan /ubah (11 §3.3).
+        Route::resourceVerbs(['create' => 'buat', 'edit' => 'ubah']);
 
         Paginator::useBootstrapFive();
 
