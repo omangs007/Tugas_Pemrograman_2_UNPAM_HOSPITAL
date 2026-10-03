@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-labelledby="t">
+  <title id="t">Foto contoh fasilitas</title>
+  <rect width="600" height="400" fill="#F3F7FB"/>
+  <rect x="150" y="190" width="300" height="40" rx="8" fill="#0E7C74"/>
+  <rect x="150" y="150" width="90" height="40" rx="12" fill="#0A4D8C"/>
+  <rect x="165" y="230" width="14" height="60" fill="#0A4D8C"/>
+  <rect x="421" y="230" width="14" height="60" fill="#0A4D8C"/>
+  <rect x="440" y="110" width="80" height="60" rx="6" fill="#13A89E"/>
+  <text x="300" y="360" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#0A4D8C">Foto contoh</text>
+</svg>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-labelledby="t">
+  <title id="t">Foto contoh artikel</title>
+  <rect width="640" height="360" fill="#F3F7FB"/>
+  <rect x="210" y="40" width="220" height="230" rx="8" fill="#FFFFFF" stroke="#0A4D8C" stroke-width="6"/>
+  <rect x="235" y="70" width="170" height="16" fill="#0A4D8C"/>
+  <rect x="235" y="105" width="170" height="10" fill="#0E7C74"/>
+  <rect x="235" y="130" width="170" height="10" fill="#0E7C74"/>
+  <rect x="235" y="155" width="120" height="10" fill="#0E7C74"/>
+  <rect x="235" y="190" width="170" height="50" fill="#13A89E"/>
+  <text x="320" y="330" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#0A4D8C">Foto contoh</text>
+</svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-labelledby="t">
+  <title id="t">Foto contoh kamar rawat inap</title>
+  <rect width="600" height="400" fill="#F3F7FB"/>
+  <rect x="200" y="70" width="200" height="200" rx="6" fill="#0A4D8C"/>
+  <rect x="220" y="90" width="160" height="160" fill="#F3F7FB"/>
+  <rect x="297" y="90" width="6" height="160" fill="#0A4D8C"/>
+  <rect x="220" y="167" width="160" height="6" fill="#0A4D8C"/>
+  <rect x="160" y="290" width="280" height="14" rx="7" fill="#0E7C74"/>
+  <text x="300" y="360" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#0A4D8C">Foto contoh</text>
+</svg>

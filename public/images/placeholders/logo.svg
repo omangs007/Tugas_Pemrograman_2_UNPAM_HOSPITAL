@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100" role="img" aria-labelledby="t">
+  <title id="t">Logo UNPAM HOSPITAL</title>
+  <rect width="400" height="100" fill="#FFFFFF"/>
+  <circle cx="50" cy="50" r="38" fill="#0A4D8C"/>
+  <text x="50" y="62" text-anchor="middle" font-family="system-ui, sans-serif" font-size="32" font-weight="700" fill="#FFFFFF">UH</text>
+  <text x="104" y="60" font-family="system-ui, sans-serif" font-size="30" font-weight="700" fill="#0A4D8C">UNPAM HOSPITAL</text>
+</svg>

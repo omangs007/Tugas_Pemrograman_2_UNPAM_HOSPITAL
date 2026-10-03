@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-labelledby="t">
+  <title id="t">Foto contoh dokter</title>
+  <rect width="600" height="600" fill="#F3F7FB"/>
+  <circle cx="300" cy="230" r="90" fill="#0A4D8C"/>
+  <path d="M120 520c0-110 80-170 180-170s180 60 180 170z" fill="#0E7C74"/>
+  <text x="300" y="575" text-anchor="middle" font-family="system-ui, sans-serif" font-size="28" fill="#0A4D8C">Foto contoh</text>
+</svg>
