@@ -6,6 +6,7 @@ namespace App\Services\Content;
 
 use DOMDocument;
 use DOMElement;
+use Illuminate\Support\Str;
 use Mews\Purifier\Facades\Purifier;
 
 final class HtmlSanitizer
@@ -24,6 +25,25 @@ final class HtmlSanitizer
         $purified = Purifier::clean($html, 'rich_text');
 
         return $this->postProcess(is_string($purified) ? $purified : '');
+    }
+
+    /**
+     * Teks polos untuk meta description atau ringkasan: HTML dibersihkan dulu, tag dibuang,
+     * entitas didekode, spasi dirapikan, lalu dipotong pada $limit karakter (+ "…" bila terpotong).
+     */
+    public function toPlainText(?string $html, int $limit = 160): string
+    {
+        $clean = $this->clean($html);
+
+        if ($clean === '') {
+            return '';
+        }
+
+        $spaced = preg_replace('~</(?:p|li|h[2-4]|blockquote|tr|td|th)>|<br\s*/?>~i', ' ', $clean) ?? $clean;
+        $text = html_entity_decode(strip_tags($spaced), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
+
+        return Str::limit($text, max($limit, 1), '…');
     }
 
     private function postProcess(string $html): string
