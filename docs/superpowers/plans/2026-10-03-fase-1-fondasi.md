@@ -85,7 +85,7 @@ Dicatat ulang ke blueprint 17 §4 / 00 J.6 pada Task 19.
 | `resources/scss/_bootstrap-theme.scss` | Partial tumpukan impor Bootstrap bersama | 9 |
 | Prop `noindex` pada `x-layouts.public` | Prop opsional layout | 13 |
 | `storage/app/public/.htaccess` | Penolak skrip disk publik | 5 |
-| `Tests\Support\InteractsWithStaff`, `InteractsWithMedia`, `InteractsWithFormState`, `ImageFixtures` | Pembantu tes | 3, 5, 10 |
+| `Tests\Support\InteractsWithStaff`, `InteractsWithMedia`, `InteractsWithFormState`, `ImageFixtures`, `Fixtures\{PlainEnum,HostileStatus}`, `Requests\StatusSortFilterRequest` | Pembantu tes | 3, 5, 10, 11, 12 |
 
 ## Struktur berkas (peta tanggung jawab)
 
@@ -157,7 +157,7 @@ routes/web.php (ubah)                                  (T13)
 routes/admin.php                                       (T14, T15)
 storage/app/purifier/.gitignore                        (T6)
 storage/app/public/.htaccess, storage/app/public/.gitignore (ubah)   (T5)
-tests/Support/{InteractsWithStaff,InteractsWithMedia,InteractsWithFormState,ImageFixtures}.php     (T3, T5, T10)
+tests/Support/{InteractsWithStaff,InteractsWithMedia,ImageFixtures}.php (T3, T5); tests/Support/Fixtures/{PlainEnum,HostileStatus}.php (T10); tests/Support/InteractsWithFormState.php (T11); tests/Support/Requests/StatusSortFilterRequest.php (T12)
 tests/... (per task)
 ```
 
@@ -1492,7 +1492,7 @@ enum Availability: string
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
 & $PHP artisan test --filter=Enums
 ```
-Expected: PASS — seluruh tes di `EnumCatalogTest` (50 baris katalog + tes struktur), `AppointmentStatusTest`, dan `SessionResolutionTest` lulus; `Tests: N passed`, tanpa failure/error. Bila ada baris katalog gagal, bandingkan label/color/icon enum dengan 10 §4 — jangan mengubah tes.
+Expected: PASS — seluruh tes di `EnumCatalogTest` (52 baris katalog + tes struktur), `AppointmentStatusTest`, dan `SessionResolutionTest` lulus; `Tests: N passed`, tanpa failure/error. Bila ada baris katalog gagal, bandingkan label/color/icon enum dengan 10 §4 — jangan mengubah tes.
 
 - [ ] **Step 14: Jalankan seluruh suite dan Pint**
 
@@ -7895,7 +7895,7 @@ curl.exe -s -o NUL -w "folder=%{http_code}`n" http://unpam-hospital.test/storage
 Remove-Item "$APP\storage\app\public\uji-skrip.php"
 git status --short storage/app/public
 ```
-Expected: tes PASS; `php=403`; `folder=403`; berkas uji terhapus; `git status` hanya menampilkan `.gitignore` (diubah) dan `.htaccess` (baru). Bila `php=200` atau `php=500`, hentikan dan laporkan `NEEDS_CONTEXT` (periksa `AllowOverride All` di vhost — blueprint 16 §7.2).
+Expected: tes PASS; `php=403`; `folder=403`; berkas uji terhapus; `git status` hanya menampilkan `.gitignore` (diubah) dan `.htaccess` (baru). Bila `php=200` atau `php=500`, hentikan dan laporkan `NEEDS_CONTEXT` (periksa `AllowOverride All` di vhost — blueprint 16 §7.2). Bila `000`, Apache belum Start (Global Constraints) — hentikan dan laporkan `NEEDS_CONTEXT`.
 
 - [ ] **Step 42e: Commit**
 
@@ -15986,7 +15986,7 @@ final class NavigationMenu
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
 & $PHP artisan test --filter=NavigationMenuTest
 ```
-Expected: PASS (7 tes hijau; tes "menu admin selalu memuat Dashboard" baru ditambahkan di Task 14 karena route `admin.dashboard` belum ada). Bila `test_real_public_and_footer_config_keep_the_canonical_route_names` gagal, periksa ejaan nama route di `config/navigation.php` terhadap 00 I.1.
+Expected: PASS (8 tes hijau; tes "menu admin selalu memuat Dashboard" baru ditambahkan di Task 14 karena route `admin.dashboard` belum ada). Bila `test_real_public_and_footer_config_keep_the_canonical_route_names` gagal, periksa ejaan nama route di `config/navigation.php` terhadap 00 I.1.
 
 - [ ] **Step 6: Pint dan commit**
 
@@ -16135,7 +16135,19 @@ $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\comp
 ```
 Expected: FAIL — respons 500 (bukan 200) dengan galat `Unable to locate a class or view for component [layouts.auth]`; `test_layouts_read_site_settings_through_the_view_composer` gagal karena komponen yang sama.
 
-- [ ] **Step 10: `AppServiceProvider` (composer `$site`) dan layout auth**
+- [ ] **Step 10: `AppServiceProvider` (composer `$site`), nama route `home`, dan layout auth**
+
+Layout auth memanggil `route('home')`, padahal route `/` fase 0 belum bernama (Siklus C nanti menggantinya dengan `Route::view('/', 'public.home')->name('home')`). Beri nama sekarang — `routes/web.php` (isi lengkap sementara):
+
+```php
+<?php
+
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', function () {
+    return view('welcome');
+})->name('home');
+```
 
 Tulis ulang `app/Providers/AppServiceProvider.php` (gabungan Task 2, 3, 7, 11 + composer Task 13). Baca berkas dulu, lalu timpa:
 
@@ -16257,7 +16269,7 @@ Expected: PASS. `SmokeTest` lama masih hijau (ia memanggil `withoutVite()` sendi
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
 & $PHP vendor\bin\pint --test
-git add tests/TestCase.php tests/Feature/View/LayoutsTest.php app/Providers/AppServiceProvider.php resources/views/components/layouts/auth.blade.php
+git add tests/TestCase.php tests/Feature/View/LayoutsTest.php app/Providers/AppServiceProvider.php resources/views/components/layouts/auth.blade.php routes/web.php
 git commit -m "feat(fase-1): layout auth, view composer site, dan withoutVite di TestCase"
 ```
 
@@ -16994,7 +17006,10 @@ Expected: FAIL — 404 masih halaman bawaan Laravel (`Not Found`, tanpa "Halaman
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <title>@yield('title') — {{ config('app.name') }}</title>
-    @vite(['resources/scss/app.scss', 'resources/js/app.js'])
+    {{-- Halaman galat tetap tampil walau aset belum di-build (mesin baru / mode pemeliharaan). --}}
+    @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
+        @vite(['resources/scss/app.scss', 'resources/js/app.js'])
+    @endif
 </head>
 <body class="bg-light">
     <a class="skip-link" href="#konten-utama">Lewati ke konten utama</a>
@@ -23314,7 +23329,7 @@ npm run build
 Select-String -Path public\build\manifest.json -Pattern 'resources/scss/app.scss', 'resources/js/app.js', 'resources/js/admin.js' -SimpleMatch | ForEach-Object { $_.Line.Trim() }
 git status --short
 ```
-Expected: semua tes PASS tanpa `RISKY`/`WARNING` (catat jumlah tes dari baris `Tests: N passed`); Pint `PASS`; `npm run build` sukses tanpa peringatan Sass yang tidak dibisukan; manifest memuat tiga entri (F1-R11; jangan mengandalkan field `src` untuk SCSS, lihat carry fase 0); `git status` bersih (tanpa `.env`, `vendor`, `node_modules`, `public/build`, `public/storage`).
+Expected: semua tes PASS tanpa `RISKY`/`WARNING` (catat jumlah tes dari baris `Tests: N passed`); Pint `PASS`; `npm run build` sukses tanpa galat (peringatan `mixed-decls deprecation is obsolete` boleh muncul, lihat Task 9 Step 10); manifest memuat tiga entri (F1-R11; jangan mengandalkan field `src` untuk SCSS, lihat carry fase 0); `git status` bersih (tanpa `.env`, `vendor`, `node_modules`, `public/build`, `public/storage`).
 
 - [ ] **Step 20: `migrate:fresh --seed` pada database pengembangan (kasus INS bagian seeding)**
 
@@ -23412,7 +23427,7 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Blueprint (spesifikasi) | Selesai & disetujui — `docs/superpowers/specs/2026-10-02-unpam-hospital-blueprint/` (mulai dari `README.md`, lalu `00-keputusan-inti.md`). Diperbarui di fase 1: 00 J.6, 06 §14.A, 11 §6.10, 12 V-03, 15 SEK-03, 16 §5/§7, 17 §4 (D-21–D-28). |
 | Fase 0 — Lingkungan & skeleton | **Selesai.** Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
 | Fase 1 — Fondasi | **Selesai**, gerbang fase terpenuhi (tes, Pint, `npm run build`, `migrate:fresh --seed`, login manual tiga akun demo). Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md`. |
-| Cabang git | `fase-1-fondasi` (di atas `fase-0-lingkungan`/`master`), **belum di-merge**. Repo tanpa remote. |
+| Cabang git | `fase-1-fondasi` (dibuat dari `master` setelah merge fase 0), **belum di-merge**. Repo tanpa remote. |
 | Keputusan tertunda pemilik | **Integrasi cabang fase 1**: (1) merge ke `master` lokal, (2) push + PR (butuh remote), atau (3) biarkan dulu. Lalu konfirmasi butir K di `17-keputusan-konfirmasi.md` (semua punya default; terpenting sebelum fase 5: K-07). |
 | Fase berikutnya | **Fase 2 — Master Data** (blueprint `14-tahapan-implementasi.md` §Fase 2); fase 4a (CMS statis) dan fase 5 (akun pasien) juga hanya membutuhkan fondasi. Belum ada rencana implementasinya. |
 
