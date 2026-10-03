@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Settings;
 
 use App\Models\Media;
+use App\Models\User;
 use App\Models\WebsiteSetting;
 use App\Services\Audit\AuditLogger;
+use App\Support\Actor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 final class SettingsService
 {
@@ -84,6 +88,72 @@ final class SettingsService
             ->values();
     }
 
+    public function set(string $key, mixed $value, ?User $by = null): void
+    {
+        $this->setMany([$key => $value], $by);
+    }
+
+    /**
+     * Simpan beberapa pengaturan dalam satu transaksi. Kunci tak dikenal ⇒ InvalidArgumentException
+     * (tidak ada yang tersimpan). Hanya kunci yang nilainya berubah ditulis dan dicatat dalam satu
+     * baris audit `settings.updated`; cache dibuang setelah commit.
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public function setMany(array $values, ?User $by = null): void
+    {
+        if ($values === []) {
+            return;
+        }
+
+        DB::transaction(function () use ($values, $by): void {
+            $keys = array_map('strval', array_keys($values));
+            $rows = WebsiteSetting::query()->whereIn('key', $keys)->lockForUpdate()->get()->keyBy('key');
+            $unknown = array_values(array_diff($keys, $rows->keys()->all()));
+
+            if ($unknown !== []) {
+                throw new InvalidArgumentException('Kunci pengaturan tidak dikenal: '.implode(', ', $unknown).'.');
+            }
+
+            $changes = [];
+            $old = [];
+            $new = [];
+
+            foreach ($values as $key => $value) {
+                $setting = $rows->get((string) $key);
+                $serialized = $this->serialize($setting->key, $setting->type, $value);
+                $current = $setting->value === '' ? null : $setting->value;
+
+                if ($serialized === $current) {
+                    continue;
+                }
+
+                $changes[] = [$setting, $serialized];
+                $old[$setting->key] = $current;
+                $new[$setting->key] = $serialized;
+            }
+
+            if ($changes === []) {
+                return;
+            }
+
+            foreach ($changes as [$setting, $serialized]) {
+                $setting->fill(['value' => $serialized, 'updated_by' => $by?->getKey()])->save();
+            }
+
+            $this->audit->log(
+                'settings.updated',
+                new WebsiteSetting,
+                $old,
+                $new,
+                'Pengaturan situs diubah: '.implode(', ', array_keys($new)).'.',
+                $by !== null ? Actor::staff($by) : null,
+            );
+
+            DB::afterCommit(fn () => $this->forget());
+        });
+    }
+
     public function logoUrl(): string
     {
         $mediaId = $this->int('site.logo_media_id');
@@ -117,6 +187,31 @@ final class SettingsService
     {
         $this->memo = null;
         Cache::forget(self::CACHE_KEY);
+    }
+
+    /**
+     * Nilai ⇒ string tersimpan menurut tipe; null dan '' ⇒ NULL. Tipe tidak cocok ⇒ InvalidArgumentException.
+     */
+    private function serialize(string $key, string $type, mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $serialized = match ($type) {
+            'bool' => filter_var($value, FILTER_VALIDATE_BOOLEAN) ? '1' : '0',
+            'int' => is_numeric($value)
+                ? (string) (int) $value
+                : throw new InvalidArgumentException("Nilai pengaturan {$key} harus berupa angka bulat."),
+            'json' => is_array($value)
+                ? json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)
+                : throw new InvalidArgumentException("Nilai pengaturan {$key} harus berupa larik."),
+            default => is_scalar($value)
+                ? trim((string) $value)
+                : throw new InvalidArgumentException("Nilai pengaturan {$key} harus berupa teks."),
+        };
+
+        return $serialized === '' ? null : $serialized;
     }
 
     private function all(): array
