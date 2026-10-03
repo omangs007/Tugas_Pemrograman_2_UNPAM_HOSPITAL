@@ -8,11 +8,15 @@ use App\Services\Audit\AuditLogger;
 use App\Support\Actor;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AdminLoginRequest extends FormRequest
 {
+    /** Hash dummy (hasher terkonfigurasi, biaya sama dengan BCRYPT_ROUNDS), dibuat sekali per proses. */
+    private static ?string $dummyHash = null;
+
     public function authorize(): bool
     {
         return true;
@@ -76,12 +80,12 @@ class AdminLoginRequest extends FormRequest
             return $user;
         }
 
-        $this->recordFailure($audit, $email);
+        $this->recordFailure($audit, $email, (string) $credentials['password']);
 
         throw ValidationException::withMessages(['email' => __('auth.failed')]);
     }
 
-    private function recordFailure(AuditLogger $audit, string $email): void
+    private function recordFailure(AuditLogger $audit, string $email, string $password): void
     {
         $account = User::query()->where('email', $email)->first();
 
@@ -94,6 +98,12 @@ class AdminLoginRequest extends FormRequest
 
         $staff = $account !== null && $account->isStaff() ? $account : null;
 
+        // Auth::attempt() tidak menghitung bcrypt bila tidak ada akun staf aktif yang cocok; samakan biaya waktunya
+        // agar akun staf aktif tidak dapat dibedakan lewat durasi respons. Password tidak disimpan, dicatat, maupun diaudit.
+        if ($account === null || ! $account->isStaff() || ! $account->is_active) {
+            Hash::check($password, self::dummyHash());
+        }
+
         $audit->log(
             'auth.staff_login_failed',
             $staff ?? new User,
@@ -102,5 +112,10 @@ class AdminLoginRequest extends FormRequest
             'Percobaan masuk ke panel admin gagal.',
             $staff !== null ? Actor::staff($staff) : Actor::system(),
         );
+    }
+
+    private static function dummyHash(): string
+    {
+        return self::$dummyHash ??= Hash::make('dummy-password-for-timing-equalisation');
     }
 }

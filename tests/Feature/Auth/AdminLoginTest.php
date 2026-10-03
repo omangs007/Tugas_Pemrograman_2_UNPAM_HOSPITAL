@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\InteractsWithStaff;
@@ -138,6 +139,69 @@ class AdminLoginTest extends TestCase
             ->orWhere('old_values', 'like', '%SalahSekali1%')
             ->orWhere('description', 'like', '%SalahSekali1%')
             ->count());
+    }
+
+    // --- kesetaraan waktu (hash dummy) ---------------------------------------------------------
+
+    /**
+     * Merekam setiap Hash::check(): [nilai, hash]. Hasher asli tetap dipakai (partial mock).
+     *
+     * @param  list<array{0: string, 1: string}>  $calls
+     */
+    private function recordHashChecks(array &$calls): void
+    {
+        Hash::partialMock()->shouldReceive('check')->andReturnUsing(
+            function (string $value, string $hashed) use (&$calls): bool {
+                $calls[] = [$value, $hashed];
+
+                return password_verify($value, $hashed);
+            }
+        );
+    }
+
+    public function test_unknown_email_still_runs_one_hash_check_against_a_dummy_hash(): void
+    {
+        $this->staffAccount();
+        $calls = [];
+        $this->recordHashChecks($calls);
+
+        $this->postLogin('tidak-ada@unpam.test', 'SalahSekali1')
+            ->assertSessionHasErrors(['email' => 'Email atau password salah.']);
+
+        $this->assertCount(1, $calls);
+        $this->assertSame('SalahSekali1', $calls[0][0]);
+        $this->assertGuest();
+    }
+
+    public function test_inactive_staff_still_runs_one_hash_check_against_a_dummy_hash(): void
+    {
+        $inactive = $this->staffAccount('content-admin', ['is_active' => false]);
+        $calls = [];
+        $this->recordHashChecks($calls);
+
+        $this->postLogin('konten@unpam.test', 'SalahSekali1')
+            ->assertSessionHasErrors(['email' => 'Email atau password salah.']);
+
+        $this->assertCount(1, $calls);
+        $this->assertNotSame($inactive->password, $calls[0][1]);
+        $this->assertGuest();
+    }
+
+    public function test_active_staff_with_a_wrong_password_is_not_checked_again_against_a_dummy_hash(): void
+    {
+        $staff = $this->staffAccount();
+        $staff->refresh();
+        $calls = [];
+        $this->recordHashChecks($calls);
+
+        $this->postLogin('konten@unpam.test', 'SalahSekali1')
+            ->assertRedirect(route('admin.login'))
+            ->assertSessionHasErrors(['email' => 'Email atau password salah.']);
+
+        $this->assertCount(1, $calls);
+        $this->assertSame($staff->password, $calls[0][1]);
+        $this->assertSame('bad_credentials', $this->lastFailure()->new_values['reason']);
+        $this->assertGuest();
     }
 
     public function test_patient_account_cannot_log_in_through_the_admin_form(): void
