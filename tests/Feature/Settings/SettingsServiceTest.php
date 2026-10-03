@@ -8,6 +8,7 @@ use App\Services\Media\MediaService;
 use App\Services\Settings\SettingsService;
 use Database\Seeders\SettingsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\ImageFixtures;
@@ -42,6 +43,23 @@ class SettingsServiceTest extends TestCase
     public function test_service_is_a_singleton(): void
     {
         $this->assertSame($this->settings, app(SettingsService::class));
+    }
+
+    public function test_memo_does_not_survive_a_scope_boundary(): void
+    {
+        $this->assertSame('UNPAM HOSPITAL', $this->settings->string('site.name'));
+
+        // Simulasi proses lain mengubah pengaturan: baris berubah dan cache bersama dibuang.
+        WebsiteSetting::query()->where('key', 'site.name')->update(['value' => 'RS Pamulang']);
+        Cache::forget(SettingsService::CACHE_KEY);
+
+        app()->forgetScopedInstances();
+
+        $fresh = app(SettingsService::class);
+
+        $this->assertNotSame($this->settings, $fresh);
+        $this->assertSame('RS Pamulang', $fresh->string('site.name'));
+        $this->assertSame($fresh, app(SettingsService::class));
     }
 
     public function test_typed_getters_read_the_seeded_defaults(): void
