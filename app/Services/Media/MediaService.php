@@ -8,6 +8,7 @@ use App\Models\Media;
 use App\Models\User;
 use App\Rules\ImageRules;
 use App\Services\Audit\AuditLogger;
+use App\Services\Settings\SettingsService;
 use App\Support\Actor;
 use finfo;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Number;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Intervention\Image\Decoders\BinaryImageDecoder;
@@ -50,6 +52,10 @@ final class MediaService
     public const JPEG_QUALITY = 82;
 
     public const WEBP_QUALITY = 82;
+
+    private const ORPHAN_ROW_HOURS = 24;
+
+    private const ORPHAN_FILE_MINUTES = 60;
 
     private const EXTENSIONS = [
         'image/jpeg' => 'jpg',
@@ -199,6 +205,58 @@ final class MediaService
                 Media::query()->whereKey($id)->update(['sort_order' => $position + 1]);
             }
         });
+    }
+
+    /**
+     * Bersihkan media yatim (F1-R12): (a) baris tanpa pemilik berumur > 24 jam kecuali logo situs,
+     * (b) berkas di folder koleksi disk public yang tidak tercatat dan berumur > 1 jam.
+     * Pada $dryRun hanya menghitung dan menyusun daftar; eksekusi nyata menulis audit `media.pruned`.
+     */
+    public function prune(bool $dryRun = false): MediaPruneReport
+    {
+        $logoId = $this->logoMediaId();
+        $rows = Media::query()
+            ->orphaned(self::ORPHAN_ROW_HOURS)
+            ->when($logoId > 0, fn (Builder $query): Builder => $query->whereKeyNot($logoId))
+            ->orderBy('id')
+            ->get();
+        $files = $this->orphanFiles();
+
+        $bytes = 0;
+        $items = [];
+
+        foreach ($rows as $media) {
+            $bytes += $media->size_bytes + $this->thumbnailSize($media);
+            $items[] = "Baris media #{$media->id}: {$media->directory}/{$media->file_name} ({$media->human_size})";
+        }
+
+        foreach ($files as $file) {
+            $bytes += $file['size'];
+            $items[] = "Berkas yatim: {$file['path']} (".Number::fileSize($file['size']).')';
+        }
+
+        $report = new MediaPruneReport($rows->count(), count($files), $bytes, $dryRun, $items);
+
+        if ($dryRun) {
+            return $report;
+        }
+
+        foreach ($rows as $media) {
+            $this->purge($media);
+        }
+
+        Storage::disk('public')->delete(array_column($files, 'path'));
+
+        $this->audit->log(
+            'media.pruned',
+            new Media,
+            null,
+            ['orphan_rows' => $report->orphanRows, 'orphan_files' => $report->orphanFiles, 'bytes' => $report->bytes],
+            "Pembersihan media: {$report->orphanRows} baris dan {$report->orphanFiles} berkas yatim dihapus.",
+            Actor::system(),
+        );
+
+        return $report;
     }
 
     private function createMedia(UploadedFile $file, string $collection, array $config, ?Model $owner, array $meta, ?User $uploader, callable $audit): Media
@@ -401,6 +459,61 @@ final class MediaService
             ->where('collection', $collection)
             ->orderBy('sort_order')
             ->orderBy('id');
+    }
+
+    /**
+     * Berkas di folder koleksi disk public yang tidak tercatat di `media` (berkas utama maupun thumbnail),
+     * bukan berkas tersembunyi, dan berumur lebih dari 1 jam (menghindari balapan dengan unggahan berjalan).
+     *
+     * @return list<array{path: string, size: int}>
+     */
+    private function orphanFiles(): array
+    {
+        $tracked = [];
+
+        foreach (Media::query()->where('disk', 'public')->get(['directory', 'file_name', 'thumb_path']) as $media) {
+            $tracked[$media->directory.'/'.$media->file_name] = true;
+
+            if ($media->thumb_path !== null) {
+                $tracked[$media->thumb_path] = true;
+            }
+        }
+
+        $disk = Storage::disk('public');
+        $threshold = now()->subMinutes(self::ORPHAN_FILE_MINUTES)->getTimestamp();
+        $orphans = [];
+
+        foreach (self::COLLECTIONS as $collection => $config) {
+            if ($config['disk'] !== 'public') {
+                continue;
+            }
+
+            foreach ($disk->allFiles($collection) as $path) {
+                if (isset($tracked[$path]) || str_starts_with(basename($path), '.') || $disk->lastModified($path) >= $threshold) {
+                    continue;
+                }
+
+                $orphans[] = ['path' => $path, 'size' => $disk->size($path)];
+            }
+        }
+
+        return $orphans;
+    }
+
+    private function logoMediaId(): int
+    {
+        return app(SettingsService::class)->int('site.logo_media_id');
+    }
+
+    private function thumbnailSize(Media $media): int
+    {
+        if ($media->thumb_path === null) {
+            return 0;
+        }
+
+        $disk = Storage::disk($media->disk);
+
+        return $disk->exists($media->thumb_path) ? $disk->size($media->thumb_path) : 0;
     }
 
     private function encode(ImageInterface $image, string $mime): EncodedImageInterface
