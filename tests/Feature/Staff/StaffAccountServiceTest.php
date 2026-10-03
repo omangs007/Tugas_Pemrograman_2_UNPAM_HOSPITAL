@@ -7,14 +7,17 @@ use App\Enums\ActorType;
 use App\Models\AuditLog;
 use App\Models\User;
 use App\Rules\PasswordRules;
+use App\Services\Audit\AuditLogger;
 use App\Services\Staff\StaffAccountService;
 use App\Support\Actor;
+use Closure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\Support\InteractsWithStaff;
 use Tests\TestCase;
@@ -278,6 +281,238 @@ class StaffAccountServiceTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         $this->service->changeStatus($patient, false, Actor::system());
+    }
+
+    public function test_update_changes_profile_and_role_and_audits_with_redacted_phone(): void
+    {
+        $admin = $this->createStaff('super-admin');
+        $target = $this->createStaff('content-admin', [
+            'name' => 'Nama Lama',
+            'email' => 'lama@unpamhospital.test',
+            'phone' => '081111111111',
+        ]);
+
+        $updated = $this->service->update($target, [
+            'name' => 'Nama Baru',
+            'email' => 'baru@unpamhospital.test',
+            'phone' => '082222222222',
+            'role' => 'registration-officer',
+        ], Actor::staff($admin));
+
+        $fresh = $target->fresh();
+        $this->assertSame('Nama Baru', $fresh->name);
+        $this->assertSame('baru@unpamhospital.test', $fresh->email);
+        $this->assertSame('082222222222', $fresh->phone);
+        $this->assertSame(['registration-officer'], $fresh->roles()->pluck('name')->all());
+        $this->assertSame(['registration-officer'], $updated->roles->pluck('name')->all());
+
+        $log = $this->latestAudit('staff.updated');
+        $this->assertSame(ActorType::Staff, $log->actor_type);
+        $this->assertSame($target->id, (int) $log->auditable_id);
+        $this->assertEquals([
+            'name' => 'Nama Lama',
+            'email' => 'lama@unpamhospital.test',
+            'phone' => AuditLogger::REDACTED,
+            'role' => 'content-admin',
+        ], $log->old_values);
+        $this->assertEquals([
+            'name' => 'Nama Baru',
+            'email' => 'baru@unpamhospital.test',
+            'phone' => AuditLogger::REDACTED,
+            'role' => 'registration-officer',
+        ], $log->new_values);
+
+        $audits = DB::table('audit_logs')->get()->toJson();
+        $this->assertStringNotContainsString('081111111111', $audits);
+        $this->assertStringNotContainsString('082222222222', $audits);
+    }
+
+    public function test_update_without_any_change_writes_no_audit(): void
+    {
+        $admin = $this->createStaff('super-admin');
+        $target = $this->createStaff('content-admin');
+
+        $this->service->update($target, [
+            'name' => $target->name,
+            'email' => $target->email,
+            'phone' => $target->phone,
+            'role' => 'content-admin',
+        ], Actor::staff($admin));
+
+        $this->assertSame(0, AuditLog::query()->where('action', 'staff.updated')->count());
+    }
+
+    public function test_staff_can_edit_their_own_profile_when_the_role_stays_the_same(): void
+    {
+        $admin = $this->createStaff('super-admin', ['name' => 'Admin Lama']);
+
+        $this->service->update($admin, [
+            'name' => 'Admin Baru',
+            'email' => $admin->email,
+            'phone' => null,
+            'role' => 'super-admin',
+        ], Actor::staff($admin));
+
+        $this->assertSame('Admin Baru', $admin->fresh()->name);
+        $this->assertSame(['super-admin'], $admin->roles()->pluck('name')->all());
+    }
+
+    public function test_staff_cannot_change_their_own_role_even_as_super_admin(): void
+    {
+        $admin = $this->createStaff('super-admin');
+        $this->createStaff('super-admin');
+
+        $this->assertRejected(
+            fn () => $this->service->update($admin, [
+                'name' => $admin->name,
+                'email' => $admin->email,
+                'phone' => null,
+                'role' => 'content-admin',
+            ], Actor::staff($admin)),
+            'role',
+            'Anda tidak dapat mengubah peran akun Anda sendiri.',
+        );
+
+        $this->assertSame(['super-admin'], $admin->roles()->pluck('name')->all());
+        $this->assertSame(0, AuditLog::query()->count());
+    }
+
+    public function test_staff_cannot_promote_themselves_to_super_admin(): void
+    {
+        $staff = $this->createStaff('content-admin');
+
+        $this->assertRejected(
+            fn () => $this->service->update($staff, [
+                'name' => $staff->name,
+                'email' => $staff->email,
+                'phone' => null,
+                'role' => 'super-admin',
+            ], Actor::staff($staff)),
+            'role',
+            'Anda tidak dapat mengubah peran akun Anda sendiri.',
+        );
+
+        $this->assertSame(['content-admin'], $staff->roles()->pluck('name')->all());
+    }
+
+    public function test_with_two_super_admins_demoting_the_first_succeeds_and_the_second_is_rejected(): void
+    {
+        $first = $this->createStaff('super-admin');
+        $second = $this->createStaff('super-admin');
+
+        $this->service->update($second, [
+            'name' => $second->name,
+            'email' => $second->email,
+            'phone' => null,
+            'role' => 'content-admin',
+        ], Actor::staff($first));
+        $this->assertSame(['content-admin'], $second->roles()->pluck('name')->all());
+
+        $this->assertRejected(
+            fn () => $this->service->update($first, [
+                'name' => $first->name,
+                'email' => $first->email,
+                'phone' => null,
+                'role' => 'content-admin',
+            ], Actor::staff($second)),
+            'role',
+            'Tidak dapat menonaktifkan atau mengubah Super Admin aktif terakhir. Harus selalu ada minimal satu Super Admin aktif.',
+        );
+
+        $this->assertSame(['super-admin'], $first->roles()->pluck('name')->all());
+    }
+
+    public function test_inactive_super_admin_does_not_count_as_an_active_one(): void
+    {
+        $active = $this->createStaff('super-admin');
+        $inactive = $this->createStaff('super-admin', ['is_active' => false]);
+
+        $this->assertRejected(
+            fn () => $this->service->update($active, [
+                'name' => $active->name,
+                'email' => $active->email,
+                'phone' => null,
+                'role' => 'content-admin',
+            ], Actor::staff($inactive)),
+            'role',
+            'Tidak dapat menonaktifkan atau mengubah Super Admin aktif terakhir. Harus selalu ada minimal satu Super Admin aktif.',
+        );
+
+        $this->service->update($inactive, [
+            'name' => $inactive->name,
+            'email' => $inactive->email,
+            'phone' => null,
+            'role' => 'content-admin',
+        ], Actor::staff($active));
+
+        $this->assertSame(['content-admin'], $inactive->roles()->pluck('name')->all());
+    }
+
+    public function test_reset_password_sets_new_temporary_password_forces_change_and_ends_sessions(): void
+    {
+        $admin = $this->createStaff('super-admin');
+        $target = $this->createStaff('registration-officer', ['must_change_password' => false]);
+        $other = $this->createStaff('content-admin');
+        $oldHash = $target->password;
+        $this->insertSession('reset-target-1', $target->id);
+        $this->insertSession('reset-target-2', $target->id);
+        $this->insertSession('reset-lain', $other->id);
+
+        $temporaryPassword = $this->service->resetPassword($target, Actor::staff($admin));
+
+        $fresh = $target->fresh();
+        $this->assertSame(12, strlen($temporaryPassword));
+        $this->assertNotSame($oldHash, $fresh->password);
+        $this->assertTrue(Hash::check($temporaryPassword, $fresh->password));
+        $this->assertTrue($fresh->must_change_password);
+        $this->assertSame(0, DB::table('sessions')->where('user_id', $target->id)->count());
+        $this->assertSame(1, DB::table('sessions')->where('user_id', $other->id)->count());
+
+        $log = $this->latestAudit('staff.password_reset');
+        $this->assertSame($admin->id, (int) $log->user_id);
+        $this->assertSame($target->id, (int) $log->auditable_id);
+        $this->assertNull($log->old_values);
+        $this->assertEquals(['must_change_password' => true], $log->new_values);
+        $this->assertStringNotContainsString($temporaryPassword, DB::table('audit_logs')->get()->toJson());
+    }
+
+    public function test_staff_cannot_reset_their_own_password(): void
+    {
+        $admin = $this->createStaff('super-admin');
+        $oldHash = $admin->password;
+
+        $this->assertRejected(
+            fn () => $this->service->resetPassword($admin, Actor::staff($admin)),
+            'password',
+            'Anda tidak dapat mengatur ulang password akun Anda sendiri. Gunakan menu Ganti Password.',
+        );
+
+        $this->assertSame($oldHash, $admin->fresh()->password);
+        $this->assertSame(0, AuditLog::query()->count());
+    }
+
+    /** @return array<string, array{Closure}> */
+    public static function patientOperations(): array
+    {
+        return [
+            'update' => [fn (StaffAccountService $service, User $user) => $service->update($user, [
+                'name' => 'Nama Pasien',
+                'email' => 'pasien.ubah@unpamhospital.test',
+                'role' => 'content-admin',
+            ], Actor::system())],
+            'resetPassword' => [fn (StaffAccountService $service, User $user) => $service->resetPassword($user, Actor::system())],
+        ];
+    }
+
+    #[DataProvider('patientOperations')]
+    public function test_update_and_reset_password_reject_patient_accounts(Closure $operation): void
+    {
+        $this->seedRoles();
+        $patient = User::factory()->create();
+
+        $this->expectException(InvalidArgumentException::class);
+
+        $operation($this->service, $patient);
     }
 
     // --- Pembantu ---

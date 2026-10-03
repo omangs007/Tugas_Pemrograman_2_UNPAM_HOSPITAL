@@ -144,6 +144,117 @@ final class StaffAccountService
         });
     }
 
+    /**
+     * @param  array<string, mixed>  $validated  name, email, phone (opsional), role
+     */
+    public function update(User $staff, array $validated, Actor $actor): User
+    {
+        $this->assertStaff($staff);
+        $newRole = $this->validRole($validated['role'] ?? null);
+
+        return DB::transaction(function () use ($staff, $validated, $newRole, $actor): User {
+            $staff->loadMissing('roles');
+            $oldRole = $staff->roles->pluck('name')->first();
+            $roleChanged = $oldRole !== $newRole;
+
+            if ($roleChanged) {
+                if ($this->isSelf($staff, $actor)) {
+                    throw ValidationException::withMessages(['role' => self::MSG_SELF_ROLE]);
+                }
+
+                if ($oldRole === self::SUPER_ADMIN) {
+                    $this->assertNotLastActiveSuperAdmin($staff, 'role');
+                }
+            }
+
+            $before = [
+                'name' => $staff->name,
+                'email' => $staff->email,
+                'phone' => $staff->phone,
+                'role' => $oldRole,
+            ];
+
+            $phone = array_key_exists('phone', $validated) ? $validated['phone'] : $staff->phone;
+
+            $staff->fill([
+                'name' => $validated['name'] ?? $staff->name,
+                'email' => $validated['email'] ?? $staff->email,
+                'phone' => $phone === '' ? null : $phone,
+            ])->save();
+
+            if ($roleChanged) {
+                $staff->syncRoles([$newRole]);
+            }
+
+            $after = [
+                'name' => $staff->name,
+                'email' => $staff->email,
+                'phone' => $staff->phone,
+                'role' => $newRole,
+            ];
+
+            $old = [];
+            $new = [];
+
+            foreach ($after as $key => $value) {
+                if ($before[$key] !== $value) {
+                    $old[$key] = $before[$key];
+                    $new[$key] = $value;
+                }
+            }
+
+            if ($old !== []) {
+                // 'staff.*' bukan awalan PII di AuditLogger::redact(), jadi telepon disamarkan di sini.
+                if (array_key_exists('phone', $old)) {
+                    $old['phone'] = AuditLogger::REDACTED;
+                    $new['phone'] = AuditLogger::REDACTED;
+                }
+
+                $this->audit->log(
+                    'staff.updated',
+                    $staff,
+                    $old,
+                    $new,
+                    "Data akun staf {$staff->name} diperbarui.",
+                    $actor,
+                );
+            }
+
+            return $staff->load('roles');
+        });
+    }
+
+    public function resetPassword(User $staff, Actor $actor): string
+    {
+        $this->assertStaff($staff);
+
+        if ($this->isSelf($staff, $actor)) {
+            throw ValidationException::withMessages(['password' => self::MSG_SELF_RESET]);
+        }
+
+        $temporaryPassword = $this->generateTemporaryPassword();
+
+        DB::transaction(function () use ($staff, $temporaryPassword, $actor): void {
+            $staff->forceFill([
+                'password' => $temporaryPassword,
+                'must_change_password' => true,
+            ])->save();
+
+            DB::table('sessions')->where('user_id', $staff->getKey())->delete();
+
+            $this->audit->log(
+                'staff.password_reset',
+                $staff,
+                null,
+                ['must_change_password' => true],
+                "Password akun staf {$staff->name} diatur ulang.",
+                $actor,
+            );
+        });
+
+        return $temporaryPassword;
+    }
+
     // --- Pembantu privat ---
 
     private function assertStaff(User $staff): void
