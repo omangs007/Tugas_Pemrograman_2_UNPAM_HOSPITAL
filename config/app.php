@@ -123,4 +123,17 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Password Akun Demo
+    |--------------------------------------------------------------------------
+    |
+    | Hanya dipakai DemoUserSeeder di lingkungan local/testing (13 §3, K-11).
+    | Nilai kosong di .env berarti memakai Demo12345, karena env('X', 'default')
+    | mengembalikan string kosong (bukan default) untuk "DEMO_PASSWORD=".
+    |
+    */
+
+    'demo_password' => env('DEMO_PASSWORD') ?: 'Demo12345',
+
 ];
