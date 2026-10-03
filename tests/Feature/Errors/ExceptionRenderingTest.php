@@ -103,4 +103,27 @@ class ExceptionRenderingTest extends TestCase
             ->assertSessionHas('_old_input.nama', 'Budi')
             ->assertSessionMissing('_old_input.password');
     }
+
+    public function test_429_on_post_never_flashes_any_sensitive_field_but_keeps_the_others(): void
+    {
+        Route::middleware(['web', 'throttle:1,1'])->post('/_uji/kirim-sensitif', fn () => 'ok');
+        $payload = [
+            'email' => 'budi@contoh.test',
+            'password' => 'RahasiaUji1',
+            'password_confirmation' => 'RahasiaUji1',
+            'current_password' => 'LamaUji1',
+            'bpjs_number' => '0001234567890',
+            'payment_reference' => 'PAY-12345',
+        ];
+
+        $this->from('/_uji/form')->post('/_uji/kirim-sensitif', $payload)->assertOk();
+        $this->from('/_uji/form')->post('/_uji/kirim-sensitif', $payload)
+            ->assertRedirect('/_uji/form')
+            ->assertSessionHas('_old_input.email', 'budi@contoh.test')
+            ->assertSessionMissing('_old_input.password')
+            ->assertSessionMissing('_old_input.password_confirmation')
+            ->assertSessionMissing('_old_input.current_password')
+            ->assertSessionMissing('_old_input.bpjs_number')
+            ->assertSessionMissing('_old_input.payment_reference');
+    }
 }

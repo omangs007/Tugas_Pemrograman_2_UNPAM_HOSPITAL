@@ -74,13 +74,16 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->dontFlash(['password', 'password_confirmation', 'current_password', 'bpjs_number', 'payment_reference']);
+        // Satu daftar input sensitif untuk dontFlash, redirect 419, dan redirect 429 (00 E.6).
+        $sensitive = ['password', 'password_confirmation', 'current_password', 'bpjs_number', 'payment_reference'];
+
+        $exceptions->dontFlash($sensitive);
         $exceptions->shouldRenderJsonWhen(fn (Request $request, Throwable $e): bool => $request->expectsJson()
             || $request->routeIs('admin.dashboard.chart', 'admin.media.*'));
 
         // 403 / 419 / 429 berbahasa Indonesia (11 §11.3 + F1-R6). AuthorizationException sudah menjadi 403 dan
         // TokenMismatchException menjadi 419 sebelum callback ini dipanggil; ThrottleRequestsException adalah 429.
-        $exceptions->render(function (HttpExceptionInterface $e, Request $request) {
+        $exceptions->render(function (HttpExceptionInterface $e, Request $request) use ($sensitive) {
             $status = $e->getStatusCode();
 
             if ($status === 403) {
@@ -101,7 +104,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 }
 
                 return redirect()->to(SafeRedirect::back($request))
-                    ->withInput($request->except(['password', 'password_confirmation', 'current_password', 'payment_reference', 'bpjs_number']))
+                    ->withInput($request->except($sensitive))
                     ->with('error', 'Sesi formulir Anda telah berakhir. Silakan periksa isian Anda lalu kirim ulang.');
             }
 
@@ -115,7 +118,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
                 if ($request->isMethod('POST')) {
                     return redirect()->to(SafeRedirect::back($request))
-                        ->withInput($request->except(['password', 'password_confirmation']))
+                        ->withInput($request->except($sensitive))
                         ->with('error', $text)
                         ->header('Retry-After', (string) $retry);
                 }
