@@ -23508,3 +23508,140 @@ Laporan gerbang fase 1 ke koordinator: keluaran Step 19–21, hasil langkah MANU
 - `AKS-01`–`AKS-05` (baris 31/31b/32): lulus bila `AdminPageMatrixTest` hijau (15 kasus).
 - `INS-02`: lulus dengan `migrate --seed` (tiga akun demo) tanpa unggah gambar; `INS-03`: `/admin/login` tampil lewat VirtualHost (Step 22 butir 1).
 - `STF-03`, `STF-07`, `SEED-02`: lulus bila `StaffAccountServiceTest`, `SeederProductionGuardTest`, `CreateSuperAdminTest` hijau.
+
+
+---
+
+## Catatan Eksekusi (2026-10-04)
+
+Dieksekusi dengan `superpowers:subagent-driven-development`. Implementer, reviewer per tugas, re-reviewer putaran perbaikan, dan final reviewer seluruhnya subagent **Sonnet 5.5** (preferensi pemilik). Ada dua sesi:
+
+- 2026-10-03: Task 1–3 dan siklus `Actor` Task 4.
+- 2026-10-03/04: sisa Task 4 sampai Task 19, final review, dan gelombang perbaikan.
+
+Cabang `fase-1-fondasi` berisi 79 commit di atas `master` (`74af173`..`421ad87`), ditambah commit catatan ini.
+
+**Hasil akhir:**
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `artisan test` | **980 tes lulus** (4437 asersi) |
+| `pint --test` | PASS |
+| `npm run build` | Sukses; manifest memuat `app.scss`, `app.js`, `admin.js`, dan `image-preview.js` |
+| `migrate:fresh --seed` | OK: 3 peran, 19 izin, 19 pengaturan, 3 staf demo |
+| `route:list --path=admin` | 6 route |
+| `media:prune --dry-run` | exit 0 |
+
+**Langkah MANUAL Task 19 Step 22** dijalankan koordinator lewat otomasi browser (Playwright) pada <http://unpam-hospital.test>. Butir 1–6 sesuai:
+
+- login tiga akun demo, sambutan, dan label peran;
+- sidebar hanya "Dashboard";
+- menu pengguna dan "Lihat Situs" (tab baru);
+- offcanvas di bawah 992 px;
+- pesan generik untuk password salah dan email tak terdaftar;
+- throttle pada percobaan ke-6;
+- ganti password wajib lewat `app:create-super-admin`;
+- logout.
+
+Satu penyimpangan kecil: fokus awal halaman login tidak berada di kolom email, karena tidak ada `autofocus`. Spesifikasi tidak mewajibkannya. Konfirmasi manual pemilik tetap disarankan sebelum merge.
+
+**Putaran perbaikan** (masing-masing satu putaran, semuanya lulus re-review):
+
+| Tugas | Perbaikan |
+|---|---|
+| Task 7 | `scoped` |
+| Task 9 | CSP/`FileReader` |
+| Task 11 | Tes konsistensi id |
+| Task 17 | Balapan Super Admin |
+
+Final review menghasilkan satu gelombang perbaikan berisi empat butir; satu butir kemudian dibatalkan (lihat R16). Dua kali implementer terputus karena galat jaringan API (Task 17 fix, Task 18). Keduanya dilanjutkan tanpa kehilangan pekerjaan.
+
+### Keputusan (rulings) selama eksekusi
+
+| ID | Keputusan | Biaya bila keliru |
+|---|---|---|
+| R1 | Tanpa git worktree; bekerja di checkout utama pada cabang `fase-1-fondasi`. VirtualHost Apache dan junction `public/storage` terikat path absolut (sama dengan R2 fase 0). | Cabang aktif checkout utama berpindah selama eksekusi. |
+| R2 | Semua subagent, termasuk final review, memakai Sonnet 5.5 (preferensi eksplisit pemilik). | Final review sedikit kurang tajam; dimitigasi review per tugas. |
+| R3 | Hasil scan pra-eksekusi K1–K7 dikoreksi di rencana (`ca70747`): route `/` diberi nama `home` lebih awal; jumlah tes dan atribusi pembantu dikoreksi; peringatan Sass `mixed-decls` diterima; `@vite` halaman galat dijaga cek manifest/hot; teks cabang CHECKPOINT dikoreksi. | Kecil (satu edit `routes/web.php` tambahan; halaman galat tanpa CSS bila build belum ada). |
+| R4 | Temuan Bagian C scan (duplikasi logo, kunci limiter di dua tempat, dan lainnya) tidak diubah sebelum eksekusi. Penilaiannya diserahkan ke review per tugas. | Kemungkinan putaran perbaikan tambahan. |
+| R5 | `SettingsService` didaftarkan `scoped()`, bukan `singleton()` (Task 7). Memo instance akan basi lintas job di queue worker produksi; 11 menyatakan maksud "satu instance per request". 11 §3.3 dan §6.11 direkonsiliasi. | Tidak ada (satu baris + satu tes). |
+| R6 | Pratinjau gambar memakai `FileReader.readAsDataURL`, bukan `URL.createObjectURL` (Task 9). CSP produksi `img-src 'self' data:` tidak mengizinkan `blob:`, dan string CSP 11/12 tidak dilonggarkan. 10 direkonsiliasi (baris `form.file` dan `image-preview.js`). | Pratinjau berkas besar memakai memori base64 ±1,33×. |
+| R7 | Turunan id/key/galat yang terduplikasi di 7 komponen `form.*` dipertahankan (komponen anonim swasembada; helper baru akan menjadi nama di luar daftar). Ditambah tes konsistensi lintas komponen (Task 11). | Perubahan aturan kelak menyentuh 7 berkas (dijaga tes). |
+| R8 | `NavigationMenu::resolveLink` memakai `array_merge`, bukan `$link + [...]` dari teks rencana (Task 13). Dengan `+`, pola `active` dari config tidak tertimpa nilai bool. | Tidak ada. |
+| R9 | Tes `array_walk_recursive(config(...))` memakai variabel perantara (Task 13), karena PHP melempar "Only variables should be passed by reference". | Tidak ada. |
+| R10 | Invarian "minimal satu Super Admin aktif" memakai baca ulang terkunci baris target ditambah locking read JOIN `users ⋈ model_has_roles ⋈ roles` (Task 17, `b1c20dc`). Subquery `User::role()` dibaca dari snapshot InnoDB, sehingga dua permintaan serentak dapat menyisakan nol Super Admin. | Query sedikit lebih kompleks; dua operasi Super Admin serentak bisa deadlock 1213 (invarian tetap terjaga; pihak kalah mendapat 500). |
+| R11 | Deviasi tes Task 18: dua `expectsOutputToContain` untuk satu baris digabung menjadi satu pesan utuh. Method privat `validationMessages()` diganti `customMessages()` karena bentrok dengan `Illuminate\Console\Command`. | Tidak ada. |
+| R12 | `migrate:fresh --seed` pada DB pengembangan diizinkan (Task 19 Step 20). `db:show --counts` hanya menunjukkan 10 sesi tamu. | Hilang 10 sesi tamu lokal. |
+| R13 | Task 19 dipecah: Step 1–21 oleh implementer; Step 22 oleh koordinator via Playwright; Step 23–25 setelah final review. | Urutan commit dokumen berbeda dari teks rencana. |
+| R14 | `Route::resourceVerbs(['create' => 'buat', 'edit' => 'ubah'])` ditambahkan di `AppServiceProvider::boot()` (final review). Tertulis di 11 §3.3 dan tidak termasuk penundaan F1-R9. | Tidak ada (belum ada `Route::resource`). |
+| R15 | Satu daftar input sensitif dipakai untuk `dontFlash`, handler 419, dan handler 429. Guard `DemoUserSeeder` memakai daftar putih `local`/`testing` (final review). | Tidak ada; mencegah nomor BPJS ter-flash ke sesi dan akun demo di `staging`. |
+| R16 | Hash dummy pada login gagal (`ea21ff6`) dibatalkan (`421ad87`), dan temuan timing diparkir. Hash bcrypt cost 12 terukur 192 ms, di bawah Timebox `SessionGuard` 200 ms. Hash dummy yang dibuat ulang tiap request justru menambah ±384 ms pada jalur email tak dikenal. | Selisih waktu kecil bila server produksi lebih lambat dari Timebox (carry `auth.timebox_duration`). |
+| R17 | `SecurityHeaders` tetap `append`, sesuai 11 §3 dan 03. | Respons 503 pemeliharaan atau 413 dari middleware global awal mungkin tanpa header (carry hardening). |
+
+### Bawaan (carry) untuk rencana fase berikutnya
+
+**Fase 2**
+
+- Endpoint media F-ADM-29 (`MediaController`, `MediaPolicy`, `admin.media.*`, V-42; F1-R21/D-28).
+- Format tanggal Indonesia (`translatedFormat`, locale Carbon `id`).
+- `HasMedia`/`SanitizesRichText`, `AuditObserver`, butir (c) `media:prune` setelah ada model pemilik, `lang/id/messages.php`.
+- Advisori npm `quill@2.0.3` (GHSA-v3m3-f69x-jf25): wajib sanitasi `HtmlSanitizer` saat simpan.
+- Validasi form pengaturan:
+  - WhatsApp berformat `62…` (`whatsappUrl()` hanya mengambil digit).
+  - Bool dan int divalidasi ketat. `SettingsService::set()` menerima `'abc'` sebagai `'0'` dan `'1.5'` sebagai 1.
+- Pemanggil `MediaService::deleteFor()` wajib membungkusnya dengan `DB::transaction`.
+- `x-form.checkbox` dengan nama array (`roles[]`) melempar "Array to string conversion" dan id-nya bertabrakan. Beri `id` eksplisit dan perbaiki sebelum dipakai.
+- `x-data-table`:
+  - halaman di luar jangkauan menampilkan "Belum ada data" tanpa paginasi;
+  - parameter lain (mis. `sort`) hanya terbawa lewat slot `filters`.
+- `x-confirm-modal`: kolom `reason` memakai atribut HTML `required`, sehingga galat server tidak punya tempat tampil.
+
+**Fase 3–4**
+
+- `module-tabs`, `availability-badge`, `doctor-card`, `schedule-table` (3).
+- `HomeController` menggantikan `Route::view('/', 'public.home')` (F1-R3).
+- `PageSeeder` ditambahkan ke `DatabaseSeeder`.
+- `form.rich-text` + `editor.js` (4a).
+- `map-embed` (4b).
+
+**Fase 5**
+
+- Hapus cadangan `Route::has('login')`/`Route::has('patient.dashboard')` (F1-R2).
+- `passwords.throttled` dipetakan ke pesan generik `passwords.sent`.
+- `lang/id.json`, `routes/patient.php`.
+- Akun pasien demo di `DemoUserSeeder`.
+
+**Fase 6 dan 8**
+
+- Handler `BookingException`, `SettingsService::bookingRules()`.
+- `StaffAccountService::syncRolePermissions`, `RolePolicy`, `Route::bind('user')`.
+- Panggilan `StaffAccountService` dibungkus retry deadlock (`DB::transaction(..., 3)`).
+- Opsional: `Auth::logoutOtherDevices()` setelah ganti password.
+
+**Hardening (sebelum produksi)**
+
+- `auth.timebox_duration` di atas waktu bcrypt server produksi (R16).
+- Header keamanan untuk respons 503/413 (R17).
+- Throttle `PUT /admin/ganti-password`.
+- Batas login per IP: audit `auth.staff_login_failed` tumbuh lewat rotasi email.
+- `EnsureAccountType` mencatat `path()`, bukan `fullUrl()`.
+- `audit_logs` immutable di level DB (hak akses/trigger).
+- `memory_limit` minimal 512M untuk unggahan 6000 px.
+- `autofocus` email di halaman login.
+- Field `username` tersembunyi di form ganti password.
+
+**Lain-lain**
+
+- Baris "429" untuk POST di 06 dibaca sesuai D-23.
+- `.env.testing` mesin ini boleh disamakan dengan `.env.testing.example`.
+- Minor yang ditunda dari review per tugas sudah ditriase final review sebagai "tetap ditunda". Selain butir carry di atas, isinya kualitas tes dan kasus tepi:
+  - tes yang lulus saat RED tanpa `assertOk()`;
+  - `AuditLogger::diff()` dengan perubahan dirty setelah `save()`;
+  - `description` tanpa `mb_scrub`;
+  - sisa `<p></p>` pada sanitizer;
+  - `%2e%2e` pada path gambar;
+  - `nextSortOrder` dan `reorder()` parsial;
+  - prune yang tidak atomik;
+  - aksesibilitas `stat-card` dan `loading-button`;
+  - tautan duplikat bagi pembaca layar;
+  - tes CSP yang hanya mencakup tiga halaman.
