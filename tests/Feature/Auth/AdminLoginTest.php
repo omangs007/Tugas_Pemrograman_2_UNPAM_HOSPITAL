@@ -281,4 +281,25 @@ class AdminLoginTest extends TestCase
             ->assertHeader('Retry-After')
             ->assertSessionHas('error');
     }
+
+    public function test_successful_login_clears_the_login_throttle_counter(): void
+    {
+        $this->staffAccount();
+
+        for ($attempt = 1; $attempt <= 4; $attempt++) {
+            $this->postLogin('konten@unpam.test', 'SalahSekali1')->assertSessionHasErrors('email');
+        }
+
+        // Permintaan ke-5 (sukses) ikut dihitung middleware; setelah itu penghitung harus kembali nol.
+        $this->postLogin('  Konten@Unpam.TEST ')->assertRedirect(route('admin.dashboard'));
+        $this->app['auth']->guard('web')->logout();
+
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $this->postLogin('konten@unpam.test', 'SalahSekali1')
+                ->assertSessionHasErrors('email')
+                ->assertHeaderMissing('Retry-After');
+        }
+
+        $this->postLogin('konten@unpam.test', 'SalahSekali1')->assertHeader('Retry-After');
+    }
 }

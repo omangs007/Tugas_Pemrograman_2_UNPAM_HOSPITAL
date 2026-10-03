@@ -9,6 +9,8 @@ use App\Support\Actor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class AdminLoginController extends Controller
@@ -23,6 +25,10 @@ class AdminLoginController extends Controller
         $user = $request->authenticate($audit);
 
         $request->session()->regenerate();
+
+        // 12 §5.1 butir 3: penghitung limiter `login` (email + IP) dibersihkan setelah login sukses.
+        // Kunci sama dengan ThrottleRequests: md5(nama limiter . kunci Limit) — lihat AppServiceProvider::emailKey().
+        RateLimiter::clear(md5('login'.Str::lower(trim((string) $request->input('email'))).'|'.$request->ip()));
 
         $user->forceFill(['last_login_at' => now()])->save();
 
