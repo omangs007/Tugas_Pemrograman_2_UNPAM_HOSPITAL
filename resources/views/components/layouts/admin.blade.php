@@ -97,6 +97,11 @@
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
+                                <a class="dropdown-item" href="{{ route('admin.password.edit') }}">
+                                    <i class="bi bi-key" aria-hidden="true"></i> Ganti Password
+                                </a>
+                            </li>
+                            <li>
                                 <form method="POST" action="{{ route('admin.logout') }}">
                                     @csrf
                                     <button type="submit" class="dropdown-item">
