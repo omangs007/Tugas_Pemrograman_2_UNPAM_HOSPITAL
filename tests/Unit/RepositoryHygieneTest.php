@@ -30,4 +30,22 @@ class RepositoryHygieneTest extends TestCase
             $this->assertMatchesRegularExpression('/^DB_CONNECTION=mariadb\r?$/m', $content);
         }
     }
+
+    public function test_example_env_files_follow_the_blueprint_reconciliation(): void
+    {
+        $env = file_get_contents($this->path('.env.example'));
+
+        foreach ([
+            '/^PHP_CLI_SERVER_WORKERS=4\r?$/m',
+            '/^LOG_STACK=single\r?$/m',
+            '/^MAIL_FROM_ADDRESS="info@unpamhospital\.test"\r?$/m',
+            '/^DEMO_PASSWORD=\r?$/m',
+        ] as $pattern) {
+            $this->assertMatchesRegularExpression($pattern, $env, ".env.example harus cocok dengan {$pattern}");
+        }
+
+        $testing = file_get_contents($this->path('.env.testing.example'));
+
+        $this->assertMatchesRegularExpression('/^LOG_CHANNEL=single\r?$/m', $testing);
+    }
 }

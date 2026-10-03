@@ -58,4 +58,20 @@ class ComposerManifestTest extends TestCase
         $this->assertStringNotContainsString('pail', implode(' ', (array) ($composer['scripts']['dev'] ?? [])));
         $this->assertNull($this->lockedVersion('laravel/pail'));
     }
+
+    public function test_scripts_do_not_reference_sqlite_or_create_project_hooks(): void
+    {
+        $scripts = $this->json('composer.json')['scripts'];
+
+        $this->assertArrayNotHasKey('post-create-project-cmd', $scripts);
+        $this->assertArrayNotHasKey('post-root-package-install', $scripts);
+        $this->assertStringNotContainsStringIgnoringCase('sqlite', json_encode($scripts, JSON_THROW_ON_ERROR));
+    }
+
+    public function test_setup_script_does_not_migrate_before_the_database_exists(): void
+    {
+        $setup = implode(' ', (array) ($this->json('composer.json')['scripts']['setup'] ?? []));
+
+        $this->assertStringNotContainsString('migrate', $setup);
+    }
 }
