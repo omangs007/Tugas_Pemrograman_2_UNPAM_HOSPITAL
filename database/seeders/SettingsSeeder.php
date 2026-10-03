@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\WebsiteSetting;
+use App\Services\Settings\SettingsService;
 use Illuminate\Database\Seeder;
 
 class SettingsSeeder extends Seeder
@@ -40,5 +41,7 @@ class SettingsSeeder extends Seeder
         foreach (self::DEFAULTS as $key => $setting) {
             WebsiteSetting::query()->firstOrCreate(['key' => $key], $setting);
         }
+
+        app(SettingsService::class)->forget();
     }
 }
