@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureAccountType;
 use App\Http\Middleware\EnsurePasswordChanged;
+use App\Http\Middleware\SecurityHeaders;
 use App\Models\User;
 use App\Support\SafeRedirect;
 use Illuminate\Foundation\Application;
@@ -47,6 +48,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
         ]);
+
+        // Header keamanan global (00 J.3, 11 §7.4).
+        $middleware->append(SecurityHeaders::class);
 
         // Tamu yang membuka halaman ber-`auth`: /admin* ⇒ login admin; selain itu ⇒ login pasien.
         // Cadangan F1-R2: `login` belum ada sampai fase 5, jadi arahkan ke beranda.
