@@ -6,6 +6,7 @@ namespace App\Services\Media;
 
 use App\Models\Media;
 use App\Models\User;
+use App\Rules\ImageRules;
 use App\Services\Audit\AuditLogger;
 use App\Support\Actor;
 use finfo;
@@ -14,7 +15,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Intervention\Image\Decoders\BinaryImageDecoder;
+use Intervention\Image\Exceptions\RuntimeException as ImageException;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Interfaces\EncodedImageInterface;
 use Intervention\Image\Interfaces\ImageInterface;
@@ -82,15 +85,23 @@ final class MediaService
         // $audit dipanggil di dalam transaksi tepat setelah baris media dibuat.
         $altText = trim((string) ($meta['alt_text'] ?? ''));
         $caption = $this->nullableTrim($meta['caption'] ?? null);
+        $this->assertOwnerPersisted($owner);
+        $this->assertAcceptable($file, $collection, $config, $altText, $caption);
+
         $binary = (string) file_get_contents((string) $file->getRealPath());
         $mime = (string) (new finfo(FILEINFO_MIME_TYPE))->buffer($binary);
 
-        $image = ImageManager::gd()->read($binary, BinaryImageDecoder::class);
-        $image->scaleDown(width: self::RESIZE_WIDTH);
-        $thumbnail = clone $image;
-        $thumbnail->scaleDown(width: self::THUMB_WIDTH);
-        $encoded = $this->encode($image, $mime);
-        $thumbnailEncoded = $this->encode($thumbnail, $mime);
+        try {
+            $image = ImageManager::gd()->read($binary, BinaryImageDecoder::class);
+            $image->scaleDown(width: self::RESIZE_WIDTH);
+            $thumbnail = clone $image;
+            $thumbnail->scaleDown(width: self::THUMB_WIDTH);
+            $encoded = $this->encode($image, $mime);
+            $thumbnailEncoded = $this->encode($thumbnail, $mime);
+        } catch (ImageException) {
+            throw ValidationException::withMessages(['file' => ImageRules::INVALID_IMAGE]);
+        }
+
         $width = $image->width();
         $height = $image->height();
 
@@ -140,6 +151,99 @@ final class MediaService
 
             throw $e;
         }
+    }
+
+    private function assertOwnerPersisted(?Model $owner): void
+    {
+        if ($owner !== null && ! $owner->exists) {
+            throw new InvalidArgumentException('Pemilik media harus sudah tersimpan.');
+        }
+    }
+
+    /**
+     * Pertahanan berlapis di luar Form Request (12 §3.2, §5.6): teks alternatif, MIME nyata,
+     * ukuran, dan dimensi. Semua galat dikumpulkan lalu dilempar sekali sebagai ValidationException.
+     *
+     * @param  array{single: bool, disk: string, max_kb: int, min: array{0: int, 1: int}}  $config
+     */
+    private function assertAcceptable(UploadedFile $file, string $collection, array $config, string $altText, ?string $caption): void
+    {
+        $errors = [];
+        $fileError = $this->fileError($file, $collection, $config);
+
+        if ($fileError !== null) {
+            $errors['file'] = [$fileError];
+        }
+
+        $errors = array_merge($errors, $this->metaErrors($altText, $caption));
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function metaErrors(string $altText, ?string $caption): array
+    {
+        $errors = [];
+
+        if ($altText === '') {
+            $errors['alt_text'] = ['Teks alternatif gambar wajib diisi.'];
+        } elseif (mb_strlen($altText) > 255) {
+            $errors['alt_text'] = ['Teks alternatif gambar maksimal 255 karakter.'];
+        }
+
+        if ($caption !== null && mb_strlen($caption) > 255) {
+            $errors['caption'] = ['Keterangan gambar maksimal 255 karakter.'];
+        }
+
+        return $errors;
+    }
+
+    /**
+     * MIME dari isi berkas (finfo), ukuran, lalu dimensi lewat getimagesize() sebelum dekode.
+     *
+     * @param  array{single: bool, disk: string, max_kb: int, min: array{0: int, 1: int}}  $config
+     */
+    private function fileError(UploadedFile $file, string $collection, array $config): ?string
+    {
+        $messages = ImageRules::messages('file', $collection);
+
+        if (! $file->isValid()) {
+            return $messages['file.uploaded'];
+        }
+
+        $path = $file->getRealPath();
+
+        if ($path === false || ! is_readable($path)) {
+            return ImageRules::INVALID_IMAGE;
+        }
+
+        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path);
+
+        if ($mime === false || ! isset(self::EXTENSIONS[$mime])) {
+            return $messages['file.mimetypes'];
+        }
+
+        if ((int) filesize($path) > $config['max_kb'] * 1024) {
+            return $messages['file.max'];
+        }
+
+        $info = @getimagesize($path);
+
+        if ($info === false) {
+            return ImageRules::INVALID_IMAGE;
+        }
+
+        [$width, $height] = $info;
+
+        if ($width < $config['min'][0] || $height < $config['min'][1] || $width > self::MAX_DIMENSION || $height > self::MAX_DIMENSION) {
+            return $messages['file.dimensions'];
+        }
+
+        return null;
     }
 
     private function encode(ImageInterface $image, string $mime): EncodedImageInterface
