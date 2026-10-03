@@ -5,6 +5,7 @@ namespace Tests\Feature\Auth;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Spatie\Permission\Models\Role;
 use Tests\Support\InteractsWithStaff;
 use Tests\TestCase;
 
@@ -69,5 +70,58 @@ class AdminAreaAccessTest extends TestCase
             ->assertRedirect(route('login'))
             ->assertSessionHas('error', 'Akun Anda dinonaktifkan. Silakan hubungi administrator rumah sakit.');
         $this->assertGuest();
+    }
+
+    // --- dasbor admin: tamu, pasien, izin ----------------------------------------------------
+
+    public function test_guest_on_the_dashboard_is_redirected_to_admin_login(): void
+    {
+        $this->get('/admin')->assertRedirect(route('admin.login'));
+    }
+
+    public function test_patient_gets_the_indonesian_403_page_without_any_admin_content(): void
+    {
+        $response = $this->actingAs(User::factory()->patient()->create())->get('/admin');
+
+        $response->assertForbidden()
+            ->assertSee('<html lang="id">', false)
+            ->assertSee('Akses ditolak')
+            ->assertSee('Anda tidak memiliki izin untuk mengakses halaman ini.')
+            ->assertDontSee('Selamat datang')
+            ->assertDontSee('Menu admin')
+            ->assertDontSee('Lihat Situs');
+    }
+
+    public function test_patient_mutation_requests_to_the_admin_area_are_forbidden(): void
+    {
+        $this->actingAs(User::factory()->patient()->create())
+            ->post(route('admin.logout'))
+            ->assertForbidden();
+    }
+
+    public function test_patient_json_request_to_the_admin_area_gets_a_json_403(): void
+    {
+        $this->actingAs(User::factory()->patient()->create())
+            ->getJson('/admin')
+            ->assertForbidden()
+            ->assertExactJson(['message' => 'Anda tidak memiliki izin untuk mengakses halaman ini.']);
+    }
+
+    public function test_staff_without_the_dashboard_permission_gets_403_without_the_permission_library_message(): void
+    {
+        $this->seedRoles();
+        Role::findByName('registration-officer')->revokePermissionTo('dashboard.view');
+        $staff = $this->createStaff('registration-officer');
+
+        $this->actingAs($staff)->get('/admin')
+            ->assertForbidden()
+            ->assertSee('Akses ditolak')
+            ->assertDontSee('right permissions')
+            ->assertDontSee('dashboard.view');
+    }
+
+    public function test_staff_with_the_dashboard_permission_can_open_it(): void
+    {
+        $this->actingAs($this->createStaff('content-admin'))->get('/admin')->assertOk();
     }
 }
