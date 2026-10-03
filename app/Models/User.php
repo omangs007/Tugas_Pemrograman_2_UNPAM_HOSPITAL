@@ -5,14 +5,16 @@ namespace App\Models;
 use App\Enums\AccountType;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, HasRoles, Notifiable;
 
     /**
      * Atribut yang boleh diisi massal. `account_type`, `is_active`, `must_change_password`,
@@ -52,6 +54,21 @@ class User extends Authenticatable
             'must_change_password' => 'boolean',
             'last_login_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Label peran untuk UI ("Super Admin", "Admin Konten", "Petugas Pendaftaran"); kosong bila tanpa peran.
+     * Memakai getRoleNames() (loadMissing), sehingga aman di mode ketat.
+     *
+     * @return Attribute<string, never>
+     */
+    protected function roleLabel(): Attribute
+    {
+        return Attribute::get(function (): string {
+            $role = $this->getRoleNames()->first();
+
+            return $role === null ? '' : __('roles.'.$role);
+        });
     }
 
     /** Hanya akun staf. */

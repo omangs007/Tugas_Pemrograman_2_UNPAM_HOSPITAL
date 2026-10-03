@@ -79,4 +79,15 @@ class UserFactory extends Factory
             'must_change_password' => true,
         ]);
     }
+
+    /**
+     * Memberi satu peran Spatie setelah akun dibuat. Peran harus sudah ada
+     * (jalankan RolePermissionSeeder lebih dulu, mis. lewat InteractsWithStaff::seedRoles()).
+     */
+    public function withRole(string $role): static
+    {
+        return $this->afterCreating(function (User $user) use ($role): void {
+            $user->assignRole($role);
+        });
+    }
 }
