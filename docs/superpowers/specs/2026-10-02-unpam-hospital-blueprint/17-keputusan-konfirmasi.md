@@ -85,6 +85,14 @@ Ambiguitas yang ditemukan saat penulisan blueprint dan sudah ditutup di 00. Dica
 | D-18 | Generator sesi | Hanya templat aktif dengan dokter `active` dan poliklinik aktif. | 00 F.2 |
 | D-19 | Hapus sesi | Hanya sesi tambahan manual tanpa appointment (`admin.sessions.destroy`). | 00 I.4 |
 | D-20 | CHECK `chk_schedule_exceptions_scope` (kombinasi jenis pengecualian vs dokter) | Ditambahkan di 09 sebagai pengaman kedua di samping validasi Form Request; **wajib diuji di MariaDB 10.4 pada fase 3** sebelum dipertahankan. | 09, 14 |
+| D-21 | Menu dan tautan layout ke route fase berikutnya | Disaring `Route::has()`; pengalihan tamu/pengguna memakai `Route::has('login')`/`Route::has('patient.dashboard')` dengan cadangan `route('home')`. Cadangan dihapus di fase 5. | Rencana fase 1 (F1-R2) |
+| D-22 | Login staf dengan akun nonaktif | Pesan generik "Email atau password salah." (bukan pesan khusus); alasan `inactive` hanya di audit `auth.staff_login_failed`. | 00 H, 12 V-03 (F1-R5) |
+| D-23 | Throttle pada permintaan POST | Redirect 302 kembali ke form + flash `error` "Terlalu banyak percobaan. Silakan coba lagi dalam {n} detik." + header `Retry-After`; pada GET halaman 429. Berlaku untuk semua route POST ber-throttle (`login`, `register`, `password-reset`, `booking`, `contact`); baris "429" untuk POST di 06 dibaca sebagai respons ini. | 11 §11.3, 15 SEK-03 (F1-R6) |
+| D-24 | Signature `AuditLogger` | `log()` menerima `Model $model` wajib (instance kosong untuk aksi tanpa baris); `redact(array $values, string $action, ?Model $model = null)`; `ip_address`/`user_agent` NULL di luar permintaan HTTP ter-*route*. | 11 §6.10 (F1-R7, F1-R8) |
+| D-25 | Seeder demo fase 1 | `DemoSeeder` + `DemoUserSeeder` hanya tiga akun staf; akun pasien demo menyusul di fase 5; password dari `config('app.demo_password')` (`DEMO_PASSWORD`, kosong = `Demo12345`). | 13 §2.3, §3 (F1-R10) |
+| D-26 | Cakupan `media:prune` fase 1 | (a) baris `model_id` NULL > 24 jam kecuali logo situs, (b) berkas tak tercatat > 1 jam; butir pemilik hilang menunggu model pemilik di fase 2. | 11 §6.9 (F1-R12) |
+| D-27 | Detail pesan halaman 403 | Pesan `UnauthorizedException` Spatie dan pesan bawaan framework (berbahasa Inggris) tidak pernah ditampilkan sebagai `$detail`; halaman 403 memakai teks Indonesia generik. | 11 §11.3, 15 ERR-02 |
+| D-28 | Endpoint media admin (F-ADM-29) | Ditunda dari fase 1 ke fase 2 (bersama model pemilik pertama); `MediaService` sudah tersedia sejak fase 1. | 14 §4 (F1-R21) |
 
 Asumsi berdampak terbesar dari daftar induk 01 yang juga layak ditinjau pemilik:
 

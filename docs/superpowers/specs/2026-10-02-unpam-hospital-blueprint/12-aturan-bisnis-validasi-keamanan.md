@@ -386,7 +386,7 @@ Setiap subbagian memuat: Form Request, route, otorisasi, lalu tabel `Field | Atu
 
 | Field | Aturan Laravel | Pesan galat (Indonesia) |
 |---|---|---|
-| `email` | `required` `email:rfc` `max:255` | "Email wajib diisi."<br>"Format email tidak valid."<br>Gagal autentikasi (termasuk akun pasien): "Email atau password salah."<br>Akun nonaktif: "Akun Anda tidak aktif. Hubungi Super Admin." |
+| `email` | `required` `email:rfc` `max:255` | "Email wajib diisi."<br>"Format email tidak valid."<br>Gagal autentikasi (termasuk akun pasien dan akun nonaktif): "Email atau password salah." (pesan generik, 00 H dan AKS-08; alasan `inactive` hanya tercatat di audit `auth.staff_login_failed`)<br>Akun yang dinonaktifkan saat sesinya berjalan (middleware `active`, BR-147): "Akun Anda tidak aktif. Silakan hubungi rumah sakit." |
 | `password` | `required` `string` `max:255` | "Password wajib diisi." |
 
 ### V-04 Permintaan reset password

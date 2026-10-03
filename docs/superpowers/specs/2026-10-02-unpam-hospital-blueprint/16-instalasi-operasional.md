@@ -455,6 +455,7 @@ DB_PORT=3306
 DB_DATABASE=unpam_hospital
 DB_USERNAME=unpam_app
 DB_PASSWORD=__DB_PASSWORD__
+DB_TIMEZONE=+07:00
 
 SESSION_DRIVER=database
 SESSION_LIFETIME=120
@@ -509,11 +510,13 @@ DB_PORT=3306
 DB_DATABASE=unpam_hospital_test
 DB_USERNAME=unpam_app
 DB_PASSWORD=__DB_PASSWORD__
+DB_TIMEZONE=+07:00
 
 SESSION_DRIVER=array
 CACHE_STORE=array
 QUEUE_CONNECTION=sync
 MAIL_MAILER=array
+FILESYSTEM_DISK=local
 '@
 [System.IO.File]::WriteAllText("$APP\.env.testing", $testTemplate.Replace('__DB_PASSWORD__', $pw))
 ```
@@ -654,23 +657,20 @@ $block = @"
     ServerName localhost
     DocumentRoot "$x/htdocs"
     <Directory "$x/htdocs">
-        Options Indexes FollowSymLinks
-        AllowOverride All
         Require all granted
     </Directory>
 </VirtualHost>
 
 <VirtualHost *:80>
     ServerName unpam-hospital.test
-    ServerAlias www.unpam-hospital.test
     DocumentRoot "D:/Project Web RS/public"
     <Directory "D:/Project Web RS/public">
-        Options -Indexes +FollowSymLinks
+        Options FollowSymLinks
         AllowOverride All
         Require all granted
     </Directory>
     ErrorLog "logs/unpam-hospital-error.log"
-    CustomLog "logs/unpam-hospital-access.log" combined
+    CustomLog "logs/unpam-hospital-access.log" common
 </VirtualHost>
 "@
 Add-Content -Path $vh -Value $block
@@ -687,7 +687,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 $hosts = "$env:SystemRoot\System32\drivers\etc\hosts"
 if (-not (Select-String -Path $hosts -Pattern 'unpam-hospital\.test' -Quiet)) {
-    Add-Content -Path $hosts -Value "`r`n127.0.0.1`tunpam-hospital.test www.unpam-hospital.test"
+    Add-Content -Path $hosts -Value "`r`n127.0.0.1`tunpam-hospital.test"
 }
 ipconfig /flushdns | Out-Null
 Select-String -Path $hosts -Pattern 'unpam-hospital' | ForEach-Object { $_.Line }

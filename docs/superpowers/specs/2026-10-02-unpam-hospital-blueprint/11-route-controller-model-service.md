@@ -441,7 +441,7 @@ Urutan eksekusi `G-ADMIN`: `auth` → `account:staff` → `active` → `password
 ```php
 public function register(): void
 {
-    $this->app->singleton(SettingsService::class);   // satu instance per request (cache memori + cache aplikasi)
+    $this->app->scoped(SettingsService::class);   // satu instance per request/job (cache memori + cache aplikasi); scoped agar memo tidak basi di queue worker (Task 7)
 }
 
 public function boot(): void
@@ -1302,13 +1302,13 @@ prune($dryRun):                                                                 
 ### 6.10 `Audit\AuditLogger`
 
 ```php
-public function log(string $action, ?Model $model, ?array $old, ?array $new, string $description, ?Actor $actor = null): AuditLog;
+public function log(string $action, Model $model, ?array $old, ?array $new, string $description, ?Actor $actor = null): AuditLog;   // $model wajib: aksi tanpa satu baris mengirim instance kosong (mis. new User) ⇒ auditable_id NULL (F1-R7)
 public function diff(Model $model): array;       // ['old' => …, 'new' => …] atribut yang berubah (tanpa updated_at)
-public function redact(array $values, string $auditableType): array;   // redaksi tingkat 1 dan 2 (12 §8.1); dipanggil log()
+public function redact(array $values, string $action, ?Model $model = null): array;   // redaksi tingkat 1 dan 2 (12 §8.1) menurut awalan $action; atribut $model->getHidden() ikut disamarkan; dipanggil log() (F1-R7)
 ```
 
 - **Pelaku:** `$actor` bila diberikan; selain itu dari `Auth::user()` (staf/pasien) atau `Actor::system()` bila tidak ada pengguna (CLI). `actor_type` dan `user_id` diisi.
-- **Konteks:** `ip_address = request()?->ip() ?? 'cli'`, `user_agent = Str::limit(request()?->userAgent() ?? 'cli', 255, '')`; `auditable_type = $model->getMorphClass()`, `auditable_id = $model->getKey()` (NULL bila `$model` NULL).
+- **Konteks (F1-R8):** `ip_address` dan `user_agent` diisi hanya bila ada permintaan HTTP yang ter-*route* (`request()->route() !== null`; `user_agent` tanpa karakter kontrol, ≤ 255 karakter); CLI dan tes unit ⇒ NULL (09 §7.3 **[ASUMSI]** berlaku atas nilai `'cli'`); `auditable_type = $model->getMorphClass()`, `auditable_id = $model->getKey()` (NULL untuk instance kosong).
 - **Redaksi (00 E.6):** secara rekursif, nilai pada kunci `password`, `remember_token`, `token`, `bpjs_number`, `payment_reference` diganti `[disamarkan]` (juga `password_confirmation`, `current_password`); **redaksi tingkat 2** (12 §8.1): kolom PII `address`, `phone`, `email`, `birth_date`, `complaint`, `message` pada aksi `patient.*`, `appointment.*`, `contact_message.*` diganti `[disamarkan]` dan teks panjang `body`, `bio`, `short_bio`, `description` dicatat `[konten diubah]` (metode `redact()`); string > 500 karakter dipotong dengan `…[dipotong]`; `old_values`/`new_values` kosong disimpan `NULL`.
 - **Integritas:** dipanggil di dalam transaksi operasi yang diaudit; bila gagal menulis, **galat tidak ditelan** (operasi ikut dibatalkan) agar jejak audit tidak pernah hilang diam-diam.
 
@@ -1342,7 +1342,7 @@ public function logoUrl(): string;                                        // med
 public function whatsappUrl(?string $text = null): ?string;               // https://wa.me/{contact.whatsapp}[?text=…] — tautan manual, bukan API
 public function forget(): void;
 ```
-- **Cache:** `Cache::rememberForever('settings:all', …)` (kunci cache baku 00 J.1) memuat seluruh baris `website_settings` (kecil) menjadi peta `key → [type, value]`; ditambah memo di dalam instance (singleton per request). `set/setMany` memanggil `forget()` (00 E.6: "cache dibersihkan saat disimpan").
+- **Cache:** `Cache::rememberForever('settings:all', …)` (kunci cache baku 00 J.1) memuat seluruh baris `website_settings` (kecil) menjadi peta `key → [type, value]`; ditambah memo di dalam instance (didaftarkan `scoped`: satu instance per request/job, sehingga memo tidak basi di queue worker produksi; Task 7). `set/setMany` memanggil `forget()` (00 E.6: "cache dibersihkan saat disimpan").
 - **Cast menurut `type`:** `string|text|url|email` → string; `int` → integer; `bool` → boolean (`'1'/'true'`); `json` → `json_decode(..., true)`. Kunci tak dikenal → `$default`.
 - **Penjagaan:** `set()` menolak kunci yang tidak ada di seed (tidak membuat kunci baru dari UI); validasi tipe/rentang dilakukan `UpdateSettingsRequest` (12).
 

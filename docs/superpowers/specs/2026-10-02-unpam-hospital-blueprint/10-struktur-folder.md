@@ -539,7 +539,7 @@ if (document.querySelector('[data-image-input]')) import('./image-preview.js');
 | `booking.js` | Wizard: tampilkan/sembunyikan field nomor BPJS / mitra asuransi / nomor polis sesuai `payment_type`; pencegah kirim ganda tambahan; **tidak** mengubah data kuota (server yang menentukan). Wizard tetap berfungsi penuh tanpa file ini (00 I.3). |
 | `editor.js` | Quill 2 untuk `form.rich-text`: toolbar terbatas, unggah gambar ke `admin.media.editor-upload`, tulis `getSemanticHTML()` ke textarea saat submit, wajibkan alt text gambar. |
 | `charts.js` | Chart.js 4: ambil data JSON dari `admin.dashboard.chart` (filter 7/30/90 hari/rentang kustom), render grafik batang/garis `canvas[data-chart]` dengan `<table class="visually-hidden">` pendamping sebagai alternatif teks. |
-| `image-preview.js` | Pratinjau gambar lokal (`URL.createObjectURL`) dan peringatan ukuran >2 MB (saran saja; validasi final server). |
+| `image-preview.js` | Pratinjau gambar lokal (`FileReader.readAsDataURL`; CSP produksi `img-src 'self' data:` tidak mengizinkan `blob:`, Task 9) dan peringatan ukuran >2 MB (saran saja; validasi final server). |
 
 ### 6.4 Skrip dan build
 
