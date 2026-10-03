@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use App\Support\Actor;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -111,36 +112,39 @@ final class StaffAccountService
         $this->assertStaff($staff);
 
         return DB::transaction(function () use ($staff, $active, $actor): User {
-            if ($staff->is_active === $active) {
-                return $staff;
+            // Seluruh keputusan diambil dari baca ulang terkunci, bukan dari model yang dioper pemanggil.
+            $locked = $this->lockTarget($staff);
+
+            if ($locked->is_active === $active) {
+                return $staff->refresh();
             }
 
             if (! $active) {
-                if ($this->isSelf($staff, $actor)) {
+                if ($this->isSelf($locked, $actor)) {
                     throw ValidationException::withMessages(['is_active' => self::MSG_SELF_DEACTIVATE]);
                 }
 
-                if ($this->isSuperAdmin($staff)) {
-                    $this->assertNotLastActiveSuperAdmin($staff, 'is_active');
+                if ($this->lockedRoleNames($locked)->contains(self::SUPER_ADMIN)) {
+                    $this->assertNotLastActiveSuperAdmin($locked, 'is_active');
                 }
             }
 
-            $staff->forceFill(['is_active' => $active])->save();
+            $locked->forceFill(['is_active' => $active])->save();
 
             if (! $active) {
-                DB::table('sessions')->where('user_id', $staff->getKey())->delete();
+                DB::table('sessions')->where('user_id', $locked->getKey())->delete();
             }
 
             $this->audit->log(
                 $active ? 'staff.activated' : 'staff.deactivated',
-                $staff,
+                $locked,
                 ['is_active' => ! $active],
                 ['is_active' => $active],
-                $active ? "Akun staf {$staff->name} diaktifkan kembali." : "Akun staf {$staff->name} dinonaktifkan.",
+                $active ? "Akun staf {$locked->name} diaktifkan kembali." : "Akun staf {$locked->name} dinonaktifkan.",
                 $actor,
             );
 
-            return $staff;
+            return $staff->refresh();
         });
     }
 
@@ -153,43 +157,44 @@ final class StaffAccountService
         $newRole = $this->validRole($validated['role'] ?? null);
 
         return DB::transaction(function () use ($staff, $validated, $newRole, $actor): User {
-            $staff->loadMissing('roles');
-            $oldRole = $staff->roles->pluck('name')->first();
+            // Seluruh keputusan diambil dari baca ulang terkunci, bukan dari model yang dioper pemanggil.
+            $locked = $this->lockTarget($staff);
+            $oldRole = $this->lockedRoleNames($locked)->first();
             $roleChanged = $oldRole !== $newRole;
 
             if ($roleChanged) {
-                if ($this->isSelf($staff, $actor)) {
+                if ($this->isSelf($locked, $actor)) {
                     throw ValidationException::withMessages(['role' => self::MSG_SELF_ROLE]);
                 }
 
                 if ($oldRole === self::SUPER_ADMIN) {
-                    $this->assertNotLastActiveSuperAdmin($staff, 'role');
+                    $this->assertNotLastActiveSuperAdmin($locked, 'role');
                 }
             }
 
             $before = [
-                'name' => $staff->name,
-                'email' => $staff->email,
-                'phone' => $staff->phone,
+                'name' => $locked->name,
+                'email' => $locked->email,
+                'phone' => $locked->phone,
                 'role' => $oldRole,
             ];
 
-            $phone = array_key_exists('phone', $validated) ? $validated['phone'] : $staff->phone;
+            $phone = array_key_exists('phone', $validated) ? $validated['phone'] : $locked->phone;
 
-            $staff->fill([
-                'name' => $validated['name'] ?? $staff->name,
-                'email' => $validated['email'] ?? $staff->email,
+            $locked->fill([
+                'name' => $validated['name'] ?? $locked->name,
+                'email' => $validated['email'] ?? $locked->email,
                 'phone' => $phone === '' ? null : $phone,
             ])->save();
 
             if ($roleChanged) {
-                $staff->syncRoles([$newRole]);
+                $locked->syncRoles([$newRole]);
             }
 
             $after = [
-                'name' => $staff->name,
-                'email' => $staff->email,
-                'phone' => $staff->phone,
+                'name' => $locked->name,
+                'email' => $locked->email,
+                'phone' => $locked->phone,
                 'role' => $newRole,
             ];
 
@@ -212,15 +217,15 @@ final class StaffAccountService
 
                 $this->audit->log(
                     'staff.updated',
-                    $staff,
+                    $locked,
                     $old,
                     $new,
-                    "Data akun staf {$staff->name} diperbarui.",
+                    "Data akun staf {$locked->name} diperbarui.",
                     $actor,
                 );
             }
 
-            return $staff->load('roles');
+            return $staff->refresh()->load('roles');
         });
     }
 
@@ -269,22 +274,49 @@ final class StaffAccountService
         return $actor->userId !== null && $actor->userId === $staff->getKey();
     }
 
-    private function isSuperAdmin(User $staff): bool
+    /** Baca ulang terkunci (FOR UPDATE) baris target; harus dipanggil di dalam DB::transaction. */
+    private function lockTarget(User $staff): User
     {
-        $staff->loadMissing('roles');
-
-        return $staff->roles->contains('name', self::SUPER_ADMIN);
+        return User::query()->whereKey($staff->getKey())->lockForUpdate()->firstOrFail();
     }
 
     /**
-     * Harus dipanggil di dalam DB::transaction: baris Super Admin aktif dikunci
-     * (lockForUpdate) sehingga dua permintaan serentak tidak dapat sama-sama menghabisinya.
+     * Nama peran target saat ini lewat baca terkunci berbasis join (current read), bukan relasi termuat.
+     *
+     * @return Collection<int, string>
+     */
+    private function lockedRoleNames(User $staff): Collection
+    {
+        return DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_type', $staff->getMorphClass())
+            ->where('model_has_roles.model_id', $staff->getKey())
+            ->lockForUpdate()
+            ->pluck('roles.name');
+    }
+
+    /**
+     * Harus dipanggil di dalam DB::transaction. Super Admin aktif dihitung dengan satu baca terkunci
+     * berbasis JOIN users-model_has_roles-roles: FOR UPDATE pada join mengunci dan membaca terkini
+     * (current read) baris ketiga tabel, berbeda dengan subquery yang dibaca dari snapshot transaksi.
+     * Dengan begitu dua permintaan serentak tidak dapat sama-sama menghabisi Super Admin aktif.
      */
     private function assertNotLastActiveSuperAdmin(User $staff, string $field): void
     {
-        $activeIds = User::role(self::SUPER_ADMIN)->where('is_active', true)->lockForUpdate()->pluck('id');
+        $activeIds = DB::table('users')
+            ->join('model_has_roles', function ($join): void {
+                $join->on('model_has_roles.model_id', '=', 'users.id')
+                    ->where('model_has_roles.model_type', '=', (new User)->getMorphClass());
+            })
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('roles.name', self::SUPER_ADMIN)
+            ->where('roles.guard_name', 'web')
+            ->where('users.is_active', true)
+            ->lockForUpdate()
+            ->pluck('users.id')
+            ->map(fn ($id): int => (int) $id);
 
-        if ($activeIds->count() <= 1 && $activeIds->contains($staff->getKey())) {
+        if ($activeIds->count() <= 1 && $activeIds->contains((int) $staff->getKey())) {
             throw ValidationException::withMessages([$field => self::MSG_LAST_SUPER_ADMIN]);
         }
     }

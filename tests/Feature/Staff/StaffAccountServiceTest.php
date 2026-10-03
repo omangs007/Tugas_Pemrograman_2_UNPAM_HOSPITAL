@@ -269,9 +269,92 @@ class StaffAccountServiceTest extends TestCase
         DB::disableQueryLog();
 
         $this->assertTrue(
-            $queries->contains(fn (string $sql): bool => str_contains($sql, 'for update')),
-            'Pemeriksaan Super Admin aktif terakhir harus memakai lockForUpdate().',
+            $queries->contains(fn (string $sql): bool => str_contains($sql, 'from `users`')
+                && str_contains($sql, 'for update')
+                && ! str_contains($sql, 'join')
+                && str_contains($sql, '`id` = ?')),
+            'Baris target harus dibaca ulang dengan lockForUpdate().',
         );
+        $this->assertTrue(
+            $queries->contains(fn (string $sql): bool => str_contains($sql, 'for update')
+                && str_contains($sql, 'join `model_has_roles`')
+                && str_contains($sql, 'join `roles`')),
+            'Hitungan Super Admin aktif harus berupa baca terkunci berbasis join users-model_has_roles-roles.',
+        );
+    }
+
+    public function test_stale_model_deactivate_is_rejected_when_it_became_the_only_active_super_admin(): void
+    {
+        $a = $this->createStaff('super-admin');
+        $b = $this->createStaff('super-admin');
+        $officer = $this->createStaff('registration-officer');
+        $staleA = User::query()->with('roles')->findOrFail($a->id);
+
+        DB::table('model_has_roles')->where('model_id', $b->id)->delete();
+
+        $this->assertRejected(
+            fn () => $this->service->changeStatus($staleA, false, Actor::staff($officer)),
+            'is_active',
+            'Tidak dapat menonaktifkan atau mengubah Super Admin aktif terakhir. Harus selalu ada minimal satu Super Admin aktif.',
+        );
+
+        $this->assertTrue($a->fresh()->is_active);
+    }
+
+    public function test_stale_model_role_change_is_rejected_when_it_became_the_only_active_super_admin(): void
+    {
+        $a = $this->createStaff('super-admin');
+        $b = $this->createStaff('super-admin');
+        $officer = $this->createStaff('registration-officer');
+        $staleA = User::query()->with('roles')->findOrFail($a->id);
+
+        DB::table('model_has_roles')->where('model_id', $b->id)->delete();
+
+        $this->assertRejected(
+            fn () => $this->service->update($staleA, [
+                'name' => $a->name,
+                'email' => $a->email,
+                'phone' => null,
+                'role' => 'content-admin',
+            ], Actor::staff($officer)),
+            'role',
+            'Tidak dapat menonaktifkan atau mengubah Super Admin aktif terakhir. Harus selalu ada minimal satu Super Admin aktif.',
+        );
+
+        $this->assertSame(['super-admin'], $a->roles()->pluck('name')->all());
+    }
+
+    public function test_stale_non_super_admin_model_promoted_behind_its_back_is_still_protected(): void
+    {
+        $a = $this->createStaff('super-admin');
+        $c = $this->createStaff('content-admin');
+        $officer = $this->createStaff('registration-officer');
+        $staleC = User::query()->with('roles')->findOrFail($c->id);
+
+        DB::table('model_has_roles')->where('model_id', $a->id)->delete();
+        $c->syncRoles(['super-admin']);
+
+        $this->assertRejected(
+            fn () => $this->service->changeStatus($staleC, false, Actor::staff($officer)),
+            'is_active',
+            'Tidak dapat menonaktifkan atau mengubah Super Admin aktif terakhir. Harus selalu ada minimal satu Super Admin aktif.',
+        );
+
+        $this->assertTrue($c->fresh()->is_active);
+    }
+
+    public function test_stale_active_flag_does_not_cause_a_duplicate_status_change(): void
+    {
+        $admin = $this->createStaff('super-admin');
+        $target = $this->createStaff('content-admin');
+        $stale = User::query()->with('roles')->findOrFail($target->id);
+
+        DB::table('users')->where('id', $target->id)->update(['is_active' => false]);
+
+        $result = $this->service->changeStatus($stale, false, Actor::staff($admin));
+
+        $this->assertFalse($result->is_active);
+        $this->assertSame(0, AuditLog::query()->where('action', 'staff.deactivated')->count());
     }
 
     public function test_change_status_rejects_patient_accounts(): void
