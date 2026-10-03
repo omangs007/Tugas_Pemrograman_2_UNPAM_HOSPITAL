@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\View;
 
+use App\Models\User;
 use App\Services\Settings\SettingsService;
 use Database\Seeders\SettingsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -168,5 +169,58 @@ class LayoutsTest extends TestCase
         $this->page('/_uji/publik', '<x-layouts.public title="Halaman Uji" :noindex="true"><p>Isi</p></x-layouts.public>');
 
         $this->get('/_uji/publik')->assertSee('<meta name="robots" content="noindex,nofollow">', false);
+    }
+
+    // --- layout pasien -----------------------------------------------------------------------
+
+    public function test_patient_layout_wraps_the_public_layout_with_noindex_and_single_h1(): void
+    {
+        $this->page('/_uji/pasien', '<x-layouts.patient title="Portal Uji"><x-slot:breadcrumb><span>Jejak pasien</span></x-slot:breadcrumb><h1>Judul Pasien</h1><p>Isi portal</p></x-layouts.patient>');
+
+        $response = $this->get('/_uji/pasien')->assertOk();
+
+        $response->assertSee('<html lang="id">', false)
+            ->assertSee('<title>Portal Uji — '.config('app.name').'</title>', false)
+            ->assertSee('<meta name="robots" content="noindex,nofollow">', false)
+            ->assertSee('class="skip-link" href="#konten-utama"', false)
+            ->assertSee('<main id="konten-utama" tabindex="-1"', false)
+            ->assertSee('Jejak pasien')
+            ->assertSee('Isi portal');
+        $this->assertSame(1, $this->h1Count($response->getContent()));
+    }
+
+    public function test_patient_layout_omits_portal_navigation_until_patient_routes_exist(): void
+    {
+        $this->page('/_uji/pasien', '<x-layouts.patient title="Portal Uji"><p>Isi portal</p></x-layouts.patient>');
+
+        // Berlaku selama route portal pasien belum ada (fase 5 menghapus cabang ini).
+        if (! Route::has('patient.dashboard') && ! Route::has('logout')) {
+            $this->get('/_uji/pasien')
+                ->assertOk()
+                ->assertDontSee('aria-label="Menu portal pasien"', false)
+                ->assertDontSee('Riwayat Pendaftaran');
+        }
+    }
+
+    public function test_patient_layout_shows_portal_navigation_with_current_item_and_logout_when_routes_exist(): void
+    {
+        Route::middleware('web')->get('/_uji/pasien-dashboard', fn () => Blade::render('<x-layouts.patient title="Dashboard Uji"><p>Dasbor</p></x-layouts.patient>'))->name('patient.dashboard');
+        Route::middleware('web')->get('/_uji/pasien-riwayat', fn () => 'riwayat')->name('patient.appointments.index');
+        Route::middleware('web')->get('/_uji/pasien-baru', fn () => 'baru')->name('patient.appointments.create');
+        Route::middleware('web')->post('/_uji/keluar', fn () => 'keluar')->name('logout');
+        Route::getRoutes()->refreshNameLookups();
+
+        $this->get('/_uji/pasien-dashboard')
+            ->assertOk()
+            ->assertSee('aria-label="Menu portal pasien"', false)
+            ->assertSee('Dashboard')
+            ->assertSee('Riwayat Pendaftaran')
+            ->assertSee('Daftar Kunjungan')
+            ->assertSee('aria-current="page"', false)
+            ->assertDontSee('action="'.route('logout').'"', false);
+
+        $this->actingAs(User::factory()->patient()->create())
+            ->get('/_uji/pasien-dashboard')
+            ->assertSee('action="'.route('logout').'"', false);
     }
 }
