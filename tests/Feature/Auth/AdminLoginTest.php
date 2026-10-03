@@ -188,4 +188,35 @@ class AdminLoginTest extends TestCase
 
         $this->assertNull(session('_old_input.password'));
     }
+
+    // --- logout ------------------------------------------------------------------------------
+
+    public function test_logout_audits_invalidates_the_session_and_issues_a_new_csrf_token(): void
+    {
+        $staff = $this->staffAccount();
+        $this->postLogin('konten@unpam.test');
+        $idBefore = session()->getId();
+        $tokenBefore = session()->token();
+
+        $this->post(route('admin.logout'))
+            ->assertRedirect(route('admin.login'))
+            ->assertSessionHas('success', 'Anda telah keluar.');
+
+        $this->assertGuest();
+        $this->assertNotSame($idBefore, session()->getId());
+        $this->assertNotSame($tokenBefore, session()->token());
+
+        $log = AuditLog::query()->where('action', 'auth.staff_logout')->sole();
+        $this->assertSame(ActorType::Staff, $log->actor_type);
+        $this->assertEquals($staff->id, $log->user_id);
+    }
+
+    public function test_guest_logout_goes_to_admin_login_and_patient_logout_is_forbidden(): void
+    {
+        $this->post(route('admin.logout'))->assertRedirect(route('admin.login'));
+
+        $this->actingAs(User::factory()->patient()->create())
+            ->post(route('admin.logout'))
+            ->assertForbidden();
+    }
 }

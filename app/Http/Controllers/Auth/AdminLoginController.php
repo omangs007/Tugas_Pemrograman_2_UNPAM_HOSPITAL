@@ -7,6 +7,8 @@ use App\Http\Requests\Auth\AdminLoginRequest;
 use App\Services\Audit\AuditLogger;
 use App\Support\Actor;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class AdminLoginController extends Controller
@@ -34,5 +36,25 @@ class AdminLoginController extends Controller
         );
 
         return redirect()->intended(route('admin.dashboard'));
+    }
+
+    public function destroy(Request $request, AuditLogger $audit): RedirectResponse
+    {
+        $user = $request->user();
+
+        $audit->log(
+            'auth.staff_logout',
+            $user,
+            null,
+            null,
+            "Staf {$user->name} keluar dari panel admin.",
+            Actor::staff($user),
+        );
+
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('admin.login')->with('success', 'Anda telah keluar.');
     }
 }
