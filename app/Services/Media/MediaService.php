@@ -1,0 +1,201 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Media;
+
+use App\Models\Media;
+use App\Models\User;
+use App\Services\Audit\AuditLogger;
+use App\Support\Actor;
+use finfo;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Intervention\Image\Decoders\BinaryImageDecoder;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Interfaces\EncodedImageInterface;
+use Intervention\Image\Interfaces\ImageInterface;
+use InvalidArgumentException;
+use RuntimeException;
+use Throwable;
+
+final class MediaService
+{
+    /**
+     * Koleksi baku 00 E.6; dimensi minimum 00 K; maksimum 6000 x 6000 untuk semua.
+     */
+    public const COLLECTIONS = [
+        'photo' => ['single' => true, 'disk' => 'public', 'max_kb' => 2048, 'min' => [300, 300]],
+        'cover' => ['single' => true, 'disk' => 'public', 'max_kb' => 2048, 'min' => [800, 450]],
+        'gallery' => ['single' => false, 'disk' => 'public', 'max_kb' => 2048, 'min' => [600, 400]],
+        'image' => ['single' => true, 'disk' => 'public', 'max_kb' => 4096, 'min' => [1200, 400]],
+        'photos' => ['single' => false, 'disk' => 'public', 'max_kb' => 2048, 'min' => [600, 400]],
+        'logo' => ['single' => true, 'disk' => 'public', 'max_kb' => 2048, 'min' => [120, 40]],
+        'editor' => ['single' => false, 'disk' => 'public', 'max_kb' => 2048, 'min' => [200, 100]],
+    ];
+
+    public const MAX_DIMENSION = 6000;
+
+    public const RESIZE_WIDTH = 1600;
+
+    public const THUMB_WIDTH = 400;
+
+    public const JPEG_QUALITY = 82;
+
+    public const WEBP_QUALITY = 82;
+
+    private const EXTENSIONS = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+
+    public function __construct(private readonly AuditLogger $audit) {}
+
+    /**
+     * Simpan satu gambar: dekode, perkecil (lebar maks 1600), encode ulang sesuai MIME nyata,
+     * simpan dengan nama UUID beserta thumbnail 400 px, catat baris `media` dan audit.
+     *
+     * @param  array<string, mixed>  $meta  `alt_text` (wajib), `caption` (opsional)
+     */
+    public function store(UploadedFile $file, string $collection, ?Model $owner = null, array $meta = [], ?User $uploader = null): Media
+    {
+        $config = $this->configFor($collection);
+
+        return $this->createMedia($file, $collection, $config, $owner, $meta, $uploader, function (Media $media) use ($uploader): void {
+            $this->audit->log(
+                'media.uploaded',
+                $media,
+                null,
+                ['media_id' => $media->id, 'collection' => $media->collection, 'file_name' => $media->file_name],
+                "Gambar diunggah ke koleksi {$media->collection}.",
+                $uploader !== null ? Actor::staff($uploader) : null,
+            );
+        });
+    }
+
+    private function createMedia(UploadedFile $file, string $collection, array $config, ?Model $owner, array $meta, ?User $uploader, callable $audit): Media
+    {
+        // $audit dipanggil di dalam transaksi tepat setelah baris media dibuat.
+        $altText = trim((string) ($meta['alt_text'] ?? ''));
+        $caption = $this->nullableTrim($meta['caption'] ?? null);
+        $binary = (string) file_get_contents((string) $file->getRealPath());
+        $mime = (string) (new finfo(FILEINFO_MIME_TYPE))->buffer($binary);
+
+        $image = ImageManager::gd()->read($binary, BinaryImageDecoder::class);
+        $image->scaleDown(width: self::RESIZE_WIDTH);
+        $thumbnail = clone $image;
+        $thumbnail->scaleDown(width: self::THUMB_WIDTH);
+        $encoded = $this->encode($image, $mime);
+        $thumbnailEncoded = $this->encode($thumbnail, $mime);
+        $width = $image->width();
+        $height = $image->height();
+
+        $extension = self::EXTENSIONS[$mime];
+        $name = Str::uuid()->toString().'.'.$extension;
+        $directory = $collection.'/'.now()->format('Y/m');
+        $thumbPath = $directory.'/thumbs/'.$name;
+        $disk = Storage::disk($config['disk']);
+        $written = [];
+
+        try {
+            foreach ([$directory.'/'.$name => $encoded, $thumbPath => $thumbnailEncoded] as $path => $content) {
+                if (! $disk->put($path, $content->toString())) {
+                    throw new RuntimeException("Gagal menulis berkas gambar: {$path}");
+                }
+
+                $written[] = $path;
+            }
+
+            return DB::transaction(function () use ($file, $collection, $config, $owner, $uploader, $audit, $altText, $caption, $directory, $name, $extension, $mime, $encoded, $width, $height, $thumbPath): Media {
+                $media = Media::query()->create([
+                    'model_type' => $owner?->getMorphClass(),
+                    'model_id' => $owner?->getKey(),
+                    'collection' => $collection,
+                    'disk' => $config['disk'],
+                    'directory' => $directory,
+                    'file_name' => $name,
+                    'original_name' => $this->sanitizeOriginalName($file->getClientOriginalName()),
+                    'mime_type' => $mime,
+                    'extension' => $extension,
+                    'size_bytes' => $encoded->size(),
+                    'width' => $width,
+                    'height' => $height,
+                    'thumb_path' => $thumbPath,
+                    'alt_text' => $altText,
+                    'caption' => $caption,
+                    'sort_order' => $this->nextSortOrder($owner, $collection),
+                    'uploaded_by' => $uploader?->getKey(),
+                ]);
+
+                $audit($media);
+
+                return $media;
+            });
+        } catch (Throwable $e) {
+            $disk->delete($written);
+
+            throw $e;
+        }
+    }
+
+    private function encode(ImageInterface $image, string $mime): EncodedImageInterface
+    {
+        return match ($mime) {
+            'image/jpeg' => $image->toJpeg(quality: self::JPEG_QUALITY),
+            'image/png' => $image->toPng(),
+            'image/webp' => $image->toWebp(quality: self::WEBP_QUALITY),
+            default => throw new InvalidArgumentException("Tipe gambar tidak didukung: {$mime}."),
+        };
+    }
+
+    /**
+     * Nama asli hanya metadata: basename, huruf/angka/spasi/._()- saja, maks 150 karakter.
+     */
+    private function sanitizeOriginalName(string $name): string
+    {
+        $name = basename(str_replace('\\', '/', $name));
+        $name = preg_replace('/[^\p{L}\p{N} ._()\-]/u', '', $name) ?? '';
+        $name = preg_replace('/\.{2,}/', '.', $name) ?? '';
+        $name = preg_replace('/\s+/u', ' ', $name) ?? '';
+        $name = trim(mb_substr(trim($name, ' .'), 0, 150));
+
+        return $name === '' ? 'gambar' : $name;
+    }
+
+    private function nextSortOrder(?Model $owner, string $collection): int
+    {
+        $query = Media::query()->where('collection', $collection);
+
+        if ($owner === null) {
+            $query->whereNull('model_type')->whereNull('model_id');
+        } else {
+            $query->where('model_type', $owner->getMorphClass())->where('model_id', $owner->getKey());
+        }
+
+        return ((int) $query->max('sort_order')) + 1;
+    }
+
+    private function nullableTrim(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    /**
+     * @return array{single: bool, disk: string, max_kb: int, min: array{0: int, 1: int}}
+     */
+    private function configFor(string $collection): array
+    {
+        return self::COLLECTIONS[$collection]
+            ?? throw new InvalidArgumentException("Koleksi media tidak dikenal: {$collection}.");
+    }
+}
