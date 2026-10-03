@@ -219,4 +219,31 @@ class AdminLoginTest extends TestCase
             ->post(route('admin.logout'))
             ->assertForbidden();
     }
+
+    // --- CSRF (ERR-03) -----------------------------------------------------------------------
+
+    public function test_missing_csrf_token_on_login_redirects_back_with_a_session_expired_message(): void
+    {
+        $this->app['env'] = 'local'; // mengaktifkan kembali ValidateCsrfToken (dilewati saat env `testing`)
+
+        $this->from(route('admin.login'))
+            ->post(route('admin.login.store'), ['email' => 'konten@unpam.test', 'password' => 'RahasiaUji1'])
+            ->assertRedirect(route('admin.login'))
+            ->assertSessionHas('error', 'Sesi formulir Anda telah berakhir. Silakan periksa isian Anda lalu kirim ulang.')
+            ->assertSessionMissing('_old_input.password');
+
+        $this->assertGuest();
+    }
+
+    public function test_a_valid_csrf_token_passes_the_csrf_check(): void
+    {
+        $this->app['env'] = 'local';
+
+        $this->withSession(['_token' => 'token-uji'])
+            ->from(route('admin.login'))
+            ->post(route('admin.login.store'), ['_token' => 'token-uji', 'email' => '', 'password' => ''])
+            ->assertRedirect(route('admin.login'))
+            ->assertSessionHasErrors(['email', 'password'])
+            ->assertSessionMissing('error');
+    }
 }
