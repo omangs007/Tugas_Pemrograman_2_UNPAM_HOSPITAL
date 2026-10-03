@@ -1,0 +1,11 @@
+# UNPAM HOSPITAL — disk media publik (dilayani lewat public/storage).
+# Pertahanan berlapis 12 §5.1 butir 9: tidak ada daftar isi folder dan tidak ada skrip yang dieksekusi.
+Options -Indexes
+
+<FilesMatch "\.(?i:php[0-9]?|phtml|phar|pht|phps|cgi|pl|py|sh|asp|aspx|jsp)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule php_module>
+    php_flag engine off
+</IfModule>
