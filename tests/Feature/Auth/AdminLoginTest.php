@@ -246,4 +246,39 @@ class AdminLoginTest extends TestCase
             ->assertSessionHasErrors(['email', 'password'])
             ->assertSessionMissing('error');
     }
+
+    // --- throttle ----------------------------------------------------------------------------
+
+    public function test_sixth_failed_attempt_is_throttled_with_a_flash_message_and_retry_after_header(): void
+    {
+        $this->staffAccount();
+
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $this->postLogin('konten@unpam.test', 'SalahSekali1')
+                ->assertRedirect(route('admin.login'))
+                ->assertSessionHasErrors('email');
+        }
+
+        $sixth = $this->postLogin('konten@unpam.test', 'SalahSekali1');
+
+        $sixth->assertRedirect(route('admin.login'))
+            ->assertHeader('Retry-After')
+            ->assertSessionHas('error', fn ($message) => preg_match('/^Terlalu banyak percobaan\. Silakan coba lagi dalam \d+ detik\.$/', $message) === 1);
+
+        // Email lain tidak terkena batas email yang sama.
+        $this->postLogin('lain@unpam.test', 'SalahSekali1')->assertSessionHasErrors('email');
+    }
+
+    public function test_throttle_key_is_shared_across_email_case_and_spacing(): void
+    {
+        $this->staffAccount('content-admin', ['email' => 'admin@x.test']);
+
+        foreach (['  Admin@X.TEST ', 'admin@x.test', 'ADMIN@x.test ', 'admin@X.test', 'Admin@x.test'] as $variant) {
+            $this->postLogin($variant, 'SalahSekali1')->assertSessionHasErrors('email');
+        }
+
+        $this->postLogin('admin@x.test', 'SalahSekali1')
+            ->assertHeader('Retry-After')
+            ->assertSessionHas('error');
+    }
 }

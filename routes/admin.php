@@ -17,7 +17,9 @@ use Illuminate\Support\Facades\Route;
 // A. Login admin (hanya tamu) dan logout.
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AdminLoginController::class, 'create'])->name('login');
-    Route::post('/login', [AdminLoginController::class, 'store'])->name('login.store');
+    Route::post('/login', [AdminLoginController::class, 'store'])
+        ->middleware('throttle:login')
+        ->name('login.store');
 });
 
 Route::post('/logout', [AdminLoginController::class, 'destroy'])
