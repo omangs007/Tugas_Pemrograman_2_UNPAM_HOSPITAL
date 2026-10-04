@@ -201,11 +201,37 @@ function initOffcanvasToggles() {
     });
 }
 
+// ---------------------------------------------------------------- Galeri layanan (modal + carousel Bootstrap)
+// Markup: modal [data-gallery-modal] berisi .carousel; tombol pemicu membawa data-gallery-index.
+function initGalleryModals() {
+    document.querySelectorAll('[data-gallery-modal]').forEach((modal) => {
+        const carousel = modal.querySelector('.carousel');
+
+        if (!carousel) {
+            return;
+        }
+
+        modal.addEventListener('show.bs.modal', (event) => {
+            const trigger = event.relatedTarget;
+            const raw = trigger && trigger.dataset ? trigger.dataset.galleryIndex : undefined;
+            const parsed = Number.parseInt(raw ?? '0', 10);
+            const index = Number.isNaN(parsed) ? 0 : parsed;
+
+            carousel.querySelectorAll('.carousel-item').forEach((item, position) => {
+                item.classList.toggle('active', position === index);
+            });
+        });
+
+        modal.addEventListener('shown.bs.modal', () => carousel.focus());
+    });
+}
+
 function init() {
     recheckBrokenImages();
     focusErrorsSummary();
     initCharCounters();
     initOffcanvasToggles();
+    initGalleryModals();
 
     if (document.querySelector('[data-image-input]')) {
         import('./image-preview.js');
