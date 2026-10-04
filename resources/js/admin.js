@@ -56,3 +56,8 @@ document.addEventListener('submit', (event) => {
         table.setAttribute('aria-busy', 'true');
     }
 });
+
+// ---------------------------------------------------------------- Editor rich text (x-form.rich-text), dimuat lazy
+if (document.querySelector('[data-rich-text]')) {
+    import('./editor.js');
+}

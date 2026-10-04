@@ -123,3 +123,70 @@ $admin-sidebar-width: 260px;
     line-height: 1.2;
   }
 }
+
+// Editor rich text (Quill 2 tema snow, x-form.rich-text). Gaya Quill sendiri dimuat lazy oleh editor.js.
+.rich-text {
+  .ql-toolbar.ql-snow {
+    background: $light;
+    border-color: $border-color;
+    border-radius: $border-radius $border-radius 0 0;
+
+    button:focus-visible {
+      outline: 2px solid $primary;
+      outline-offset: 1px;
+    }
+  }
+
+  .ql-container.ql-snow {
+    background: #fff;
+    border-color: $border-color;
+    border-radius: 0 0 $border-radius $border-radius;
+    font-family: inherit;
+    font-size: 1rem;
+  }
+
+  .ql-editor {
+    line-height: 1.6;
+
+    img {
+      height: auto;
+      max-width: 100%;
+    }
+
+    &.ql-blank::before {
+      font-style: normal;
+    }
+  }
+
+  .ql-editor:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: -2px;
+  }
+
+  // Terjemahan tooltip tautan bawaan Quill.
+  .ql-snow .ql-tooltip::before {
+    content: "Buka tautan:";
+  }
+
+  .ql-snow .ql-tooltip[data-mode="link"]::before {
+    content: "Alamat tautan:";
+  }
+
+  .ql-snow .ql-tooltip a.ql-action::after {
+    content: "Ubah";
+  }
+
+  .ql-snow .ql-tooltip.ql-editing a.ql-action::after {
+    content: "Simpan";
+  }
+
+  .ql-snow .ql-tooltip a.ql-remove::before {
+    content: "Hapus";
+  }
+}
+
+.rich-text-preview {
+  max-height: 10rem;
+  max-width: 100%;
+  width: auto;
+}

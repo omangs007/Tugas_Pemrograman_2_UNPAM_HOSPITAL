@@ -203,6 +203,73 @@ class FrontendManifestTest extends TestCase
         }
     }
 
+    public function test_admin_entry_loads_the_rich_text_editor_lazily(): void
+    {
+        $admin = $this->read('resources/js/admin.js');
+
+        $this->assertStringContainsString('[data-rich-text]', $admin);
+        $this->assertStringContainsString("import('./editor.js')", $admin);
+        $this->assertDoesNotMatchRegularExpression("#^import\\s+['\"]\\./editor(\\.js)?['\"];#m", $admin, 'editor.js harus dimuat lazy, bukan impor statis');
+        $this->assertFileExists($this->path('resources/js/editor.js'));
+    }
+
+    public function test_editor_script_uses_quill_snow_fetch_csrf_and_no_unsafe_apis(): void
+    {
+        $editor = $this->read('resources/js/editor.js');
+
+        foreach ([
+            "import Quill from 'quill';",
+            "import 'quill/dist/quill.snow.css';",
+            'fetch(',
+            'X-CSRF-TOKEN',
+            'meta[name="csrf-token"]',
+            'readAsDataURL',
+            'getSemanticHTML',
+            'data-rich-text',
+            "addEventListener('submit'",
+            'window.bootstrap',
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $editor, "editor.js harus memuat {$needle}");
+        }
+
+        // CSP produksi: script-src 'self', img-src 'self' data: (tanpa blob:), tanpa penulisan HTML mentah.
+        foreach (['createObjectURL', 'blob:', 'eval(', 'new Function', 'innerHTML', 'outerHTML', 'insertAdjacentHTML', 'document.write', 'onerror', 'prompt(', 'localStorage'] as $forbidden) {
+            $this->assertStringNotContainsString($forbidden, $editor, "editor.js tidak boleh memuat {$forbidden}");
+        }
+    }
+
+    public function test_quill_snow_stylesheet_is_installed_and_admin_styles_cover_the_editor(): void
+    {
+        if (! is_dir($this->path('node_modules/quill'))) {
+            $this->markTestSkipped('node_modules belum terpasang (jalankan npm ci).');
+        }
+
+        $this->assertFileExists($this->path('node_modules/quill/dist/quill.snow.css'));
+
+        $admin = $this->read('resources/scss/_admin.scss');
+
+        foreach (['.rich-text', '.ql-toolbar', '.ql-container', '.ql-tooltip', '.rich-text-preview'] as $needle) {
+            $this->assertStringContainsString($needle, $admin);
+        }
+    }
+
+    public function test_built_manifest_contains_the_lazy_editor_chunk_with_its_css(): void
+    {
+        $file = $this->path('public/build/manifest.json');
+
+        if (! is_file($file)) {
+            $this->markTestSkipped('Belum ada build Vite (public/build/manifest.json); jalankan npm run build.');
+        }
+
+        $manifest = json_decode($this->read('public/build/manifest.json'), true, flags: JSON_THROW_ON_ERROR);
+
+        $this->assertArrayHasKey('resources/js/editor.js', $manifest, 'Build usang: jalankan npm run build.');
+        $this->assertTrue($manifest['resources/js/editor.js']['isDynamicEntry'] ?? false, 'editor.js harus chunk dinamis (lazy)');
+        $this->assertNotEmpty(preg_grep('/\\.css$/', $manifest['resources/js/editor.js']['css'] ?? []), 'CSS Quill snow harus ikut chunk editor');
+        $this->assertContains('resources/js/editor.js', $manifest['resources/js/admin.js']['dynamicImports'] ?? []);
+        $this->assertArrayNotHasKey('resources/js/editor.js', array_filter($manifest, fn (array $entry): bool => ($entry['isEntry'] ?? false) === true), 'editor.js bukan entri Vite');
+    }
+
     public function test_shared_and_admin_styles_define_the_classes_components_rely_on(): void
     {
         $shared = $this->read('resources/scss/_shared.scss');
