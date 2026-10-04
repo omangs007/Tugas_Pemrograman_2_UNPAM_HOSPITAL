@@ -157,6 +157,17 @@ textarea.form-control {
 }
 
 // ---------------------------------------------------------------- Gambar
+.auth-brand {
+  display: inline-block;
+}
+
+// Logo besar satu-satunya identitas di halaman auth (logo.svg berrasio 4:1 sudah memuat nama situs).
+.auth-logo {
+  height: 4rem;
+  width: auto;
+  max-width: 100%;
+}
+
 .image-frame {
   background: $light;
   border-radius: $border-radius;

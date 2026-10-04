@@ -69,7 +69,7 @@
             </div>
         </aside>
 
-        <div class="flex-grow-1 d-flex flex-column">
+        <div class="admin-column flex-grow-1 d-flex flex-column">
             {{-- Topbar --}}
             <header class="bg-white border-bottom shadow-sm sticky-top">
                 <div class="d-flex align-items-center gap-3 px-3 px-lg-4 py-2">
@@ -129,7 +129,7 @@
                 {{ $slot }}
             </main>
 
-            <footer class="border-top bg-white px-3 px-lg-4 py-3 small text-body-secondary">
+            <footer class="border-top bg-white px-3 px-lg-4 py-3 small text-body-secondary mt-auto">
                 {{ $siteName }} Admin — prototipe
             </footer>
         </div>

@@ -20,24 +20,21 @@
     <div class="container py-4 py-md-5">
         <div class="auth-card mx-auto">
             <div class="text-center mb-4">
-                <a class="d-inline-flex align-items-center gap-2 text-decoration-none" href="{{ route('home') }}">
-                    <img src="{{ $logoUrl }}" data-fallback="{{ $logoFallback }}" alt="" width="48" height="48">
-                    <span class="h5 mb-0 fw-bold text-primary">{{ $siteName }}</span>
+                <a class="auth-brand" href="{{ route('home') }}">
+                    <img class="auth-logo" src="{{ $logoUrl }}" data-fallback="{{ $logoFallback }}" alt="{{ $siteName }}" height="64">
                 </a>
             </div>
 
-            <main id="konten-utama" tabindex="-1" class="card shadow-sm border-0">
-                <div class="card-body p-4">
-                    <h1 class="h3 mb-1">{{ $title }}</h1>
-                    @if (filled($subtitle))
-                        <p class="text-body-secondary">{{ $subtitle }}</p>
-                    @endif
+            <main id="konten-utama" tabindex="-1">
+                <h1 class="h3 mb-1">{{ $title }}</h1>
+                @if (filled($subtitle))
+                    <p class="text-body-secondary">{{ $subtitle }}</p>
+                @endif
 
-                    <x-flash-alert />
-                    <x-form.errors-summary />
+                <x-flash-alert />
+                <x-form.errors-summary />
 
-                    {{ $slot }}
-                </div>
+                {{ $slot }}
             </main>
 
             @isset($footer)

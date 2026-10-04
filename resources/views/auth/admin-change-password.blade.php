@@ -1,9 +1,16 @@
-<x-layouts.auth
-    title="Ganti Password"
-    :subtitle="$forced ? 'Anda harus mengganti password sementara sebelum melanjutkan.' : 'Gunakan password yang kuat dan belum pernah Anda pakai di tempat lain.'">
+@php
+    $forcedMessage = 'Anda harus mengganti password sementara sebelum melanjutkan.';
+    // Flash `warning` dari middleware sudah memuat pesan wajib ganti: subjudul tidak boleh mengulanginya.
+    $subtitle = $forced && session('warning') !== $forcedMessage
+        ? $forcedMessage
+        : 'Gunakan password yang kuat dan belum pernah Anda pakai di tempat lain.';
+@endphp
+<x-layouts.auth title="Ganti Password" :subtitle="$subtitle">
     <form method="POST" action="{{ route('admin.password.update') }}" novalidate>
         @csrf
         @method('PUT')
+
+        <input type="text" name="username" value="{{ auth()->user()->email }}" autocomplete="username" readonly hidden>
 
         <x-form.input name="current_password" label="Password saat ini" type="password" required autocomplete="current-password" />
         <x-form.input name="password" label="Password baru" type="password" required autocomplete="new-password" help="Minimal 8 karakter, berisi huruf dan angka." />
