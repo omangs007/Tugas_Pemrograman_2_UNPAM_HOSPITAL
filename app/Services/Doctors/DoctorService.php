@@ -1,0 +1,185 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Doctors;
+
+use App\Enums\DoctorStatus;
+use App\Models\Doctor;
+use App\Models\Specialty;
+use App\Services\Audit\AuditLogger;
+use App\Services\Media\MediaService;
+use App\Support\Actor;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Satu-satunya jalur tulis dokter (F2-R20, 09 I-5/I-23): buat, ubah, spesialisasi, status, arsip, dan foto,
+ * masing-masing dalam DB::transaction dengan audit eksplisit (Doctor tidak diobservasi AuditObserver, F2-R19).
+ */
+final class DoctorService
+{
+    public const MAX_SPECIALTIES = 5;
+
+    /** Atribut profil yang boleh diisi dari input; slug, status, dan archived_at dikelola sistem. */
+    private const PROFILE_ATTRIBUTES = [
+        'clinic_id', 'name', 'title_prefix', 'title_suffix', 'gender', 'short_bio', 'bio',
+        'sort_order', 'meta_title', 'meta_description',
+    ];
+
+    /** Kolom nullable: string kosong disimpan sebagai NULL. */
+    private const NULLABLE_ATTRIBUTES = ['title_prefix', 'title_suffix', 'short_bio', 'bio', 'meta_title', 'meta_description'];
+
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly MediaService $media,
+    ) {}
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function create(array $data, Actor $actor, ?UploadedFile $photo = null, ?string $photoAlt = null): Doctor
+    {
+        [$specialtyIds, $primaryId] = $this->requireSpecialtyInput($data);
+        $this->validatedSpecialtyIds($specialtyIds, $primaryId);
+
+        return DB::transaction(function () use ($data, $actor, $photo, $photoAlt, $specialtyIds, $primaryId): Doctor {
+            $doctor = new Doctor($this->profileAttributes($data));
+            $doctor->status = DoctorStatus::Active;
+            $doctor->save();
+
+            $this->syncSpecialties($doctor, $specialtyIds, $primaryId);
+
+            $sorted = $this->validatedSpecialtyIds($specialtyIds, $primaryId);
+            sort($sorted);
+
+            $this->audit->log(
+                'doctor.created',
+                $doctor,
+                null,
+                [
+                    'name' => $doctor->name,
+                    'clinic_id' => $doctor->clinic_id,
+                    'status' => DoctorStatus::Active->value,
+                    'specialty_ids' => $sorted,
+                ],
+                $this->describe('created', $doctor),
+                $actor,
+            );
+
+            if ($photo !== null) {
+                $this->media->store($photo, 'photo', $doctor, ['alt_text' => $photoAlt], $actor->user());
+            }
+
+            return $doctor;
+        });
+    }
+
+    /**
+     * Ganti seluruh spesialisasi dokter dengan tepat satu yang utama (09 I-5).
+     *
+     * @param  array<int, int|string>  $specialtyIds
+     */
+    public function syncSpecialties(Doctor $doctor, array $specialtyIds, int $primaryId): void
+    {
+        $ids = $this->validatedSpecialtyIds($specialtyIds, $primaryId);
+
+        DB::transaction(function () use ($doctor, $ids, $primaryId): void {
+            $payload = [];
+
+            foreach ($ids as $id) {
+                $payload[$id] = ['is_primary' => $id === $primaryId];
+            }
+
+            $doctor->specialties()->sync($payload);
+        });
+
+        $doctor->unsetRelation('specialties');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function profileAttributes(array $data): array
+    {
+        $attributes = Arr::only($data, self::PROFILE_ATTRIBUTES);
+
+        foreach ($attributes as $key => $value) {
+            if (is_string($value)) {
+                $value = trim($value);
+            }
+
+            if ($value === '' && in_array($key, self::NULLABLE_ATTRIBUTES, true)) {
+                $value = null;
+            }
+
+            $attributes[$key] = $value;
+        }
+
+        // sort_order kosong = biarkan nilai bawaan kolom (0) atau nilai yang sudah ada.
+        if (array_key_exists('sort_order', $attributes) && ($attributes['sort_order'] === null || $attributes['sort_order'] === '')) {
+            unset($attributes['sort_order']);
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{0: list<int>, 1: int}
+     */
+    private function requireSpecialtyInput(array $data): array
+    {
+        $ids = array_values(array_map('intval', (array) ($data['specialty_ids'] ?? [])));
+
+        if (! array_key_exists('primary_specialty_id', $data) || $data['primary_specialty_id'] === null || $data['primary_specialty_id'] === '') {
+            if ($ids === []) {
+                throw ValidationException::withMessages(['specialty_ids' => 'Pilih minimal satu spesialisasi.']);
+            }
+
+            throw ValidationException::withMessages(['primary_specialty_id' => 'Spesialisasi utama wajib dipilih.']);
+        }
+
+        return [$ids, (int) $data['primary_specialty_id']];
+    }
+
+    /**
+     * Validasi aturan 09 I-5 / 12 BR-02; mengembalikan id unik dengan urutan masukan.
+     *
+     * @param  array<int, int|string>  $specialtyIds
+     * @return list<int>
+     */
+    private function validatedSpecialtyIds(array $specialtyIds, int $primaryId): array
+    {
+        $ids = array_values(array_unique(array_map('intval', $specialtyIds)));
+
+        if ($ids === []) {
+            throw ValidationException::withMessages(['specialty_ids' => 'Pilih minimal satu spesialisasi.']);
+        }
+
+        if (count($ids) > self::MAX_SPECIALTIES) {
+            throw ValidationException::withMessages(['specialty_ids' => 'Spesialisasi maksimal '.self::MAX_SPECIALTIES.'.']);
+        }
+
+        if (! in_array($primaryId, $ids, true)) {
+            throw ValidationException::withMessages(['primary_specialty_id' => 'Spesialisasi utama harus salah satu spesialisasi yang dipilih.']);
+        }
+
+        if (Specialty::query()->whereIn('id', $ids)->count() !== count($ids)) {
+            throw ValidationException::withMessages(['specialty_ids' => 'Spesialisasi yang dipilih tidak tersedia.']);
+        }
+
+        return $ids;
+    }
+
+    private function describe(string $event, Doctor $doctor): string
+    {
+        return __('messages.audit.'.$event, [
+            'entity' => __('messages.entities.doctor'),
+            'name' => $doctor->displayName,
+        ]);
+    }
+}
