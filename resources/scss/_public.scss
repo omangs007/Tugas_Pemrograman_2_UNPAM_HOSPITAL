@@ -104,3 +104,74 @@
     color: $teal-dark;
   }
 }
+
+// ---------------------------------------------------------------- Layanan (#4, #5)
+.service-card {
+  .card-title a {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      color: $primary;
+      text-decoration: underline;
+    }
+  }
+}
+
+.doctor-card-photo {
+  width: 5rem;
+}
+
+.clinic-side-panel {
+  @include media-breakpoint-up(lg) {
+    position: sticky;
+    top: 5.5rem;
+  }
+}
+
+// Galeri: baris geser di layar kecil, grid 3 kolom mulai sm.
+.gallery-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 70%;
+  gap: .75rem;
+  overflow-x: auto;
+  padding-bottom: .5rem;
+
+  @include media-breakpoint-up(sm) {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: repeat(3, 1fr);
+    overflow-x: visible;
+  }
+}
+
+.gallery-thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: $border-radius;
+  overflow: hidden;
+
+  &:focus-visible {
+    outline: 3px solid $primary;
+    outline-offset: 2px;
+  }
+}
+
+// Rich text tersanitasi (clinics.description).
+.rich-text {
+  overflow-wrap: anywhere;
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  table {
+    width: 100%;
+  }
+}
