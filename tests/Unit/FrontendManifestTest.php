@@ -238,6 +238,32 @@ class FrontendManifestTest extends TestCase
         }
     }
 
+    public function test_editor_script_gives_visible_feedback_initializes_safely_and_maps_upload_errors(): void
+    {
+        $editor = $this->read('resources/js/editor.js');
+
+        foreach ([
+            'data-rich-text-feedback',
+            'Anda tidak memiliki izin untuk mengunggah gambar.',
+            'Sesi Anda telah berakhir. Muat ulang halaman lalu coba lagi.',
+            'Gambar gagal diunggah. Coba lagi.',
+            'hide.bs.modal',
+            "quill.root.setAttribute('aria-describedby'",
+            "quill.root.setAttribute('aria-invalid'",
+            "quill.root.setAttribute('aria-required'",
+            'catch',
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $editor, "editor.js harus memuat {$needle}");
+        }
+
+        $quill = strpos($editor, 'new Quill(');
+        $hide = strpos($editor, 'textarea.hidden = true');
+
+        $this->assertNotFalse($quill);
+        $this->assertNotFalse($hide);
+        $this->assertGreaterThan($quill, $hide, 'textarea hanya disembunyikan setelah Quill berhasil dibuat');
+    }
+
     public function test_quill_snow_stylesheet_is_installed_and_admin_styles_cover_the_editor(): void
     {
         if (! is_dir($this->path('node_modules/quill'))) {

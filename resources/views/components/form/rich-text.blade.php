@@ -53,12 +53,13 @@
     </div>
 
     <div class="visually-hidden" role="status" aria-live="polite" data-rich-text-status></div>
+    <div id="{{ $id }}-feedback" class="invalid-feedback d-block" data-rich-text-feedback hidden></div>
 
     @if ($help)<div id="{{ $id }}-help" class="form-text">{{ $help }}</div>@endif
     @if ($error !== '')<div id="{{ $id }}-error" class="invalid-feedback d-block">{{ $error }}</div>@endif
 
     {{-- Modal alt text (dipindahkan ke <body> oleh editor.js). Kontrolnya tanpa atribut name: tidak ikut terkirim. --}}
-    <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-labelledby="{{ $modalId }}-title" aria-hidden="true" data-rich-text-image-modal>
+    <div class="modal fade" id="{{ $modalId }}" tabindex="-1" data-bs-backdrop="static" aria-labelledby="{{ $modalId }}-title" aria-hidden="true" data-rich-text-image-modal>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">

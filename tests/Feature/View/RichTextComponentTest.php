@@ -60,6 +60,15 @@ class RichTextComponentTest extends TestCase
         $this->assertSame(substr_count($html, '<button'), substr_count($html, '<button type="button"'));
     }
 
+    public function test_visible_feedback_element_is_part_of_the_component(): void
+    {
+        $html = $this->render();
+
+        $this->assertMatchesRegularExpression('/<div id="description-feedback" class="invalid-feedback d-block" data-rich-text-feedback hidden><\/div>/', $html);
+        $this->assertStringContainsString('data-rich-text-status', $html);
+        $this->assertStringContainsString('data-bs-backdrop="static"', $html);
+    }
+
     public function test_alt_text_modal_is_part_of_the_component(): void
     {
         $html = $this->render();

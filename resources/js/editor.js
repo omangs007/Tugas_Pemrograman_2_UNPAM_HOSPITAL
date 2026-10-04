@@ -19,6 +19,9 @@ const TEXT = {
     fileSize: 'Ukuran gambar maksimal 2 MB.',
     altRequired: 'Teks alternatif gambar wajib diisi.',
     uploadFailed: 'Gambar gagal diunggah. Periksa koneksi Anda, lalu coba lagi.',
+    uploadForbidden: 'Anda tidak memiliki izin untuk mengunggah gambar.',
+    sessionExpired: 'Sesi Anda telah berakhir. Muat ulang halaman lalu coba lagi.',
+    serverError: 'Gambar gagal diunggah. Coba lagi.',
     uploading: 'Mengunggah…',
     submit: 'Unggah dan sisipkan',
     inserted: 'Gambar disisipkan.',
@@ -89,7 +92,19 @@ async function uploadImage(url, file, altText) {
     }
 
     if (!response.ok) {
-        throw new Error(firstServerMessage(payload));
+        if (response.status === 403) {
+            throw new Error(TEXT.uploadForbidden);
+        }
+
+        if (response.status === 419) {
+            throw new Error(TEXT.sessionExpired);
+        }
+
+        if (response.status === 422) {
+            throw new Error(firstServerMessage(payload));
+        }
+
+        throw new Error(TEXT.serverError);
     }
 
     if (!payload || !isStoragePath(payload.url)) {
@@ -123,6 +138,14 @@ function createImageDialog(modal, uploadUrl) {
     let onInsert = null;
     let onClosed = null;
     let readToken = 0;
+    let busy = false;
+
+    // Selama unggahan berjalan modal tidak boleh tertutup (mencegah sisipan ke konteks lain).
+    modal.addEventListener('hide.bs.modal', (event) => {
+        if (busy) {
+            event.preventDefault();
+        }
+    });
 
     const showError = (message, field) => {
         errorBox.textContent = message;
@@ -148,13 +171,14 @@ function createImageDialog(modal, uploadUrl) {
         preview.removeAttribute('src');
     };
 
-    const setBusy = (busy) => {
-        submitButton.disabled = busy;
-        fileInput.disabled = busy;
-        altInput.disabled = busy;
-        submitButton.textContent = busy ? TEXT.uploading : TEXT.submit;
+    const setBusy = (value) => {
+        busy = value;
+        submitButton.disabled = value;
+        fileInput.disabled = value;
+        altInput.disabled = value;
+        submitButton.textContent = value ? TEXT.uploading : TEXT.submit;
 
-        if (busy) {
+        if (value) {
             submitButton.setAttribute('aria-busy', 'true');
         } else {
             submitButton.removeAttribute('aria-busy');
@@ -224,15 +248,18 @@ function createImageDialog(modal, uploadUrl) {
         try {
             const payload = await uploadImage(uploadUrl, file, altText);
 
-            if (onInsert) {
-                onInsert(payload);
+            const insert = onInsert;
+
+            setBusy(false); // harus sebelum hide(): hide.bs.modal dibatalkan selama sibuk
+
+            if (insert) {
+                insert(payload);
             }
 
             instance.hide();
         } catch (error) {
-            showError(error instanceof Error ? error.message : TEXT.uploadFailed, null);
-        } finally {
             setBusy(false);
+            showError(error instanceof Error ? error.message : TEXT.uploadFailed, null);
         }
     });
 
@@ -285,16 +312,58 @@ function initRichText(root) {
         return; // marka tidak lengkap: textarea biasa tetap berfungsi
     }
 
-    root.dataset.richTextReady = '1';
-
+    const feedback = root.querySelector('[data-rich-text-feedback]');
     const uploadUrl = root.dataset.uploadUrl || '';
     const minHeight = Number.parseInt(root.dataset.minHeight, 10) || 240;
     const maxLength = Number.parseInt(root.dataset.maxLength, 10) || 0;
     const labelId = `${textarea.id}-label`;
 
-    const announce = (message) => {
+    // Pesan untuk pembaca layar (live region) dan, bila visible, juga untuk pengguna awas (umpan balik terlihat).
+    let quillRoot = null;
+
+    const syncAria = (invalid) => {
+        if (!quillRoot) {
+            return;
+        }
+
+        const ids = (textarea.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+
+        if (invalid && feedback && feedback.id) {
+            ids.push(feedback.id);
+        }
+
+        if (ids.length > 0) {
+            quillRoot.setAttribute('aria-describedby', ids.join(' '));
+        } else {
+            quillRoot.removeAttribute('aria-describedby');
+        }
+
+        if (invalid || textarea.getAttribute('aria-invalid') === 'true') {
+            quillRoot.setAttribute('aria-invalid', 'true');
+        } else {
+            quillRoot.removeAttribute('aria-invalid');
+        }
+    };
+
+    const announce = (message, visible = false) => {
         if (status) {
             status.textContent = message;
+        }
+
+        if (visible && feedback) {
+            feedback.textContent = message;
+            feedback.hidden = false;
+            editor.classList.add('is-invalid');
+            syncAria(true);
+        }
+    };
+
+    const clearFeedback = () => {
+        if (feedback && !feedback.hidden) {
+            feedback.textContent = '';
+            feedback.hidden = true;
+            editor.classList.remove('is-invalid');
+            syncAria(false);
         }
     };
 
@@ -302,49 +371,73 @@ function initRichText(root) {
     document.body.append(modal);
     const openImageDialog = createImageDialog(modal, uploadUrl);
 
-    textarea.hidden = true;
+    // Inisialisasi aman: textarea baru disembunyikan setelah Quill berhasil dibuat; bila gagal, textarea tetap dipakai.
     editor.hidden = false;
 
-    const quill = new Quill(surface, {
-        theme: 'snow',
-        formats: FORMATS,
-        modules: {
-            toolbar: {
-                container: toolbar,
-                handlers: {
-                    // Menggantikan dialog bawaan Quill untuk embed gambar dengan modal alt text.
-                    image: () => {
-                        const range = quill.getSelection(true);
+    let quill;
 
-                        openImageDialog(
-                            (payload) => {
-                                quill.updateContents(
-                                    new Delta().retain(range.index).delete(range.length).insert({ image: payload.url }, { alt: payload.alt }),
-                                    'user',
-                                );
-                                quill.setSelection(range.index + 1, 0, 'silent');
-                                announce(TEXT.inserted);
-                            },
-                            () => quill.focus(),
-                        );
+    try {
+        quill = new Quill(surface, {
+            theme: 'snow',
+            formats: FORMATS,
+            modules: {
+                toolbar: {
+                    container: toolbar,
+                    handlers: {
+                        // Menggantikan dialog bawaan Quill untuk embed gambar dengan modal alt text.
+                        image: () => {
+                            const range = quill.getSelection(true);
+
+                            openImageDialog(
+                                (payload) => {
+                                    quill.updateContents(
+                                        new Delta().retain(range.index).delete(range.length).insert({ image: payload.url }, { alt: payload.alt }),
+                                        'user',
+                                    );
+                                    quill.setSelection(range.index + 1, 0, 'silent');
+                                    announce(TEXT.inserted);
+                                },
+                                () => quill.focus(),
+                            );
+                        },
                     },
                 },
+                // Tempel/seret berkas gambar tidak boleh menanam data URL; arahkan ke tombol toolbar.
+                uploader: {
+                    mimetypes: IMAGE_TYPES,
+                    handler: () => announce(TEXT.useButton, true),
+                },
+                clipboard: {
+                    // Gambar tempelan hanya diterima bila sudah berada di /storage/ (sisanya dibuang sanitizer server).
+                    matchers: [['img', (node, delta) => (isStoragePath(node.getAttribute('src')) ? delta : new Delta())]],
+                },
             },
-            // Tempel/seret berkas gambar tidak boleh menanam data URL; arahkan ke tombol toolbar.
-            uploader: {
-                mimetypes: IMAGE_TYPES,
-                handler: () => announce(TEXT.useButton),
-            },
-            clipboard: {
-                // Gambar tempelan hanya diterima bila sudah berada di /storage/ (sisanya dibuang sanitizer server).
-                matchers: [['img', (node, delta) => (isStoragePath(node.getAttribute('src')) ? delta : new Delta())]],
-            },
-        },
-    });
+        });
 
+        const initial = textarea.value.trim();
+
+        if (initial !== '') {
+            quill.setContents(quill.clipboard.convert({ html: initial }), 'silent');
+            quill.history.clear();
+        }
+    } catch {
+        editor.hidden = true;
+        textarea.hidden = false;
+
+        return;
+    }
+
+    textarea.hidden = true;
+    root.dataset.richTextReady = '1';
+
+    quillRoot = quill.root;
     quill.root.setAttribute('role', 'textbox');
     quill.root.setAttribute('aria-multiline', 'true');
     quill.root.setAttribute('aria-labelledby', labelId);
+    quill.root.setAttribute('aria-describedby', textarea.getAttribute('aria-describedby') || '');
+    quill.root.setAttribute('aria-invalid', textarea.getAttribute('aria-invalid') || 'false');
+    quill.root.setAttribute('aria-required', textarea.getAttribute('aria-required') || 'false');
+    syncAria(false);
     quill.root.style.minHeight = `${minHeight}px`;
 
     const linkBox = surface.querySelector('.ql-tooltip input[type="text"]');
@@ -354,12 +447,11 @@ function initRichText(root) {
         linkBox.setAttribute('aria-label', TEXT.linkLabel);
     }
 
-    const initial = textarea.value.trim();
-
-    if (initial !== '') {
-        quill.setContents(quill.clipboard.convert({ html: initial }), 'silent');
-        quill.history.clear();
-    }
+    quill.on('text-change', (delta, oldDelta, source) => {
+        if (source === 'user') {
+            clearFeedback();
+        }
+    });
 
     const serialize = () => {
         if (quill.getText().trim() === '' && quill.root.querySelector('img') === null) {
@@ -377,12 +469,13 @@ function initRichText(root) {
 
             if (maxLength > 0 && html.length > maxLength) {
                 event.preventDefault();
-                announce(tooLong(maxLength));
+                announce(tooLong(maxLength), true);
                 quill.focus();
 
                 return;
             }
 
+            clearFeedback();
             textarea.value = html;
         });
     }
