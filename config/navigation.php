@@ -104,4 +104,13 @@ return [
         ]],
     ],
 
+    // Tab modul (10 §3.2, F2-R11): dibaca <x-module-tabs group="...">. Disaring Route::has dan izin oleh
+    // NavigationMenu::items('modules.{group}'); penegakan akses tetap di middleware/Policy.
+    'modules' => [
+        'clinics' => [
+            ['label' => 'Poliklinik', 'route' => 'admin.clinics.index', 'permission' => 'clinics.manage', 'active' => ['admin.clinics.*']],
+            ['label' => 'Spesialisasi', 'route' => 'admin.specialties.index', 'permission' => 'clinics.manage', 'active' => ['admin.specialties.*']],
+        ],
+    ],
+
 ];
