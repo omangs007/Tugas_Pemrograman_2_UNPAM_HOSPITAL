@@ -6,6 +6,7 @@ namespace App\Services\Doctors;
 
 use App\Enums\DoctorStatus;
 use App\Models\Doctor;
+use App\Models\Media;
 use App\Models\Specialty;
 use App\Services\Audit\AuditLogger;
 use App\Services\Media\MediaService;
@@ -14,6 +15,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 /**
  * Satu-satunya jalur tulis dokter (F2-R20, 09 I-5/I-23): buat, ubah, spesialisasi, status, arsip, dan foto,
@@ -97,6 +99,98 @@ final class DoctorService
         });
 
         $doctor->unsetRelation('specialties');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(Doctor $doctor, array $data, Actor $actor, ?UploadedFile $photo = null, ?string $photoAlt = null): Doctor
+    {
+        $touchesSpecialties = array_key_exists('specialty_ids', $data) || array_key_exists('primary_specialty_id', $data);
+
+        if ($touchesSpecialties && ! (array_key_exists('specialty_ids', $data) && array_key_exists('primary_specialty_id', $data))) {
+            throw new InvalidArgumentException('specialty_ids dan primary_specialty_id harus dikirim bersama.');
+        }
+
+        $specialtyInput = $touchesSpecialties ? $this->requireSpecialtyInput($data) : null;
+
+        if ($specialtyInput !== null) {
+            $this->validatedSpecialtyIds($specialtyInput[0], $specialtyInput[1]);
+        }
+
+        return DB::transaction(function () use ($doctor, $data, $actor, $photo, $photoAlt, $specialtyInput): Doctor {
+            $this->lock($doctor);
+
+            $doctor->fill($this->profileAttributes($data));
+
+            $new = $doctor->getDirty();
+            $old = Arr::only($doctor->getRawOriginal(), array_keys($new));
+
+            if ($new !== []) {
+                $doctor->save();
+            }
+
+            if ($specialtyInput !== null) {
+                [$ids, $primaryId] = $specialtyInput;
+                $before = $this->currentSpecialties($doctor);
+
+                $this->syncSpecialties($doctor, $ids, $primaryId);
+
+                $after = $this->validatedSpecialtyIds($ids, $primaryId);
+                sort($after);
+
+                if ($before['ids'] !== $after) {
+                    $old['specialty_ids'] = $before['ids'];
+                    $new['specialty_ids'] = $after;
+                }
+
+                if ($before['primary'] !== $primaryId) {
+                    $old['primary_specialty_id'] = $before['primary'];
+                    $new['primary_specialty_id'] = $primaryId;
+                }
+            }
+
+            if ($new !== []) {
+                $this->audit->log('doctor.updated', $doctor, $old, $new, $this->describe('updated', $doctor), $actor);
+            }
+
+            if ($photo !== null) {
+                $this->media->replace($doctor, 'photo', $photo, ['alt_text' => $photoAlt], $actor->user());
+            }
+
+            return $doctor;
+        });
+    }
+
+    /**
+     * Ganti foto dokter (koleksi tunggal `photo`). Berkas lama dihapus setelah transaksi commit.
+     */
+    public function replacePhoto(Doctor $doctor, UploadedFile $photo, string $alt, Actor $actor): Media
+    {
+        return DB::transaction(fn (): Media => $this->media->replace($doctor, 'photo', $photo, ['alt_text' => $alt], $actor->user()));
+    }
+
+    /**
+     * Baca ulang baris dengan kunci tulis dan perbarui instance pemanggil, agar instance basi tidak menimpa
+     * perubahan lain (status, arsip). Dipanggil di dalam transaksi.
+     */
+    private function lock(Doctor $doctor): void
+    {
+        $fresh = Doctor::query()->whereKey($doctor->getKey())->lockForUpdate()->firstOrFail();
+
+        $doctor->setRawAttributes($fresh->getRawOriginal(), true);
+    }
+
+    /**
+     * @return array{ids: list<int>, primary: ?int}
+     */
+    private function currentSpecialties(Doctor $doctor): array
+    {
+        $rows = DB::table('doctor_specialties')->where('doctor_id', $doctor->getKey())->get(['specialty_id', 'is_primary']);
+        $ids = $rows->pluck('specialty_id')->map(fn ($id): int => (int) $id)->sort()->values()->all();
+        $primary = $rows->first(fn ($row): bool => (bool) $row->is_primary);
+
+        return ['ids' => $ids, 'primary' => $primary === null ? null : (int) $primary->specialty_id];
     }
 
     /**

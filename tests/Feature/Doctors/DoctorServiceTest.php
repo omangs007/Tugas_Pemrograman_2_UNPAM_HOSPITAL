@@ -341,5 +341,287 @@ class DoctorServiceTest extends TestCase
         $this->assertSame($primary, $this->pivotPrimary($doctor));
     }
 
-    // ---- akhir siklus A
+    // ------------------------------------------------------------------ update
+
+    public function test_update_changes_the_profile_but_never_slug_status_or_archived_at(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        $updated = $this->service->update($doctor, [
+            'name' => 'Budi Santoso',
+            'slug' => 'ganti-slug',
+            'status' => 'inactive',
+            'archived_at' => now(),
+            'title_suffix' => '',
+        ], $this->actor());
+
+        $fresh = Doctor::query()->findOrFail($doctor->id);
+
+        $this->assertSame($fresh->id, $updated->id);
+        $this->assertSame('Budi Santoso', $fresh->name);
+        $this->assertSame('andi-pratama', $fresh->slug, 'slug tidak berubah saat nama diedit (BR-15)');
+        $this->assertSame(DoctorStatus::Active, $fresh->status);
+        $this->assertNull($fresh->archived_at);
+        $this->assertNull($fresh->title_suffix, 'string kosong pada kolom nullable menjadi NULL');
+        $this->assertSame('Budi Santoso', $updated->name);
+    }
+
+    public function test_update_audit_contains_only_changed_attributes_and_redacts_long_texts(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        $this->service->update($doctor, ['name' => 'Budi Santoso', 'title_suffix' => 'Sp.PD', 'bio' => 'Biodata baru.', 'short_bio' => 'Dokter spesialis anak.'], $this->actor());
+
+        $log = $this->auditRows('doctor.updated')->sole();
+
+        $this->assertSame($doctor->id, (int) $log->auditable_id);
+        $this->assertSame($this->staff->id, (int) $log->user_id);
+        $this->assertEquals(['name' => 'Andi Pratama', 'title_suffix' => 'Sp.A', 'bio' => '[konten diubah]'], $log->old_values);
+        $this->assertEquals(['name' => 'Budi Santoso', 'title_suffix' => 'Sp.PD', 'bio' => '[konten diubah]'], $log->new_values);
+        $this->assertStringContainsString('Budi Santoso', $log->description);
+    }
+
+    public function test_update_without_any_change_writes_no_audit_row(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        $this->service->update($doctor, ['name' => 'Andi Pratama', 'sort_order' => '5', 'clinic_id' => (string) $doctor->clinic_id, 'gender' => 'L'], $this->actor());
+
+        $this->assertSame(0, $this->auditRows('doctor.updated')->count());
+    }
+
+    public function test_update_records_a_changed_specialty_set_and_primary(): void
+    {
+        $doctor = $this->makeDoctor();
+        $before = $this->pivotIds($doctor);
+        $oldPrimary = $this->pivotPrimary($doctor);
+        $third = $this->createSpecialty();
+
+        $this->service->update($doctor, ['specialty_ids' => [$before[0], $third->id], 'primary_specialty_id' => $third->id], $this->actor());
+
+        $expected = [$before[0], $third->id];
+        sort($expected);
+
+        $this->assertSame($expected, $this->pivotIds($doctor));
+        $this->assertSame($third->id, $this->pivotPrimary($doctor));
+
+        $log = $this->auditRows('doctor.updated')->sole();
+
+        $this->assertEquals(['specialty_ids' => $before, 'primary_specialty_id' => $oldPrimary], $log->old_values);
+        $this->assertEquals(['specialty_ids' => $expected, 'primary_specialty_id' => $third->id], $log->new_values);
+        $this->assertInvariants();
+    }
+
+    public function test_update_records_only_the_primary_when_just_the_primary_changes(): void
+    {
+        $doctor = $this->makeDoctor();
+        $ids = $this->pivotIds($doctor);
+        $oldPrimary = $this->pivotPrimary($doctor);
+        $newPrimary = $ids[0] === $oldPrimary ? $ids[1] : $ids[0];
+
+        $this->service->update($doctor, ['specialty_ids' => $ids, 'primary_specialty_id' => $newPrimary], $this->actor());
+
+        $log = $this->auditRows('doctor.updated')->sole();
+
+        $this->assertEquals(['primary_specialty_id' => $oldPrimary], $log->old_values);
+        $this->assertEquals(['primary_specialty_id' => $newPrimary], $log->new_values);
+    }
+
+    public function test_update_records_a_clinic_change(): void
+    {
+        $doctor = $this->makeDoctor();
+        $oldClinic = $doctor->clinic_id;
+        $newClinic = $this->createClinic();
+
+        $this->service->update($doctor, ['clinic_id' => $newClinic->id], $this->actor());
+
+        $log = $this->auditRows('doctor.updated')->sole();
+
+        $this->assertEquals(['clinic_id' => $oldClinic], $log->old_values);
+        $this->assertEquals(['clinic_id' => $newClinic->id], $log->new_values);
+        $this->assertSame($newClinic->id, Doctor::query()->findOrFail($doctor->id)->clinic_id);
+    }
+
+    public function test_update_accepts_an_inactive_clinic_and_inactive_specialties_already_attached(): void
+    {
+        // K4: service tidak menolak yang nonaktif; syarat "aktif atau sudah terpasang" ada di UpdateDoctorRequest.
+        $inactiveClinic = $this->createClinic(['is_active' => false]);
+        $inactiveSpecialty = $this->createSpecialty(['is_active' => false]);
+        $doctor = $this->makeDoctor(['clinic_id' => $inactiveClinic->id, 'specialty_ids' => [$inactiveSpecialty->id], 'primary_specialty_id' => $inactiveSpecialty->id]);
+
+        $updated = $this->service->update($doctor, [
+            'name' => 'Nama Baru',
+            'clinic_id' => $inactiveClinic->id,
+            'specialty_ids' => [$inactiveSpecialty->id],
+            'primary_specialty_id' => $inactiveSpecialty->id,
+        ], $this->actor());
+
+        $this->assertSame($inactiveClinic->id, $updated->clinic_id);
+        $this->assertSame([$inactiveSpecialty->id], $this->pivotIds($doctor));
+        $this->assertInvariants();
+    }
+
+    public function test_update_leaves_specialties_alone_when_they_are_not_sent_and_requires_both_keys_together(): void
+    {
+        $doctor = $this->makeDoctor();
+        $before = $this->pivotIds($doctor);
+
+        $this->service->update($doctor, ['name' => 'Nama Baru'], $this->actor());
+
+        $this->assertSame($before, $this->pivotIds($doctor));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('specialty_ids dan primary_specialty_id harus dikirim bersama.');
+
+        $this->service->update($doctor, ['specialty_ids' => $before], $this->actor());
+    }
+
+    public function test_update_with_invalid_specialties_changes_nothing(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        $this->assertRejected(
+            fn () => $this->service->update($doctor, ['name' => 'Tidak Tersimpan', 'specialty_ids' => [], 'primary_specialty_id' => 1], $this->actor()),
+            'specialty_ids',
+            'Pilih minimal satu spesialisasi.',
+        );
+
+        $this->assertSame('Andi Pratama', Doctor::query()->findOrFail($doctor->id)->name);
+        $this->assertSame(0, $this->auditRows('doctor.updated')->count());
+    }
+
+    public function test_update_is_rolled_back_when_the_audit_row_cannot_be_written(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        AuditLog::creating(fn () => throw new RuntimeException('audit gagal'));
+
+        $thrown = false;
+
+        try {
+            $this->service->update($doctor, ['name' => 'Tidak Tersimpan'], $this->actor());
+        } catch (RuntimeException) {
+            $thrown = true;
+        }
+
+        $this->assertTrue($thrown);
+        $this->assertSame('Andi Pratama', Doctor::query()->findOrFail($doctor->id)->name);
+    }
+
+    public function test_update_replaces_the_photo_and_removes_the_old_files_after_commit(): void
+    {
+        $doctor = $this->service->create($this->payload(), $this->actor(), ImageFixtures::jpeg(800, 800), 'Foto lama');
+        $old = Media::query()->where('collection', 'photo')->sole();
+        $oldPaths = [$old->directory.'/'.$old->file_name, $old->thumb_path];
+
+        $this->service->update($doctor, [], $this->actor(), ImageFixtures::png(700, 700), 'Foto baru');
+
+        $new = Media::query()->where('collection', 'photo')->sole();
+
+        $this->assertNotSame($old->id, $new->id);
+        $this->assertSame('Foto baru', $new->alt_text);
+        $this->assertModelMissing($old);
+        Storage::disk('public')->assertExists($new->directory.'/'.$new->file_name);
+
+        foreach ($oldPaths as $path) {
+            Storage::disk('public')->assertMissing($path);
+        }
+
+        $this->assertSame(1, $this->auditRows('media.replaced')->count());
+        $this->assertSame(0, $this->auditRows('doctor.updated')->count(), 'hanya foto yang berubah: tanpa baris doctor.updated');
+    }
+
+    public function test_update_with_a_rejected_photo_keeps_the_old_photo_and_the_profile(): void
+    {
+        $doctor = $this->service->create($this->payload(), $this->actor(), ImageFixtures::jpeg(800, 800), 'Foto lama');
+        $old = Media::query()->where('collection', 'photo')->sole();
+
+        $this->assertRejected(
+            fn () => $this->service->update($doctor, ['name' => 'Tidak Tersimpan'], $this->actor(), ImageFixtures::jpeg(100, 100), 'Terlalu kecil'),
+            'file',
+            'Dimensi gambar minimal 300 x 300 piksel dan maksimal 6000 x 6000 piksel.',
+        );
+
+        $this->assertModelExists($old);
+        Storage::disk('public')->assertExists($old->directory.'/'.$old->file_name);
+        $this->assertSame('Andi Pratama', Doctor::query()->findOrFail($doctor->id)->name);
+    }
+
+    public function test_stale_instance_does_not_overwrite_newer_database_values(): void
+    {
+        $doctor = $this->makeDoctor();
+        $stale = Doctor::query()->findOrFail($doctor->id);
+
+        DB::table('doctors')->where('id', $doctor->id)->update(['title_suffix' => 'Sp.B']);
+
+        $this->service->update($stale, ['name' => 'Budi Santoso'], $this->actor());
+
+        $fresh = Doctor::query()->findOrFail($doctor->id);
+
+        $this->assertSame('Sp.B', $fresh->title_suffix, 'kolom yang tidak dikirim tetap bernilai terbaru');
+        $this->assertSame('Budi Santoso', $fresh->name);
+
+        $log = $this->auditRows('doctor.updated')->sole();
+        $this->assertEquals(['name' => 'Andi Pratama'], $log->old_values);
+        $this->assertEquals(['name' => 'Budi Santoso'], $log->new_values);
+    }
+
+    // ------------------------------------------------------------------ replacePhoto
+
+    public function test_replace_photo_returns_the_new_media_and_replaces_the_previous_one(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        $first = $this->service->replacePhoto($doctor, ImageFixtures::jpeg(800, 800), 'Foto pertama', $this->actor());
+        $second = $this->service->replacePhoto($doctor, ImageFixtures::webp(700, 700), 'Foto kedua', $this->actor());
+
+        $this->assertInstanceOf(Media::class, $second);
+        $this->assertSame('Foto kedua', $second->alt_text);
+        $this->assertSame($doctor->id, (int) $second->model_id);
+        $this->assertSame($this->staff->id, (int) $second->uploaded_by);
+        $this->assertModelMissing($first);
+        $this->assertSame(1, Media::query()->where('collection', 'photo')->count());
+        $this->assertSame(2, $this->auditRows('media.replaced')->count());
+    }
+
+    public function test_replace_photo_requires_alt_text_and_keeps_the_current_photo_on_failure(): void
+    {
+        $doctor = $this->makeDoctor();
+        $current = $this->service->replacePhoto($doctor, ImageFixtures::jpeg(800, 800), 'Foto', $this->actor());
+
+        $this->assertRejected(
+            fn () => $this->service->replacePhoto($doctor, ImageFixtures::jpeg(800, 800), '  ', $this->actor()),
+            'alt_text',
+            'Teks alternatif gambar wajib diisi.',
+        );
+
+        $this->assertModelExists($current);
+        Storage::disk('public')->assertExists($current->directory.'/'.$current->file_name);
+        $this->assertSame(1, Media::query()->where('collection', 'photo')->count());
+    }
+
+    public function test_replace_photo_keeps_the_old_photo_when_the_outer_transaction_rolls_back(): void
+    {
+        $doctor = $this->makeDoctor();
+        $old = $this->service->replacePhoto($doctor, ImageFixtures::jpeg(800, 800), 'Foto lama', $this->actor());
+
+        $thrown = false;
+
+        try {
+            DB::transaction(function () use ($doctor): void {
+                $this->service->replacePhoto($doctor, ImageFixtures::png(700, 700), 'Foto baru', $this->actor());
+
+                throw new RuntimeException('transaksi pemanggil gagal');
+            });
+        } catch (RuntimeException) {
+            $thrown = true;
+        }
+
+        $this->assertTrue($thrown);
+        $this->assertModelExists($old);
+        Storage::disk('public')->assertExists($old->directory.'/'.$old->file_name);
+        $this->assertSame(1, Media::query()->where('collection', 'photo')->count());
+    }
+
+    // ---- akhir siklus B
 }
