@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ClinicType;
 use App\Models\Concerns\HasUniqueSlug;
+use App\Models\Concerns\SanitizesRichText;
 use Database\Factories\ClinicFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -16,7 +17,7 @@ use Illuminate\Support\Str;
 class Clinic extends Model
 {
     /** @use HasFactory<ClinicFactory> */
-    use HasFactory, HasUniqueSlug;
+    use HasFactory, HasUniqueSlug, SanitizesRichText;
 
     /**
      * @var list<string>
@@ -84,6 +85,16 @@ class Clinic extends Model
     protected function slugMaxLength(): int
     {
         return 140;
+    }
+
+    /**
+     * Kolom rich text yang disanitasi saat disimpan (F2-R14).
+     *
+     * @return list<string>
+     */
+    protected function richTextAttributes(): array
+    {
+        return ['description'];
     }
 
     public function specialty(): BelongsTo
