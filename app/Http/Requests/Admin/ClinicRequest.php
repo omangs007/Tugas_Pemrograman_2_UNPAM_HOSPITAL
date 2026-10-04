@@ -142,6 +142,8 @@ class ClinicRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            $this->validateExistingCoverAlt($validator);
+
             $incoming = count($this->galleryFiles());
 
             if ($incoming === 0 || $validator->errors()->has('gallery')) {
@@ -155,6 +157,23 @@ class ClinicRequest extends FormRequest
                 $validator->errors()->add('gallery', 'Galeri maksimal 20 gambar.');
             }
         });
+    }
+
+    /**
+     * Alt cover wajib untuk koleksi publik (V-20/V-22): bila cover sudah ada dan form mengirim alt kosong
+     * tanpa berkas baru, tolak (alt lama tetap). Dengan berkas baru, `required_with:cover` sudah menjaganya.
+     */
+    private function validateExistingCoverAlt(Validator $validator): void
+    {
+        $clinic = $this->route('clinic');
+
+        if (! $clinic instanceof Clinic || $this->coverFile() !== null || ! $this->has('cover_alt') || $this->coverAlt() !== '') {
+            return;
+        }
+
+        if ($clinic->media()->where('collection', 'cover')->exists()) {
+            $validator->errors()->add('cover_alt', 'Teks alternatif gambar wajib diisi.');
+        }
     }
 
     /**

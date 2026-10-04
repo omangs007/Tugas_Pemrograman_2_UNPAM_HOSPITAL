@@ -51,6 +51,32 @@ class SanitizesRichTextTest extends TestCase
         }
     }
 
+    /** @return array<string, array{0: string}> */
+    public static function visuallyBlankHtml(): array
+    {
+        return [
+            'quill kosong' => ['<p><br></p>'],
+            'nbsp' => ['<p>&nbsp;</p>'],
+            'beberapa paragraf kosong' => ['<p><br></p><p> </p>'],
+        ];
+    }
+
+    #[DataProvider('visuallyBlankHtml')]
+    public function test_visually_blank_description_is_stored_as_null(string $html): void
+    {
+        $clinic = Clinic::factory()->create(['description' => $html]);
+
+        $this->assertNull(DB::table('clinics')->where('id', $clinic->id)->value('description'));
+        $this->assertNull($clinic->description);
+    }
+
+    public function test_description_with_only_an_internal_image_is_not_blank(): void
+    {
+        $clinic = Clinic::factory()->create(['description' => '<p><img src="/storage/editor/2026/10/a.jpg" alt="x"></p>']);
+
+        $this->assertStringContainsString('<img', (string) $clinic->fresh()->description);
+    }
+
     public function test_internal_storage_images_and_external_links_are_kept_safely(): void
     {
         $clinic = Clinic::factory()->create([

@@ -26,7 +26,7 @@ class PruneMediaCommandTest extends TestCase
         $this->seed(SettingsSeeder::class);
 
         $this->stale = app(MediaService::class)->store(ImageFixtures::jpeg(900, 600), 'editor', null, ['alt_text' => 'Contoh']);
-        DB::table('media')->where('id', $this->stale->id)->update(['created_at' => now()->subHours(25)]);
+        DB::table('media')->where('id', $this->stale->id)->update(['created_at' => now()->subHours(25), 'updated_at' => now()->subHours(25)]);
 
         $disk = Storage::disk('public');
         $disk->put('editor/2026/10/stray-old.jpg', str_repeat('x', 10));

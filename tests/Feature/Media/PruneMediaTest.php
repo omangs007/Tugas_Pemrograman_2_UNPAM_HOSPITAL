@@ -40,7 +40,7 @@ class PruneMediaTest extends TestCase
 
     private function age(Media $media, int $hours): void
     {
-        DB::table('media')->where('id', $media->id)->update(['created_at' => now()->subHours($hours)]);
+        DB::table('media')->where('id', $media->id)->update(['created_at' => now()->subHours($hours), 'updated_at' => now()->subHours($hours)]);
     }
 
     /**

@@ -259,6 +259,45 @@ class AdminDoctorCrudTest extends TestCase
         Storage::disk('public')->assertMissing($old->directory.'/'.$old->file_name);
     }
 
+    public function test_update_with_only_a_changed_photo_alt_updates_the_alt_of_the_existing_photo(): void
+    {
+        $this->actingAs($this->createStaff('content-admin'))
+            ->post(route('admin.doctors.store'), $this->payload(['photo' => ImageFixtures::jpeg(800, 800), 'photo_alt' => 'Foto lama']));
+        $doctor = Doctor::query()->where('name', 'Laras Wulandari')->sole();
+        $media = Media::query()->where('collection', 'photo')->sole();
+
+        $this->put(route('admin.doctors.update', $doctor), $this->payload(['photo_alt' => ' Foto baru ']))
+            ->assertSessionHasNoErrors();
+
+        $same = Media::query()->where('collection', 'photo')->sole();
+        $this->assertSame($media->id, $same->id);
+        $this->assertSame('Foto baru', $same->alt_text);
+    }
+
+    public function test_update_with_an_empty_photo_alt_is_rejected_while_a_photo_exists_and_keeps_the_old_alt(): void
+    {
+        $this->actingAs($this->createStaff('content-admin'))
+            ->post(route('admin.doctors.store'), $this->payload(['photo' => ImageFixtures::jpeg(800, 800), 'photo_alt' => 'Foto lama']));
+        $doctor = Doctor::query()->where('name', 'Laras Wulandari')->sole();
+
+        $this->put(route('admin.doctors.update', $doctor), $this->payload(['name' => 'Nama Tidak Tersimpan', 'photo_alt' => '']))
+            ->assertSessionHasErrors(['photo_alt' => 'Teks alternatif foto wajib diisi.']);
+
+        $this->assertSame('Foto lama', Media::query()->where('collection', 'photo')->sole()->alt_text);
+        $this->assertSame('Laras Wulandari', $doctor->fresh()->name);
+    }
+
+    public function test_update_with_empty_photo_alt_and_no_photo_has_no_new_error(): void
+    {
+        $this->actingAs($this->createStaff('content-admin'))->post(route('admin.doctors.store'), $this->payload());
+        $doctor = Doctor::query()->where('name', 'Laras Wulandari')->sole();
+
+        $this->put(route('admin.doctors.update', $doctor), $this->payload(['photo_alt' => '']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(0, Media::query()->where('collection', 'photo')->count());
+    }
+
     public function test_registration_officer_patient_and_guest_cannot_use_manage_routes(): void
     {
         $doctor = $this->createDoctor(['name' => 'Laras Wulandari']);

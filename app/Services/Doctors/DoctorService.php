@@ -150,6 +150,17 @@ final class DoctorService
                 }
             }
 
+            if ($photo === null && $photoAlt !== null) {
+                $existing = $doctor->media()->where('collection', 'photo')->first();
+
+                if ($existing !== null && $existing->alt_text !== $photoAlt) {
+                    $old['photo_alt'] = $existing->alt_text;
+                    $new['photo_alt'] = $photoAlt;
+
+                    $this->media->updateMeta($existing, $photoAlt, $existing->caption);
+                }
+            }
+
             if ($new !== []) {
                 $this->audit->log('doctor.updated', $doctor, $old, $new, $this->describe('updated', $doctor), $actor);
             }

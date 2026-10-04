@@ -103,7 +103,7 @@ class Clinic extends Model
      *
      * @return list<string>
      */
-    protected function richTextAttributes(): array
+    public function richTextAttributes(): array
     {
         return ['description'];
     }

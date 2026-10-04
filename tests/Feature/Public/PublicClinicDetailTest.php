@@ -349,6 +349,31 @@ class PublicClinicDetailTest extends TestCase
         $this->assertStringContainsString('dr. Dokter Uji 6', $html);
     }
 
+    public function test_inactive_primary_specialty_is_hidden_and_the_active_one_is_shown_on_the_doctor_card(): void
+    {
+        $clinic = $this->createClinic();
+        $hidden = $this->createSpecialty(['name' => 'Spesialis Nonaktif Utama', 'is_active' => false]);
+        $shown = $this->createSpecialty(['name' => 'Spesialis Aktif Tambahan']);
+        $this->createDoctor(['name' => 'Dokter Dua Spesialis'], $clinic, [$hidden, $shown]);
+
+        $html = (string) $this->get($this->url($clinic))->assertOk()->assertSee('Dokter Dua Spesialis')->getContent();
+
+        $this->assertStringContainsString('Spesialis Aktif Tambahan', $html);
+        $this->assertStringNotContainsString('Spesialis Nonaktif Utama', $html);
+    }
+
+    public function test_doctor_whose_only_specialty_is_inactive_has_no_badge_but_the_card_still_renders(): void
+    {
+        $clinic = $this->createClinic();
+        $hidden = $this->createSpecialty(['name' => 'Spesialis Nonaktif Tunggal', 'is_active' => false]);
+        $this->createDoctor(['name' => 'Dokter Tanpa Lencana'], $clinic, [$hidden]);
+
+        $html = (string) $this->get($this->url($clinic))->assertOk()->assertSee('Dokter Tanpa Lencana')->getContent();
+
+        $this->assertStringNotContainsString('Spesialis Nonaktif Tunggal', $html);
+        $this->assertStringNotContainsString('badge text-bg-light border', $html);
+    }
+
     public function test_rendered_pages_are_compatible_with_the_strict_csp(): void
     {
         $clinic = $this->createClinic(['description' => '<p>Isi</p>']);

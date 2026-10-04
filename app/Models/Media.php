@@ -65,11 +65,12 @@ class Media extends Model
     }
 
     /**
-     * Baris tanpa pemilik (unggahan editor yang belum terikat) yang lebih tua dari $hours jam.
+     * Baris tanpa pemilik (unggahan editor yang belum terikat atau sudah dilepas) yang terakhir berubah lebih dari
+     * $hours jam lalu (08 §5.2 butir 2: umur dihitung dari `updated_at`).
      */
     public function scopeOrphaned(Builder $query, int $hours = 24): Builder
     {
-        return $query->whereNull('model_id')->where('created_at', '<', now()->subHours($hours));
+        return $query->whereNull('model_id')->where('updated_at', '<', now()->subHours($hours));
     }
 
     public function isPublic(): bool

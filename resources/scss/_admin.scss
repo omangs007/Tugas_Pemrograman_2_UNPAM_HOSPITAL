@@ -11,6 +11,7 @@ $admin-sidebar-width: 260px;
 .admin-shell {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   background: $light;
 }
 

@@ -245,6 +245,51 @@ class AdminClinicCrudTest extends TestCase
         Storage::disk('public')->assertExists($media->directory.'/'.$media->file_name);
     }
 
+    public function test_update_with_only_a_changed_cover_alt_updates_the_alt_of_the_existing_cover(): void
+    {
+        $admin = $this->createStaff('content-admin');
+        $this->actingAs($admin)->post(route('admin.clinics.store'), $this->payload([
+            'cover' => ImageFixtures::jpeg(1200, 800),
+            'cover_alt' => 'Sampul lama',
+        ]));
+        $clinic = Clinic::query()->where('code', 'XYZ')->sole();
+        $media = Media::query()->where('collection', 'cover')->sole();
+
+        $this->put(route('admin.clinics.update', $clinic), $this->payload(['cover_alt' => '  Sampul baru  ']))
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.clinics.index'));
+
+        $same = Media::query()->where('collection', 'cover')->sole();
+        $this->assertSame($media->id, $same->id);
+        $this->assertSame('Sampul baru', $same->alt_text);
+    }
+
+    public function test_update_with_an_empty_cover_alt_is_rejected_while_a_cover_exists_and_keeps_the_old_alt(): void
+    {
+        $this->actingAs($this->createStaff('content-admin'))->post(route('admin.clinics.store'), $this->payload([
+            'cover' => ImageFixtures::jpeg(1200, 800),
+            'cover_alt' => 'Sampul lama',
+        ]));
+        $clinic = Clinic::query()->where('code', 'XYZ')->sole();
+
+        $this->put(route('admin.clinics.update', $clinic), $this->payload(['name' => 'Nama Tidak Tersimpan', 'cover_alt' => '  ']))
+            ->assertSessionHasErrors(['cover_alt' => 'Teks alternatif gambar wajib diisi.']);
+
+        $this->assertSame('Sampul lama', Media::query()->where('collection', 'cover')->sole()->alt_text);
+        $this->assertSame('Poliklinik Contoh', $clinic->fresh()->name);
+    }
+
+    public function test_update_with_empty_cover_alt_and_no_cover_has_no_new_error(): void
+    {
+        $this->actingAs($this->createStaff('content-admin'))->post(route('admin.clinics.store'), $this->payload());
+        $clinic = Clinic::query()->where('code', 'XYZ')->sole();
+
+        $this->put(route('admin.clinics.update', $clinic), $this->payload(['name' => 'Nama Baru', 'cover_alt' => '']))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(0, Media::query()->where('collection', 'cover')->count());
+    }
+
     public function test_gallery_images_are_added_in_input_order_with_their_own_alt_text(): void
     {
         $this->actingAs($this->createStaff('content-admin'))

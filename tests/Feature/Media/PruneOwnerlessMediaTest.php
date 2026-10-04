@@ -111,7 +111,7 @@ class PruneOwnerlessMediaTest extends TestCase
     public function test_orphan_rows_count_combines_unowned_old_rows_and_ownerless_rows(): void
     {
         $stale = $this->service->store(ImageFixtures::jpeg(900, 600), 'editor', null, ['alt_text' => 'Editor']);
-        DB::table('media')->where('id', $stale->id)->update(['created_at' => now()->subHours(30)]);
+        DB::table('media')->where('id', $stale->id)->update(['created_at' => now()->subHours(30), 'updated_at' => now()->subHours(30)]);
 
         $doctor = $this->createDoctor();
         $photo = $this->service->store(ImageFixtures::jpeg(800, 800), 'photo', $doctor, ['alt_text' => 'Foto']);

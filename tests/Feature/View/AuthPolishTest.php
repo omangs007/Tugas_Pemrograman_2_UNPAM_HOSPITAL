@@ -138,6 +138,7 @@ class AuthPolishTest extends TestCase
         $this->assertMatchesRegularExpression('/<footer class="[^"]*\bmt-auto\b[^"]*"/', $html);
 
         $scss = (string) file_get_contents(resource_path('scss/_admin.scss'));
+        $this->assertMatchesRegularExpression('/\.admin-shell\s*\{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100dvh;/s', $scss);
         $this->assertMatchesRegularExpression('/\.admin-column\s*\{[^}]*min-height:\s*100vh;[^}]*min-height:\s*100dvh;/s', $scss);
     }
 

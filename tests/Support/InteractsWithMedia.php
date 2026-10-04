@@ -49,7 +49,7 @@ trait InteractsWithMedia
         $media = Media::query()->create($this->mediaAttributes($overrides));
 
         if ($createdAt !== null) {
-            DB::table('media')->where('id', $media->id)->update(['created_at' => $createdAt]);
+            DB::table('media')->where('id', $media->id)->update(['created_at' => $createdAt, 'updated_at' => $createdAt]);
             $media->refresh();
         }
 

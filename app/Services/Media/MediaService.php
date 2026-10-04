@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Media;
 
+use App\Models\Concerns\SanitizesRichText;
 use App\Models\Media;
 use App\Models\User;
 use App\Rules\ImageRules;
@@ -54,6 +55,15 @@ final class MediaService
     public const JPEG_QUALITY = 82;
 
     public const WEBP_QUALITY = 82;
+
+    /**
+     * Kolom rich text yang boleh memuat gambar editor (`tabel` => [kolom]). Dipakai `prune()` agar gambar
+     * tanpa pemilik yang masih dirujuk tidak dihapus. Fase 4a (halaman dan artikel) WAJIB menambahkan
+     * tabel dan kolom rich text barunya di sini.
+     */
+    public const EDITOR_REFERENCE_COLUMNS = [
+        'clinics' => ['description'],
+    ];
 
     private const ORPHAN_ROW_HOURS = 24;
 
@@ -187,6 +197,51 @@ final class MediaService
     }
 
     /**
+     * Ikat gambar editor ke pemilik (08 §5.2 butir 2). Memindai atribut rich text pemilik (HTML yang sudah
+     * disanitasi) untuk path `/storage/editor/...`: baris `editor` tanpa pemilik yang dirujuk menjadi milik
+     * pemilik ini (tidak merebut milik pemilik lain), dan baris `editor` milik pemilik ini yang tidak lagi
+     * dirujuk dikembalikan ke NULL dengan `updated_at` diperbarui sehingga dibersihkan `media:prune` setelah 24 jam.
+     */
+    public function syncEditorImages(Model $owner): void
+    {
+        $this->assertOwnerPersisted($owner);
+
+        if (! in_array(SanitizesRichText::class, class_uses_recursive($owner), true)) {
+            return;
+        }
+
+        $names = [];
+
+        foreach ($owner->richTextAttributes() as $attribute) {
+            $value = $owner->getAttribute($attribute);
+
+            if (is_string($value)) {
+                $names = [...$names, ...$this->editorFileNames($value)];
+            }
+        }
+
+        $names = array_values(array_unique($names));
+
+        DB::transaction(function () use ($owner, $names): void {
+            if ($names !== []) {
+                Media::query()
+                    ->where('collection', 'editor')
+                    ->whereNull('model_type')
+                    ->whereNull('model_id')
+                    ->whereIn('file_name', $names)
+                    ->update(['model_type' => $owner->getMorphClass(), 'model_id' => $owner->getKey(), 'updated_at' => now()]);
+            }
+
+            Media::query()
+                ->where('collection', 'editor')
+                ->where('model_type', $owner->getMorphClass())
+                ->where('model_id', $owner->getKey())
+                ->when($names !== [], fn (Builder $query): Builder => $query->whereNotIn('file_name', $names))
+                ->update(['model_type' => null, 'model_id' => null, 'updated_at' => now()]);
+        });
+    }
+
+    /**
      * Atur urutan: sort_order = posisi 1-based sesuai $orderedIds. Semua id harus milik pemilik
      * dan koleksi yang sama dan tidak boleh ganda.
      *
@@ -225,7 +280,9 @@ final class MediaService
             ->orphaned(self::ORPHAN_ROW_HOURS)
             ->when($logoId > 0, fn (Builder $query): Builder => $query->whereKeyNot($logoId))
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->reject(fn (Media $media): bool => $this->isReferencedInRichText($media))
+            ->values();
         $ownerless = $this->ownerlessRows();
         $rows = $unowned->concat($ownerless);
         $files = $this->orphanFiles();
@@ -270,6 +327,39 @@ final class MediaService
         );
 
         return $report;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function editorFileNames(string $html): array
+    {
+        preg_match_all('~/storage/editor/(?:[^"\'\s<>?#]*/)?([^"\'\s<>/?#]+)~', $html, $matches);
+
+        return array_values(array_unique($matches[1]));
+    }
+
+    /**
+     * Gambar editor tanpa pemilik yang nama berkasnya masih dirujuk kolom rich text mana pun
+     * (EDITOR_REFERENCE_COLUMNS), mis. gambar yang disalin lintas poliklinik atau baris lama.
+     */
+    private function isReferencedInRichText(Media $media): bool
+    {
+        if ($media->collection !== 'editor') {
+            return false;
+        }
+
+        $needle = '%/storage/editor/%'.addcslashes($media->file_name, '%_\\').'%';
+
+        foreach (self::EDITOR_REFERENCE_COLUMNS as $table => $columns) {
+            foreach ($columns as $column) {
+                if (DB::table($table)->where($column, 'like', $needle)->exists()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function createMedia(UploadedFile $file, string $collection, array $config, ?Model $owner, array $meta, ?User $uploader, callable $audit): Media

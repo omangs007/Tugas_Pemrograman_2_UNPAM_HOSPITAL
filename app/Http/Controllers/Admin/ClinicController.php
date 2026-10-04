@@ -95,6 +95,13 @@ class ClinicController extends Controller
 
         if ($cover !== null) {
             $media->replace($clinic, 'cover', $cover, ['alt_text' => $request->coverAlt()], $user);
+        } elseif ($request->has('cover_alt')) {
+            // Tanpa berkas baru: alt yang diedit diterapkan ke cover yang ada (caption tidak diubah).
+            $existing = $clinic->media()->where('collection', 'cover')->first();
+
+            if ($existing !== null && $existing->alt_text !== $request->coverAlt()) {
+                $media->updateMeta($existing, $request->coverAlt(), $existing->caption);
+            }
         }
 
         foreach ($request->galleryFiles() as $index => $file) {

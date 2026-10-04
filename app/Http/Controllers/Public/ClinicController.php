@@ -40,7 +40,10 @@ class ClinicController extends Controller
 
         $doctors = $clinic->doctors()
             ->publiclyVisible()
-            ->with(['specialties', 'media' => fn ($query) => $query->where('collection', 'photo')])
+            ->with([
+                'specialties' => fn ($query) => $query->where('specialties.is_active', true),
+                'media' => fn ($query) => $query->where('collection', 'photo'),
+            ])
             ->ordered()
             ->get();
 
