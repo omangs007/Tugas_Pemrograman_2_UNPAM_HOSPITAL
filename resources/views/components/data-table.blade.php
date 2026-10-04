@@ -6,6 +6,7 @@
     'emptyTitle' => 'Belum ada data',
     'emptyMessage' => null,
     'searchable' => true,
+    'preserve' => ['urut'],
 ])
 @php
     $keyword = request()->query($searchName);
@@ -16,6 +17,12 @@
         ->isNotEmpty();
     $perPage = request()->query('per_page');
     $perPage = is_string($perPage) ? $perPage : '';
+    // Parameter kueri yang ikut terkirim ulang oleh form pencarian (mis. urutan), bukan hasil input form.
+    $preserved = collect($preserve)
+        ->mapWithKeys(fn ($field) => [(string) $field => request()->query((string) $field)])
+        ->filter(fn ($value) => is_string($value) && $value !== '')
+        ->all();
+    $outOfRange = $rows->isEmpty() && method_exists($rows, 'total') && $rows->total() > 0;
     $searchId = $searchName.'-search';
     $currentUrl = url()->current();
 @endphp
@@ -31,6 +38,7 @@
             {{ $filters ?? '' }}
             <div class="col-12 col-md-auto d-flex gap-2">
                 @if ($perPage !== '')<input type="hidden" name="per_page" value="{{ $perPage }}">@endif
+                @foreach ($preserved as $field => $fieldValue)<input type="hidden" name="{{ $field }}" value="{{ $fieldValue }}">@endforeach
                 <x-loading-button icon="bi-search">Terapkan</x-loading-button>
                 @if ($hasQuery)<a href="{{ $currentUrl }}" class="btn btn-outline-secondary">Reset</a>@endif
             </div>
@@ -45,13 +53,19 @@
     </div>
 
     @if ($rows->isEmpty())
-        @isset($empty)
-            {{ $empty }}
-        @else
-            <x-empty-state :title="$emptyTitle" :message="$hasQuery ? 'Tidak ada data yang cocok dengan pencarian atau filter Anda.' : $emptyMessage" :icon="$hasQuery ? 'bi-search' : 'bi-inbox'">
-                @if ($hasQuery)<a href="{{ $currentUrl }}" class="btn btn-outline-primary">Hapus filter</a>@endif
+        @if ($outOfRange)
+            <x-empty-state title="Halaman yang diminta tidak berisi data." message="Data pada halaman ini mungkin sudah berubah." icon="bi-exclamation-circle">
+                <a href="{{ $rows->withQueryString()->url(1) }}" class="btn btn-outline-primary">Kembali ke halaman 1</a>
             </x-empty-state>
-        @endisset
+        @else
+            @isset($empty)
+                {{ $empty }}
+            @else
+                <x-empty-state :title="$emptyTitle" :message="$hasQuery ? 'Tidak ada data yang cocok dengan pencarian atau filter Anda.' : $emptyMessage" :icon="$hasQuery ? 'bi-search' : 'bi-inbox'">
+                    @if ($hasQuery)<a href="{{ $currentUrl }}" class="btn btn-outline-primary">Hapus filter</a>@endif
+                </x-empty-state>
+            @endisset
+        @endif
     @else
         <div class="table-responsive">
             <table class="table table-hover align-middle table-cards bg-white">
