@@ -61,9 +61,9 @@ class AdminDoctorValidationTest extends TestCase
             'spesialisasi kosong' => [['specialty_ids' => []], 'specialty_ids', 'Pilih minimal satu spesialisasi.'],
             'spesialisasi bukan larik' => [['specialty_ids' => 'x'], 'specialty_ids', 'Spesialisasi tidak valid.'],
             'spesialisasi lebih dari lima' => [['specialty_ids' => ['901', '902', '903', '904', '905', '906']], 'specialty_ids', 'Spesialisasi maksimal 5.'],
-            'spesialisasi ganda' => [['specialty_ids' => ['@specialty_a', '@specialty_a']], 'specialty_ids.0', 'Spesialisasi tidak boleh dipilih dua kali.'],
-            'spesialisasi nonaktif' => [['specialty_ids' => ['@specialty_inactive'], 'primary_specialty_id' => '@specialty_inactive'], 'specialty_ids.0', 'Spesialisasi yang dipilih tidak tersedia.'],
-            'spesialisasi bukan angka' => [['specialty_ids' => ['abc']], 'specialty_ids.0', 'Spesialisasi tidak valid.'],
+            'spesialisasi ganda' => [['specialty_ids' => ['@specialty_a', '@specialty_a']], 'specialty_ids', 'Spesialisasi tidak boleh dipilih dua kali.'],
+            'spesialisasi nonaktif' => [['specialty_ids' => ['@specialty_inactive'], 'primary_specialty_id' => '@specialty_inactive'], 'specialty_ids', 'Spesialisasi yang dipilih tidak tersedia.'],
+            'spesialisasi bukan angka' => [['specialty_ids' => ['abc']], 'specialty_ids', 'Spesialisasi tidak valid.'],
             'utama kosong' => [['primary_specialty_id' => ''], 'primary_specialty_id', 'Spesialisasi utama wajib dipilih.'],
             'utama bukan angka' => [['primary_specialty_id' => 'abc'], 'primary_specialty_id', 'Spesialisasi utama harus berupa angka bulat.'],
             'utama bukan salah satu pilihan' => [['specialty_ids' => ['@specialty_a'], 'primary_specialty_id' => '@specialty_b'], 'primary_specialty_id', 'Spesialisasi utama harus salah satu spesialisasi yang dipilih.'],
@@ -185,6 +185,23 @@ class AdminDoctorValidationTest extends TestCase
         $this->assertSame(0, Doctor::query()->count());
         $this->assertSame(0, Media::query()->count());
         $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_duplicate_specialty_error_is_centralised_so_the_summary_link_is_valid(): void
+    {
+        $html = $this->actingAs($this->createStaff('content-admin'))
+            ->from(route('admin.doctors.create'))
+            ->followingRedirects()
+            ->post(route('admin.doctors.store'), array_merge($this->valid(), [
+                'specialty_ids' => [(string) $this->ids['specialty_a'], (string) $this->ids['specialty_a']],
+            ]))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('href="#specialty_ids"', $html);
+        $this->assertStringNotContainsString('href="#specialty_ids-', $html);
+        $this->assertSame(1, substr_count($html, 'Spesialisasi tidak boleh dipilih dua kali.</div>'));
+        $this->assertSame(1, substr_count($html, 'id="specialty_ids-error"'));
     }
 
     public function test_update_applies_the_same_rules(): void

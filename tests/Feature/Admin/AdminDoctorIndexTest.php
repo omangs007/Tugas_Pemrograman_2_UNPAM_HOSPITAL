@@ -200,6 +200,28 @@ class AdminDoctorIndexTest extends TestCase
             ->assertSee('value="nama"', false);
     }
 
+    public function test_sort_links_drop_kembali_and_page_but_keep_the_search(): void
+    {
+        $this->createDoctor();
+
+        $html = $this->actingAs($this->createStaff('content-admin'))
+            ->get(route('admin.doctors.index', ['kembali' => '/admin', 'page' => 2, 'q' => 'x']))
+            ->assertOk()
+            ->getContent();
+
+        preg_match_all('/<a href="([^"]*urut=[^"]*)"/', $html, $matches);
+
+        $this->assertNotEmpty($matches[1]);
+
+        foreach ($matches[1] as $href) {
+            $href = html_entity_decode($href);
+            $this->assertStringContainsString('urut=', $href);
+            $this->assertStringContainsString('q=x', $href);
+            $this->assertStringNotContainsString('kembali=', $href);
+            $this->assertStringNotContainsString('page=', $href);
+        }
+    }
+
     public function test_manage_buttons_are_shown_only_to_roles_that_can_manage(): void
     {
         $doctor = $this->createDoctor(['name' => 'Laras Wulandari']);

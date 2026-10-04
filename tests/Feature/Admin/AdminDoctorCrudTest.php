@@ -228,6 +228,21 @@ class AdminDoctorCrudTest extends TestCase
             ->assertSee('Anak');
     }
 
+    public function test_update_rejects_a_new_inactive_specialty_that_was_not_attached_before(): void
+    {
+        $doctor = $this->createDoctor([], $this->clinic, [$this->specialtyA]);
+        $newInactive = $this->createSpecialty(['name' => 'Spesialisasi Tutup', 'is_active' => false]);
+
+        $this->actingAs($this->createStaff('content-admin'))
+            ->put(route('admin.doctors.update', $doctor), $this->payload([
+                'specialty_ids' => [(string) $this->specialtyA->id, (string) $newInactive->id],
+                'primary_specialty_id' => (string) $this->specialtyA->id,
+            ]))
+            ->assertSessionHasErrors(['specialty_ids' => 'Spesialisasi yang dipilih tidak tersedia.']);
+
+        $this->assertSame(1, DB::table('doctor_specialties')->where('doctor_id', $doctor->id)->count());
+    }
+
     public function test_update_with_a_new_photo_replaces_the_existing_one(): void
     {
         $this->actingAs($this->createStaff('content-admin'))

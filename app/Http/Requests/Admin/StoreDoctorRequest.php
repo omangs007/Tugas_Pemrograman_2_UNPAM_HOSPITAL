@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Exists;
+use Illuminate\Validation\Validator;
 
 /**
  * V-19 (F2-R6, F2-R15, F2-R23). `slug` dan `status` tidak ada di form: slug dibuat sistem dan status
@@ -106,6 +107,29 @@ class StoreDoctorRequest extends FormRequest
             'photo_alt.string' => 'Teks alternatif foto harus berupa teks.',
             'photo_alt.max' => 'Teks alternatif foto maksimal 255 karakter.',
         ]);
+    }
+
+    /**
+     * Galat per-elemen `specialty_ids.N` dipusatkan ke `specialty_ids` (tanpa duplikat) agar tautan ringkasan
+     * galat menuju `#specialty_ids` (fieldset) dan galat kelompok tampil sekali.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $errors = $validator->errors();
+
+            foreach ($errors->getMessages() as $key => $messages) {
+                if (! str_starts_with($key, 'specialty_ids.')) {
+                    continue;
+                }
+
+                $errors->forget($key);
+
+                foreach ($messages as $message) {
+                    $errors->add('specialty_ids', $message);
+                }
+            }
+        });
     }
 
     /**
