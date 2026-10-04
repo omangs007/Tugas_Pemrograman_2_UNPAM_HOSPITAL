@@ -63,9 +63,9 @@ Ringkasan kutipan spesifikasi untuk fase ini ada di `.superpowers/plan-fase-2/di
 ## Review Focus
 
 1. **Nama yang menghasilkan slug bentrok atau aneh.** Contohnya dua dokter "Andi Pratama", nama "dr. Siti Nur'aini, Sp.A", dan huruf non-ASCII. Harapan: slug unik dengan sufiks `-2`/`-3`, tidak pernah kosong, dan tidak berubah saat nama diedit. → Task 2 (`HasUniqueSlugTest`).
-2. **Halaman daftar admin dan publik dengan banyak baris di mode ketat.** Harapan: dokter dengan `specialties`/`clinic`/`media` dan poliklinik dengan `doctors_count`/`media` dirender 200 untuk ketiga peran, tanpa `LazyLoadingViolationException`. → Task 10 dan Task 11 (tes daftar admin di masing-masing task), Task 13 (`PublicClinicPagesTest`, `PublicClinicDetailTest`).
+2. **Halaman daftar admin dan publik dengan banyak baris di mode ketat.** Harapan: dokter dengan `specialties`/`clinic`/`media` dan poliklinik dengan `doctors_count`/`media` dirender 200 tanpa `LazyLoadingViolationException`: daftar dokter untuk ketiga peran, sedangkan daftar poliklinik dan spesialisasi (#34) untuk Super Admin dan Admin Konten (Petugas mendapat 403). → Task 10 dan Task 11 (tes daftar admin di masing-masing task), Task 13 (`PublicClinicPagesTest`, `PublicClinicDetailTest`).
 3. **Rich text berbahaya atau masuk lewat jalur selain form.** Contohnya `<script>`, `onerror`, gambar `data:`/eksternal, dan nilai dari seeder atau `update()` langsung. Harapan: yang tersimpan di DB selalu hasil `HtmlSanitizer::clean()`, dan halaman publik hanya merender nilai tersanitasi. → Task 2 (`SanitizesRichTextTest`) dan Task 13.
-4. **URL publik untuk data nonaktif atau arsip.** Contohnya `/layanan/{slug}` poliklinik nonaktif, dokter nonaktif atau arsip di daftar dokter poliklinik, dan spesialisasi nonaktif. Harapan: 404 juga untuk staf yang login (A-42); dokter nonaktif atau arsip tidak tampil. → Task 13.
+4. **URL publik untuk data nonaktif atau arsip.** Contohnya `/layanan/{slug}` poliklinik nonaktif serta dokter nonaktif atau arsip di daftar dokter poliklinik. Harapan: 404 juga untuk staf yang login (A-42); dokter nonaktif atau arsip tidak tampil. Spesialisasi nonaktif hanya dikecualikan dari data dokter dan poliklinik, karena fase 2 belum punya halaman publik spesialisasi (tidak ada URL publik untuk dites). → Task 13.
 5. **Akses media lintas pemilik dan penghapusan data yang dirujuk.** Contohnya Admin Konten mengubah alt media logo situs, Petugas menghapus foto dokter lewat `admin.media.destroy`, dan Super Admin menghapus spesialisasi yang dipakai dokter. Harapan: 403 sesuai pemilik media; hapus data yang dirujuk ditolak dengan flash `error`, bukan 500 FK, termasuk untuk Super Admin. → Task 6 (`AdminMediaEndpointsTest`), Task 9, Task 10.
 
 ## Keputusan (rulings) fase 2
@@ -4222,6 +4222,23 @@ final class AuditObserver
 
 - [ ] **Step 5: Daftarkan observer (tool Edit `app/Providers/AppServiceProvider.php`)**
 
+Prasyarat byte. `AppServiceProvider.php` warisan fase 1 memuat satu byte Latin-1 `0xA7` (bukan UTF-8 sah) pada komentar `// URI resource berbahasa Indonesia: /buat dan /ubah (11 §3.3).` di atas `Route::resourceVerbs` (komentar lain bertanda `§` di berkas itu sudah UTF-8). Tool Edit dapat menulis ulang byte itu sebagai U+FFFD, jadi perbaiki dulu ke UTF-8 "§" (`0xC2 0xA7`) dengan PowerShell: baca byte, sisipkan `0xC2` di depan tiap `0xA7` yang BELUM didahului `0xC2`. Aman dijalankan ulang (tidak mengubah apa pun bila byte sudah benar).
+
+```powershell
+$XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+$p = Join-Path $APP 'app\Providers\AppServiceProvider.php'
+$b = [System.IO.File]::ReadAllBytes($p)
+$out = New-Object 'System.Collections.Generic.List[byte]'
+for ($i = 0; $i -lt $b.Length; $i++) {
+    if ($b[$i] -eq 0xA7 -and ($i -eq 0 -or $b[$i - 1] -ne 0xC2)) { $out.Add(0xC2) }
+    $out.Add($b[$i])
+}
+[System.IO.File]::WriteAllBytes($p, $out.ToArray())
+& $PHP -l app\Providers\AppServiceProvider.php
+git diff app/Providers/AppServiceProvider.php
+```
+Expected: `No syntax errors detected`; `git diff` hanya memuat SATU hunk, yaitu baris komentar `(11 §3.3)` di atas `Route::resourceVerbs` (byte `0xA7` menjadi `0xC2 0xA7`). Baru setelah itu lakukan dua Edit di bawah.
+
 old:
 ```text
 use App\Models\User;
@@ -4245,6 +4262,14 @@ new:
         Specialty::observe(AuditObserver::class);
         Clinic::observe(AuditObserver::class);
 ```
+
+Periksa diff. `git diff app/Providers/AppServiceProvider.php` hanya boleh memuat hunk impor, hunk observer, dan perbaikan byte komentar `§`; tidak ada baris lain yang berubah (tidak ada karakter pengganti U+FFFD):
+
+```powershell
+git diff app/Providers/AppServiceProvider.php
+& $PHP -l app\Providers\AppServiceProvider.php
+```
+Bila ada perubahan lain, pulihkan hanya baris yang salah (komentar itu harus `(11 §3.3)`) lalu ulangi pemeriksaan.
 
 - [ ] **Step 6: Jalankan tes — harus lulus**
 
@@ -5306,7 +5331,7 @@ class FormCheckboxArrayTest extends TestCase
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
 & $PHP artisan test --filter=FormCheckboxArrayTest
 ```
-Expected: FAIL. Komponen lama membentuk id `specialty_ids` (bukan `specialty_ids-3`), tidak mengenal `checked-values`, dan tidak membaca kunci `specialty_ids.*`; `test_single_checkbox_is_unchanged…` dan `test_bracketed_non_array_names…` sudah PASS (itu penjaga regresi).
+Expected: FAIL. Komponen lama membentuk id `specialty_ids` (bukan `specialty_ids-3`), tidak mengenal `checked-values`, dan tidak membaca kunci `specialty_ids.*`; tes yang memberi prop larik (`:checked-values`/`:show-error`) berstatus ERROR, bukan PASS (komponen lama menerima larik itu lewat `$attributes` sehingga `trim(): Argument #1 ($string) must be of type string, array given`). `test_single_checkbox_is_unchanged…` dan `test_bracketed_non_array_names…` PASS (itu penjaga regresi).
 
 - [ ] **Step 4: Implementasi — ganti seluruh `resources/views/components/form/checkbox.blade.php` (tool Write)**
 
@@ -5511,7 +5536,7 @@ class DataTableNavigationTest extends TestCase
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
 & $PHP artisan test --filter=DataTableNavigationTest
 ```
-Expected: FAIL pada `test_sort_parameter_is_preserved…` (hidden `urut` tidak ada), `test_preserve_prop_accepts…`, `test_preserved_values_are_escaped`, dan `test_page_beyond_the_last…` (pesan belum ada; komponen lama menampilkan "Tidak ada data yang cocok…"/slot kosong). Tes `no_hidden_input…`, `truly_empty…`, `within_range…` PASS (penjaga regresi).
+Expected: FAIL pada `test_sort_parameter_is_preserved…` (hidden `urut` tidak ada), `test_preserve_prop_accepts…`, `test_preserved_values_are_escaped`, dan `test_page_beyond_the_last…` (pesan belum ada; komponen lama menampilkan "Tidak ada data yang cocok…"/slot kosong). Tes yang memberi prop `:preserve` berupa larik berstatus ERROR pada komponen lama (`trim()` menerima larik), bukan PASS. Tes `no_hidden_input…`, `truly_empty…`, `within_range…` PASS (penjaga regresi).
 
 - [ ] **Step 9: Implementasi — ganti seluruh `resources/views/components/data-table.blade.php` (tool Write)**
 
@@ -5807,7 +5832,7 @@ Expected: `artisan test` hijau seluruhnya (tidak ada tes fase 1 yang berubah); P
 
 **Files:**
 - Create: `app/Http/Controllers/Admin/MediaController.php`, `app/Http/Requests/Admin/EditorImageUploadRequest.php`, `app/Http/Requests/Admin/UpdateMediaRequest.php`, `app/Http/Requests/Admin/ReorderMediaRequest.php`
-- Modify: `app/Http/Controllers/Controller.php` (tambah trait `AuthorizesRequests`), `routes/admin.php`
+- Modify: `app/Http/Controllers/Controller.php` (tambah trait `AuthorizesRequests`), `routes/admin.php`, `bootstrap/app.php` (callback `shouldRenderJsonWhen`: galat validasi pada `admin.media.*` tidak lagi dipaksa JSON)
 - Test: `tests/Feature/Admin/AdminMediaEndpointsTest.php`
 
 **Interfaces:**
@@ -5834,7 +5859,7 @@ Expected: `artisan test` hijau seluruhnya (tidak ada tes fase 1 yang berubah); P
   - `UpdateMediaRequest` (`alt_text` wajib ≤255, `caption` opsional ≤255): `authorize()` = `can('update', $media)`. JSON 200 `{"media_id", "alt", "caption", "message"}`; non-JSON: `redirect()` ke `SafeRedirect::back` dengan flash `success`. `caption` yang tidak dikirim **tidak** mengosongkan keterangan lama.
   - `MediaController::destroy` (tanpa Form Request): `$this->authorize('delete', $media)`; media yang dirujuk `site.logo_media_id` ditolak (F2-R17) → JSON **422** `{"message": "Gambar tidak dapat dihapus karena sedang dipakai.", "errors": {"media": ["…"]}}` atau flash `error`; selain itu `MediaService::delete()` → JSON 200 `{"message": "Gambar berhasil dihapus."}` / flash `success`. Penolakan ini berlaku juga untuk Super Admin (dijaga di controller, bukan Policy).
   - `ReorderMediaRequest` (`ids` 1–100, `ids.*` integer, distinct, ada di `media`): `authorize()` memeriksa `can('reorder', $media)` untuk **setiap** id yang ada (id yang tidak ada dibiarkan ke validasi 422). Setelah validasi dasar (`after()`), semua media harus milik **pemilik dan koleksi yang sama** dan **berpemilik** (media `editor`/`logo` tanpa pemilik tidak dapat diurutkan); pemilik dan koleksi **diturunkan dari id media**, tidak diterima dari input. Method pembantu `owner(): Model`, `collection(): string`, `orderedIds(): list<int>` (hanya valid setelah validasi lolos). JSON 200 `{"message": "Urutan gambar berhasil disimpan."}`.
-  - Kontrak galat: validasi gagal pada permintaan JSON → **422** `{"message", "errors"}`; pada permintaan non-JSON → redirect kembali dengan galat sesi (perilaku bawaan Laravel; `shouldRenderJsonWhen` pada `admin.media.*` hanya memaksa JSON untuk galat bukan-validasi). Tamu JSON → 401; tanpa izin JSON → 403 `{"message": "Anda tidak memiliki izin untuk melakukan tindakan ini."}`.
+  - Kontrak galat: validasi gagal pada permintaan JSON → **422** `{"message", "errors"}`; pada permintaan non-JSON → redirect kembali dengan galat sesi (perilaku bawaan Laravel). Karena callback fase 1 memaksa JSON untuk seluruh `admin.media.*`, Step 7a mengubah `shouldRenderJsonWhen` di `bootstrap/app.php`: JSON bila `expectsJson()`, atau bila route `admin.media.*` dan galatnya BUKAN `ValidationException` (galat lain pada route media tetap JSON). Tamu JSON → 401; tanpa izin JSON → 403 `{"message": "Anda tidak memiliki izin untuk melakukan tindakan ini."}`.
   - `Controller` dasar kini memakai trait `Illuminate\Foundation\Auth\Access\AuthorizesRequests` (11 §1 aturan 5), sehingga controller admin berikutnya (Task 9–12) dapat memanggil `$this->authorize()`.
 
 **Pesan galat (sumber):**
@@ -5854,7 +5879,7 @@ Expected: `artisan test` hijau seluruhnya (tidak ada tes fase 1 yang berubah); P
 
 **Catatan teknis (diverifikasi dari source):**
 - `FormRequest::getValidatorInstance()` (Laravel 12.69) memanggil `withValidator()` dan **`after()`** (dipanggil lewat container; harus mengembalikan larik callable `fn (Validator $v)`), dan `authorize()` dijalankan **sebelum** validasi, jadi pengguna tanpa hak mendapat 403 walau inputnya salah. Implicit binding `{media}` sudah terselesaikan oleh `SubstituteBindings` sebelum Form Request dibuat, sehingga `$this->route('media')` berisi model `Media`.
-- `Handler` hanya mengubah `ValidationException` menjadi JSON bila `$request->expectsJson()`; `shouldRenderJsonWhen(... routeIs('admin.media.*'))` di `bootstrap/app.php` berlaku untuk galat lain. Karena itu form HTML biasa tetap mendapat redirect + `$errors`, dan tes JSON harus mengirim header `Accept: application/json` (helper `postJson/patchJson/deleteJson` atau argumen header).
+- `Handler::convertValidationExceptionToResponse` memilih JSON lewat `shouldReturnJson($request, $e)`, yaitu callback `shouldRenderJsonWhen` (bukan hanya `expectsJson()`). Callback fase 1 menyertakan `routeIs('admin.media.*')` tanpa pengecualian, sehingga PATCH form HTML biasa yang tidak valid akan menerima 422 JSON. Step 7a mengecualikan `ValidationException`; dengan itu form HTML biasa (Task 10) mendapat redirect + `$errors`, sedangkan tes JSON tetap mengirim header `Accept: application/json` (helper `postJson/patchJson/deleteJson`) dan menerima 422 JSON.
 - Spatie `PermissionMiddleware::handle` memecah parameter dengan `explode('|', …)` (v6.25), jadi string `permission:a|b|c` berarti "salah satu"; Laravel memecah parameter middleware pada koma, bukan pipa, sehingga string aman.
 - `Media::model()` adalah `morphTo`: `ReorderMediaRequest` memakai `Media::query()->with('model')` (eager) agar tidak memicu `LazyLoadingViolationException` di mode ketat. Baris dengan `model_type` yang kelasnya tidak ada akan melempar galat kelas; baris seperti itu hanya dapat muncul dari data rusak, bukan dari `MediaService`.
 - `Storage::disk('public')->url()` di tes memakai `APP_URL` (`http://unpam-hospital.test`); karena itu respons editor memakai `parse_url(..., PHP_URL_PATH)`. Penghapusan berkas terjadi lewat `DB::afterCommit` di `MediaService::delete()`; tes memeriksa `assertMissing` setelah respons, dan pola yang sama dipakai tes fase 1 (`MediaServiceLifecycleTest`).
@@ -6418,6 +6443,16 @@ class AdminMediaEndpointsTest extends TestCase
         $this->assertSame(1, $items[1]->fresh()->sort_order);
     }
 
+    public function test_reorder_validation_error_from_a_plain_form_redirects_back_with_errors(): void
+    {
+        $this->clinicGallery(2);
+
+        $this->actingAs($this->createStaff('content-admin'))->from('/admin/poliklinik/1/ubah')
+            ->post(route('admin.media.reorder'), ['ids' => []])
+            ->assertRedirect('/admin/poliklinik/1/ubah')
+            ->assertSessionHasErrors(['ids' => 'Daftar gambar wajib diisi.']);
+    }
+
     public function test_reorder_rejects_media_of_different_owners_or_collections(): void
     {
         [, $galleryA] = $this->clinicGallery(2);
@@ -6941,6 +6976,52 @@ Penggantian 2 — blok media di akhir grup G-ADMIN. `old_string`:
 
 (Task 9–12 menambah route lain di grup yang sama, di atas blok media atau sesudahnya; urutan antar-resource tidak berpengaruh selama segmen statis mendahului parameter dalam awalan yang sama.)
 
+- [ ] **Step 7a: Ubah `shouldRenderJsonWhen` di `bootstrap/app.php` (tes dulu, lalu tool Edit, dua penggantian)**
+
+RED lebih dulu. Route dan controller sudah ada (Step 5-7), tetapi callback fase 1 masih memaksa JSON untuk galat validasi pada `admin.media.*`:
+
+```powershell
+$XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP artisan test --filter="test_update_from_a_plain_form_redirects_back_with_flash_or_errors|test_reorder_validation_error_from_a_plain_form_redirects_back_with_errors"
+```
+Expected: FAIL pada kedua tes (respons 422 JSON, bukan redirect, sehingga `assertRedirect` gagal).
+
+Penggantian 1 - impor (urutan alfabetis tetap terjaga). `old_string`:
+
+```php
+use Illuminate\Support\Facades\Route;
+```
+
+`new_string`:
+
+```php
+use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
+```
+
+Penggantian 2 - callback. `old_string`:
+
+```php
+        $exceptions->shouldRenderJsonWhen(fn (Request $request, Throwable $e): bool => $request->expectsJson()
+            || $request->routeIs('admin.dashboard.chart', 'admin.media.*'));
+```
+
+`new_string`:
+
+```php
+        // Galat validasi pada admin.media.* hanya JSON bila klien meminta JSON; form HTML biasa mendapat redirect + $errors.
+        $exceptions->shouldRenderJsonWhen(fn (Request $request, Throwable $e): bool => $request->expectsJson()
+            || $request->routeIs('admin.dashboard.chart')
+            || ($request->routeIs('admin.media.*') && ! $e instanceof ValidationException));
+```
+
+```powershell
+$XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP -l bootstrap\app.php
+& $PHP artisan test --filter=AdminMediaEndpointsTest
+```
+Expected: `No syntax errors detected`; seluruh tes PASS (permintaan JSON tetap 422 JSON, form HTML biasa redirect + galat sesi). Bila ada tes dashboard chart JSON (`admin.dashboard.chart`), jalankan juga: perilakunya tidak berubah.
+
 - [ ] **Step 8: Jalankan tes — harus lulus, termasuk KNS-02**
 
 ```powershell
@@ -6957,11 +7038,12 @@ Bila ada tes matriks (403/200) yang gagal: periksa `MediaPolicy` Task 4 terhadap
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
 & $PHP artisan test
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
-git add app/Http/Controllers/Controller.php app/Http/Controllers/Admin/MediaController.php app/Http/Requests/Admin/EditorImageUploadRequest.php app/Http/Requests/Admin/UpdateMediaRequest.php app/Http/Requests/Admin/ReorderMediaRequest.php routes/admin.php tests/Feature/Admin/AdminMediaEndpointsTest.php
+git add app/Http/Controllers/Controller.php app/Http/Controllers/Admin/MediaController.php app/Http/Requests/Admin/EditorImageUploadRequest.php app/Http/Requests/Admin/UpdateMediaRequest.php app/Http/Requests/Admin/ReorderMediaRequest.php routes/admin.php bootstrap/app.php tests/Feature/Admin/AdminMediaEndpointsTest.php
 git commit -m "feat(fase-2): endpoint media admin (editor-upload, update, destroy, reorder)" -m "MediaController + tiga Form Request V-42; izin menurut pemilik lewat MediaPolicy; logo situs tidak dapat dihapus; Controller dasar memakai AuthorizesRequests." -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
-Expected: `artisan test` hijau seluruhnya; Pint `PASS` (bila melapor berkas, jalankan `& $PHP vendor\bin\pint <berkas>` lalu ulangi `--test` dan `artisan test --filter=AdminMediaEndpointsTest`); commit sukses. Tidak ada perubahan `resources/js`/`resources/scss`, jadi `npm run build` tidak wajib di task ini.
+Expected: `artisan test` hijau seluruhnya; `pint` tanpa `--test` dijalankan lebih dulu (merapikan urutan impor `routes/admin.php`), lalu `pint --test` `PASS`; commit sukses. Tidak ada perubahan `resources/js`/`resources/scss`, jadi `npm run build` tidak wajib di task ini.
 
 ---
 
@@ -7139,7 +7221,9 @@ class RichTextComponentTest extends TestCase
     {
         $html = $this->render('upload-url="/admin/media/editor?a=1&b=&quot;2&quot;" :min-height="400"');
 
-        $this->assertStringContainsString('data-upload-url="/admin/media/editor?a=1&amp;b=&quot;2&quot;"', $html);
+        // Nilai literal `&quot;` di-escape ulang oleh {{ }} (double-encode): `&quot;` menjadi `&amp;quot;`.
+        $this->assertStringContainsString('data-upload-url="/admin/media/editor?a=1&amp;b=&amp;quot;2&amp;quot;"', $html);
+        $this->assertStringNotContainsString('b="2"', $html);
         $this->assertStringContainsString('data-min-height="400"', $html);
         $this->assertStringContainsString('data-min-height="120"', $this->render(':min-height="50"'));
     }
@@ -9467,8 +9551,7 @@ Expected: `artisan test` hijau seluruhnya; Pint `PASS` (bila melapor berkas, jal
 
 ---
 
-**Catatan verifikasi penulis (Task 5-8):** Semua blok PHP lengkap (termasuk berkas tes dan `DoctorService` hasil penerapan siklus A-C, `routes/admin.php`, `config/navigation.php`, dan `FrontendManifestTest` hasil penerapan edit) lolos `php -l` 8.2 (`C:
-mpp3`). `editor.js` dan `admin.js` hasil edit lolos `node --check`. Setiap `old_string` pada langkah Edit dicocokkan terhadap berkas nyata di cabang `fase-2-master-data` dan ditemukan tepat satu kali; penjaga teks `FrontendManifestTest` (kata terlarang dan kebutuhan) dicocokkan terhadap `editor.js`.
+**Catatan verifikasi penulis (Task 5-8):** Semua blok PHP lengkap (termasuk berkas tes dan `DoctorService` hasil penerapan siklus A-C, `routes/admin.php`, `config/navigation.php`, dan `FrontendManifestTest` hasil penerapan edit) lolos `php -l` 8.2 (`C:\xampp3\php\php.exe`). `editor.js` dan `admin.js` hasil edit lolos `node --check`. Setiap `old_string` pada langkah Edit dicocokkan terhadap berkas nyata di cabang `fase-2-master-data` dan ditemukan tepat satu kali; penjaga teks `FrontendManifestTest` (kata terlarang dan kebutuhan) dicocokkan terhadap `editor.js`.
 
 
 ---
@@ -9898,7 +9981,7 @@ Tool Write `resources/views/admin/specialties/index.blade.php`:
 @php
     $currentSort = (string) request()->query('urut', '');
     $statusNow = (string) request()->query('status', '');
-    $sortUrl = fn (string $key): string => request()->fullUrlWithQuery(['urut' => $key, 'page' => null]);
+    $sortUrl = fn (string $key): string => request()->fullUrlWithQuery(['urut' => $key, 'kembali' => null, 'page' => null]);
     $breadcrumbItems = [
         [
             'label' => 'Poliklinik dan Spesialisasi',
@@ -10013,6 +10096,7 @@ Expected: PASS (15 tes); `route:list` menampilkan lima baris (`index`, `create`,
 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/SpecialtyController.php app/Http/Requests/Admin/MasterDataIndexRequest.php routes/admin.php resources/views/admin/specialties/index.blade.php tests/Feature/Admin/AdminSpecialtyIndexTest.php
 git commit -m @'
@@ -10021,7 +10105,7 @@ feat(fase-2): daftar admin spesialisasi dengan filter, urutan, dan hitungan pema
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 '@
 ```
-Expected: Pint PASS (bila gagal, jalankan `& $PHP vendor\bin\pint` lalu ulangi `--test` sebelum commit).
+Expected: `pint` tanpa `--test` dijalankan lebih dulu dan merapikan berkas yang disentuh (mis. urutan impor `routes/admin.php` atau `DoctorController` yang baru ditambah); lalu `pint --test` PASS sebelum commit.
 
 **Siklus B — tambah dan ubah (`create`, `store`, `edit`, `update`), `SpecialtyRequest`, form**
 
@@ -10571,12 +10655,13 @@ Tool Write `resources/views/admin/specialties/edit.blade.php`:
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
 & $PHP artisan test --filter="AdminSpecialtyCrudTest|AdminSpecialtyValidationTest|AdminSpecialtyIndexTest"
 ```
-Expected: PASS (seluruh tes tiga kelas, termasuk 13 kasus data provider validasi). Tes otorisasi mutasi untuk `delete` lulus karena `permission:clinics.manage` menolak sebelum method controller dipanggil.
+Expected: PASS (seluruh tes tiga kelas, termasuk 12 kasus data provider validasi). Tes otorisasi mutasi untuk `delete` lulus karena `permission:clinics.manage` menolak sebelum method controller dipanggil.
 
 - [ ] **Step 11: Pint dan commit**
 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/SpecialtyController.php app/Http/Requests/Admin/SpecialtyRequest.php resources/views/admin/specialties tests/Feature/Admin/AdminSpecialtyCrudTest.php tests/Feature/Admin/AdminSpecialtyValidationTest.php
 git commit -m @'
@@ -10585,7 +10670,7 @@ feat(fase-2): tambah dan ubah spesialisasi dengan validasi V-21
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 '@
 ```
-Expected: Pint PASS (bila gagal, jalankan `& $PHP vendor\bin\pint` lalu ulangi `--test`).
+Expected: `pint` tanpa `--test` dijalankan lebih dulu dan merapikan berkas yang disentuh (mis. urutan impor `routes/admin.php` atau `DoctorController` yang baru ditambah); lalu `pint --test` PASS sebelum commit.
 
 **Siklus C — hapus bersyarat (`destroy`), termasuk Super Admin**
 
@@ -10683,7 +10768,7 @@ Expected: FAIL — `BadMethodCallException: Method App\Http\Controllers\Admin\Sp
         $reason = $specialty->deletionBlockedReason();
 
         if ($reason !== null) {
-            return redirect()->route('admin.specialties.index')->with('error', $reason);
+            return redirect()->route('admin.specialties.index')->with('error', __('messages.delete_blocked', ['reason' => $reason]));
         }
 
         DB::transaction(fn (): ?bool => $specialty->delete());
@@ -10708,6 +10793,7 @@ Expected: PASS untuk ketiga kelas `AdminSpecialty*`; `AdminRouteMiddlewareTest` 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
 & $PHP artisan test
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/SpecialtyController.php tests/Feature/Admin/AdminSpecialtyCrudTest.php
 git commit -m @'
@@ -10737,7 +10823,7 @@ Expected: seluruh suite PASS; Pint PASS.
   - Task 3: `AuditObserver` (`clinic.created|updated|deleted`), `messages.*`, `messages.entities.clinic` = "Poliklinik".
   - Task 4: `ClinicPolicy` (`clinics.manage`).
   - Task 5: `x-module-tabs`, `x-data-table` (`preserve`).
-  - Task 6: route `admin.media.update` (PATCH, `alt_text`, `caption?`), `admin.media.destroy` (DELETE), `admin.media.reorder` (POST, `ids[]`); semuanya `back()` + flash bila bukan JSON.
+  - Task 6: route `admin.media.update` (PATCH, `alt_text`, `caption?`), `admin.media.destroy` (DELETE), `admin.media.reorder` (POST, `ids[]`); semuanya `back()` + flash bila bukan JSON. Galat validasi pada form HTML biasa juga kembali sebagai redirect + `$errors` berkat perubahan `shouldRenderJsonWhen` di Task 6 Step 7a, sehingga form galeri di bawah tidak menampilkan JSON mentah.
   - Task 7: `x-form.rich-text` (`name`, `label`, `value`, `help`, `maxlength`; penanda `data-rich-text`).
   - Task 9: `MasterDataIndexRequest::applyTo()`.
   - Fase 1: `MediaService::store()/replace()` (final, constructor `(AuditLogger $audit)`), `ImageRules::for()/messages()`, `x-image`, `x-form.file|select|input|textarea|checkbox`, `Tests\Support\ImageFixtures`, `InteractsWithMedia`.
@@ -11049,7 +11135,7 @@ Tool Write `resources/views/admin/clinics/index.blade.php`:
 @php
     $currentSort = (string) request()->query('urut', '');
     $statusNow = (string) request()->query('status', '');
-    $sortUrl = fn (string $key): string => request()->fullUrlWithQuery(['urut' => $key, 'page' => null]);
+    $sortUrl = fn (string $key): string => request()->fullUrlWithQuery(['urut' => $key, 'kembali' => null, 'page' => null]);
     $breadcrumbItems = [
         ['label' => 'Poliklinik dan Spesialisasi', 'url' => route('admin.clinics.index')],
         ['label' => 'Poliklinik'],
@@ -11171,6 +11257,7 @@ Expected: PASS (11 tes `AdminClinicIndexTest` ditambah tes spesialisasi yang tet
 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/ClinicController.php routes/admin.php resources/scss/_admin.scss resources/views/admin/clinics/index.blade.php tests/Feature/Admin/AdminClinicIndexTest.php
 git commit -m @'
@@ -11179,7 +11266,7 @@ feat(fase-2): daftar admin poliklinik dengan tab modul, filter, dan hitungan dok
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 '@
 ```
-Expected: Pint PASS (bila gagal, jalankan `& $PHP vendor\bin\pint` lalu ulangi `--test`).
+Expected: `pint` tanpa `--test` dijalankan lebih dulu dan merapikan berkas yang disentuh (mis. urutan impor `routes/admin.php` atau `DoctorController` yang baru ditambah); lalu `pint --test` PASS sebelum commit.
 
 **Siklus B — tambah dan ubah, `ClinicRequest`, cover, galeri, sanitasi**
 
@@ -12085,7 +12172,7 @@ class ClinicController extends Controller
         $reason = $clinic->deletionBlockedReason();
 
         if ($reason !== null) {
-            return redirect()->route('admin.clinics.index')->with('error', $reason);
+            return redirect()->route('admin.clinics.index')->with('error', __('messages.delete_blocked', ['reason' => $reason]));
         }
 
         DB::transaction(fn (): ?bool => $clinic->delete());
@@ -12343,6 +12430,7 @@ Expected: PASS untuk `AdminClinicIndexTest`, `AdminClinicCrudTest`, `AdminClinic
 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/ClinicController.php app/Http/Requests/Admin/ClinicRequest.php resources/views/admin/clinics tests/Feature/Admin/AdminClinicCrudTest.php tests/Feature/Admin/AdminClinicValidationTest.php
 git commit -m @'
@@ -12351,7 +12439,7 @@ feat(fase-2): tambah, ubah, dan hapus poliklinik dengan cover, galeri, dan edito
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 '@
 ```
-Expected: Pint PASS (bila gagal, jalankan `& $PHP vendor\bin\pint` lalu ulangi `--test`).
+Expected: `pint` tanpa `--test` dijalankan lebih dulu dan merapikan berkas yang disentuh (mis. urutan impor `routes/admin.php` atau `DoctorController` yang baru ditambah); lalu `pint --test` PASS sebelum commit.
 
 - [ ] **Step 12: Seluruh suite dan build**
 
@@ -12862,7 +12950,7 @@ Tool Write `resources/views/admin/doctors/index.blade.php`:
 ```blade
 @php
     $currentSort = (string) request()->query('urut', '');
-    $sortUrl = fn (string $key): string => request()->fullUrlWithQuery(['urut' => $key, 'page' => null]);
+    $sortUrl = fn (string $key): string => request()->fullUrlWithQuery(['urut' => $key, 'kembali' => null, 'page' => null]);
 @endphp
 <x-layouts.admin title="Dokter">
     <x-slot:breadcrumb>
@@ -12975,6 +13063,7 @@ Expected: PASS (14 tes); `route:list` menampilkan `index` dan `show` (GET), `cre
 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/DoctorController.php app/Http/Requests/Admin/DoctorIndexRequest.php routes/admin.php resources/views/admin/doctors/index.blade.php tests/Feature/Admin/AdminDoctorIndexTest.php
 git commit -m @'
@@ -12983,7 +13072,7 @@ feat(fase-2): daftar admin dokter dengan filter status, poliklinik, spesialisasi
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 '@
 ```
-Expected: Pint PASS (bila gagal, jalankan `& $PHP vendor\bin\pint` lalu ulangi `--test`).
+Expected: `pint` tanpa `--test` dijalankan lebih dulu dan merapikan berkas yang disentuh (mis. urutan impor `routes/admin.php` atau `DoctorController` yang baru ditambah); lalu `pint --test` PASS sebelum commit.
 
 **Siklus B — detail (`show`)**
 
@@ -13246,6 +13335,7 @@ Expected: PASS (`AdminDoctorShowTest` 7 tes: 3 data provider + 4 lain; `AdminDoc
 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/DoctorController.php resources/views/admin/doctors/show.blade.php tests/Feature/Admin/AdminDoctorShowTest.php
 git commit -m @'
@@ -14265,6 +14355,7 @@ Expected: PASS untuk keempat kelas `AdminDoctor*` (termasuk 35 kasus data provid
 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/DoctorController.php app/Http/Requests/Admin/StoreDoctorRequest.php app/Http/Requests/Admin/UpdateDoctorRequest.php resources/views/admin/doctors tests/Feature/Admin/AdminDoctorCrudTest.php tests/Feature/Admin/AdminDoctorValidationTest.php
 git commit -m @'
@@ -14273,7 +14364,7 @@ feat(fase-2): tambah dan ubah dokter lewat DoctorService dengan validasi V-19 da
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 '@
 ```
-Expected: Pint PASS (bila gagal, jalankan `& $PHP vendor\bin\pint` lalu ulangi `--test`).
+Expected: `pint` tanpa `--test` dijalankan lebih dulu dan merapikan berkas yang disentuh (mis. urutan impor `routes/admin.php` atau `DoctorController` yang baru ditambah); lalu `pint --test` PASS sebelum commit.
 
 - [ ] **Step 17: Seluruh suite**
 
@@ -14795,6 +14886,7 @@ Catatan: tes `test_list_shows_status_buttons_per_status_to_managers_only` mengan
 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/DoctorController.php app/Http/Requests/Admin/UpdateDoctorStatusRequest.php routes/admin.php resources/views/admin/doctors tests/Feature/Admin/AdminDoctorStatusTest.php
 git commit -m @'
@@ -14803,7 +14895,7 @@ feat(fase-2): ubah status dokter dan pulihkan dari arsip lewat modal konfirmasi
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 '@
 ```
-Expected: Pint PASS (bila gagal, jalankan `& $PHP vendor\bin\pint` lalu ulangi `--test`).
+Expected: `pint` tanpa `--test` dijalankan lebih dulu dan merapikan berkas yang disentuh (mis. urutan impor `routes/admin.php` atau `DoctorController` yang baru ditambah); lalu `pint --test` PASS sebelum commit.
 
 **Siklus B — arsip dengan titik sambung F2-R8**
 
@@ -15104,6 +15196,7 @@ Expected: PASS (`AdminDoctorArchiveTest` 10 tes termasuk data provider; semua hi
 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/DoctorController.php app/Http/Requests/Admin/ArchiveDoctorRequest.php tests/Feature/Admin/AdminDoctorArchiveTest.php
 git commit -m @'
@@ -15112,7 +15205,7 @@ feat(fase-2): arsip dokter dengan pemeriksaan appointment aktif lewat titik samb
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 '@
 ```
-Expected: Pint PASS (bila gagal, jalankan `& $PHP vendor\bin\pint` lalu ulangi `--test`).
+Expected: `pint` tanpa `--test` dijalankan lebih dulu dan merapikan berkas yang disentuh (mis. urutan impor `routes/admin.php` atau `DoctorController` yang baru ditambah); lalu `pint --test` PASS sebelum commit.
 
 **Siklus C — ganti foto (`photo`)**
 
@@ -15423,6 +15516,7 @@ Expected: PASS untuk seluruh kelas `AdminDoctor*` dan `AdminRouteMiddlewareTest`
 
 ```powershell
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
+& $PHP vendor\bin\pint
 & $PHP vendor\bin\pint --test
 git add app/Http/Controllers/Admin/DoctorController.php app/Http/Requests/Admin/UploadDoctorPhotoRequest.php resources/views/admin/doctors/show.blade.php tests/Feature/Admin/AdminDoctorPhotoTest.php
 git commit -m @'
@@ -15431,7 +15525,7 @@ feat(fase-2): ganti foto dokter dengan teks alternatif wajib dan penghapusan fot
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 '@
 ```
-Expected: Pint PASS (bila gagal, jalankan `& $PHP vendor\bin\pint` lalu ulangi `--test`).
+Expected: `pint` tanpa `--test` dijalankan lebih dulu dan merapikan berkas yang disentuh (mis. urutan impor `routes/admin.php` atau `DoctorController` yang baru ditambah); lalu `pint --test` PASS sebelum commit.
 
 - [ ] **Step 17: Seluruh suite, Pint, build**
 
@@ -15679,7 +15773,7 @@ class PublicClinicPagesTest extends TestCase
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"; $APP = "D:\Project Web RS"; $env:Path = "$XAMPP\php;$env:Path"; Set-Location $APP
 & $PHP artisan test --filter=PublicClinicPagesTest
 ```
-Expected: FAIL — `Symfony\Component\Routing\Exception\RouteNotFoundException: Route [clinics.index] not defined.` pada tujuh tes yang memanggil `route('clinics.index')`; `test_strict_mode_is_active_in_the_test_suite` PASS.
+Expected: FAIL — `Symfony\Component\Routing\Exception\RouteNotFoundException: Route [clinics.index] not defined.` pada delapan tes yang memanggil `route('clinics.index')`; `test_strict_mode_is_active_in_the_test_suite` PASS.
 
 - [ ] **Step 4: Implementasi #4 (tool Write; untuk `routes/web.php` Read dulu lalu Write)**
 
@@ -16735,7 +16829,7 @@ $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\comp
 & $PHP artisan test --filter="DoctorCardComponentTest|PublicClinicDetailTest|RawOutputScanTest|PublicClinicPagesTest|FrontendManifestTest|SecurityHeadersTest"
 npm run build
 ```
-Expected: PASS (DoctorCard 7, Detail 20, RawOutputScan 4, Pages 9; `FrontendManifestTest` dan `SecurityHeadersTest` tetap hijau); build sukses. Bila `test_only_publicly_visible_doctors_of_the_clinic_are_listed` gagal pada `assertSame([$visible->id], …)`, periksa scope `publiclyVisible()` Task 1 (aktif **dan** `clinic.is_active`), bukan tes.
+Expected: PASS (DoctorCard 7, Detail 21, RawOutputScan 4, Pages 9; `FrontendManifestTest` dan `SecurityHeadersTest` tetap hijau); build sukses. Bila `test_only_publicly_visible_doctors_of_the_clinic_are_listed` gagal pada `assertSame([$visible->id], …)`, periksa scope `publiclyVisible()` Task 1 (aktif **dan** `clinic.is_active`), bukan tes.
 
 - [ ] **Step 13: Seluruh suite, Pint, commit**
 
@@ -17282,7 +17376,7 @@ class MasterDataSeedRowsTest extends TestCase
 
         foreach ($rows as $row) {
             $this->assertMatchesRegularExpression('/^[A-Z]{2,5}$/', $row['code']);
-            $this->assertLessThanOrEqual(300, mb_strlen($row['short']));
+            $this->assertLessThanOrEqual(300, mb_strlen(ClinicSeeder::shortDescription($row)));
         }
 
         $this->assertCount(16, array_filter($rows, fn (array $row): bool => $row['cover']));
