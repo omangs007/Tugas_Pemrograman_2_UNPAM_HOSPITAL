@@ -851,7 +851,7 @@ Kondisi kosong:
 1. Breadcrumb: Beranda › Layanan › {nama}.
 2. Gambar `cover` (rasio 16:9) dan galeri `gallery` (thumbnail; klik membuka lightbox Bootstrap dengan `alt`).
 3. `<h1>` nama; lokasi (`location`, mis. “Gedung A Lt. 2”); `code` poliklinik (awalan nomor antrean) hanya bila `is_bookable`; `short_description`; `description` (rich text tersanitasi, dirender `{!! !!}`).
-4. **Dokter di poliklinik ini**: `x-doctor-card` ringkas dengan jadwal praktik terdekat dari `DoctorAvailabilityQuery` (“Sisa 5 (Sen 5 Okt)”).
+4. **Dokter di poliklinik ini**: `x-doctor-card` ringkas (fase 2: foto, nama tampilan, spesialisasi utama, dan tautan `doctors.show` bila route ada; jadwal praktik terdekat dari `DoctorAvailabilityQuery` ditambahkan di fase 3, F2-R9) (“Sisa 5 (Sen 5 Okt)”).
 5. Panel samping: lokasi, status dapat didaftar online, tombol **Daftar Kunjungan** (`patient.appointments.create?poli={clinics.slug}`) dan **Jadwal Dokter** (`schedules.index?poli={clinics.slug}`), serta kontak bantuan (placeholder).
 
 **Perilaku interaksi**
@@ -2137,7 +2137,7 @@ Galat dan sukses:
 3. **Jenis kelamin** (`gender`: Laki-laki/Perempuan), **poliklinik utama** (`clinic_id`, hanya poliklinik aktif).
 4. **Spesialisasi** multi-pilih (`doctor_specialties`): daftar centang dari `specialties` aktif, masing-masing dengan radio **Utama** (`is_primary`); minimal satu spesialisasi dan tepat satu Utama **[ASUMSI]**.
 5. **Profil singkat** (`short_bio`, maks 500 karakter, penghitung) dan **biodata lengkap** (`bio`, teks biasa tanpa HTML).
-6. **Status** (`status`: Aktif/Nonaktif; arsip dilakukan dari daftar/detail dengan konfirmasi), **urutan tampil** (`sort_order`), bagian lipat **SEO** (`meta_title` ≤ 60, `meta_description` ≤ 160 karakter, dengan penghitung).
+6. **urutan tampil** (`sort_order`); **tidak ada field status** (dokter baru selalu `active`; aktif/nonaktif dan pemulihan lewat `admin.doctors.status`, arsip dari daftar/detail dengan konfirmasi, F2-R6/F2-R7); bagian lipat **SEO** (`meta_title` ≤ 70 (F2-R23), `meta_description` ≤ 160 karakter, dengan penghitung).
 7. Tombol **Simpan** dan **Batal**.
 
 **Perilaku interaksi**

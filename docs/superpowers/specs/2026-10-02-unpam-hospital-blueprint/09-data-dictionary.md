@@ -331,7 +331,7 @@ Total **37 tabel** wajib (00 bagian E) + `migrations` (tabel internal Laravel, d
 
 - **Primary key:** `id`.
 - **Foreign key:** `specialty_id` → `specialties.id` `ON DELETE SET NULL`.
-- **Relasi Eloquent:** `Clinic::specialty()` belongsTo `Specialty`; `Clinic::doctors()` hasMany `Doctor` (poliklinik utama); `Clinic::schedules()` hasMany `DoctorSchedule`; `Clinic::sessions()` hasMany `PracticeSession`; `Clinic::appointments()` hasMany `Appointment`; `Clinic::cover()` morphOne `Media` (koleksi `cover`); `Clinic::gallery()` morphMany `Media` (koleksi `gallery`, urut `sort_order`).
+- **Relasi Eloquent:** `Clinic::specialty()` belongsTo `Specialty`; `Clinic::doctors()` hasMany `Doctor` (poliklinik utama); `Clinic::schedules()` hasMany `DoctorSchedule`; `Clinic::sessions()` hasMany `PracticeSession`; `Clinic::appointments()` hasMany `Appointment`; cover dan galeri lewat trait `HasMedia` (`firstMedia('cover')`, `mediaIn('gallery')`, urut `sort_order`, `id`); tidak ada relasi `cover()`/`gallery()` khusus (F2-R24).
 - **Index & unique:** `PRIMARY (id)`; `clinics_slug_unique (slug)`; `clinics_code_unique (code)`; `clinics_specialty_id_foreign (specialty_id)`; `clinics_is_active_type_sort_order_index (is_active, type, sort_order)`.
 - **CHECK constraint:** tidak ada.
 - **Cast Eloquent:** `type` → `ClinicType`; `is_bookable` → `boolean`; `is_active` → `boolean`. Route key = `slug`.
@@ -362,7 +362,7 @@ Total **37 tabel** wajib (00 bagian E) + `migrations` (tabel internal Laravel, d
 
 - **Primary key:** `id`.
 - **Foreign key:** `clinic_id` → `clinics.id` `ON DELETE RESTRICT`.
-- **Relasi Eloquent:** `Doctor::clinic()` belongsTo `Clinic`; `Doctor::specialties()` belongsToMany `Specialty` (pivot `doctor_specialties`, `withPivot('is_primary')`); `Doctor::primarySpecialty()` = `specialties()->wherePivot('is_primary', true)` (diambil `->first()`); `Doctor::schedules()` hasMany `DoctorSchedule`; `Doctor::exceptions()` hasMany `ScheduleException`; `Doctor::sessions()` hasMany `PracticeSession`; `Doctor::appointments()` hasMany `Appointment`; `Doctor::photo()` morphOne `Media` (koleksi `photo`).
+- **Relasi Eloquent:** `Doctor::clinic()` belongsTo `Clinic`; `Doctor::specialties()` belongsToMany `Specialty` (pivot `doctor_specialties`, `withPivot('is_primary')`); `Doctor::primarySpecialty` = accessor (bukan relasi) dari relasi `specialties` yang sudah dimuat: baris pivot `is_primary`, cadangan spesialisasi pertama (11 §5.2, F2-R24); `Doctor::schedules()` hasMany `DoctorSchedule`; `Doctor::exceptions()` hasMany `ScheduleException`; `Doctor::sessions()` hasMany `PracticeSession`; `Doctor::appointments()` hasMany `Appointment`; foto lewat trait `HasMedia` (`firstMedia('photo')`, accessor `photoUrl`/`photoThumbUrl`); tidak ada relasi `photo()` khusus (F2-R24).
 - **Index & unique:** `PRIMARY (id)`; `doctors_slug_unique (slug)`; `doctors_clinic_id_foreign (clinic_id)`; `doctors_status_sort_order_index (status, sort_order)`. Pencarian nama memakai `LIKE` (volume kecil; tanpa FULLTEXT).
 - **CHECK constraint:** tidak ada (konsistensi `status = archived` ↔ `archived_at` terisi dijaga service, Invarian I-23).
 - **Cast Eloquent:** `gender` → `Gender`; `status` → `DoctorStatus`; `archived_at` → `datetime`. Route key = `slug`.
@@ -863,7 +863,7 @@ Kaitan status dengan kolom waktu (ditegakkan service, Invarian I-14):
 
 - **Primary key:** `id`.
 - **Foreign key:** `uploaded_by` → `users.id` `ON DELETE SET NULL`. (Tidak ada FK untuk `model_id`; polymorphic.)
-- **Relasi Eloquent:** `Media::model()` morphTo; `Media::uploader()` belongsTo `User` (`uploaded_by`). Dari sisi pemilik: trait `HasMedia` → `media()` morphMany serta relasi per koleksi (`Doctor::photo()`, `Clinic::gallery()`, …). Accessor `url` (`Storage::disk($disk)->url("$directory/$file_name")`, hanya disk `public`), `thumb_url`.
+- **Relasi Eloquent:** `Media::model()` morphTo; `Media::uploader()` belongsTo `User` (`uploaded_by`). Dari sisi pemilik: trait `HasMedia` → `media()` morphMany serta akses per koleksi lewat `firstMedia()`/`mediaIn()` (tanpa relasi khusus per koleksi pada `Doctor`/`Clinic`, F2-R24). Accessor `url` (`Storage::disk($disk)->url("$directory/$file_name")`, hanya disk `public`), `thumb_url`.
 - **Index & unique:** `PRIMARY (id)`; `media_model_type_model_id_collection_sort_order_index (model_type, model_id, collection, sort_order)`; `media_file_name_unique (file_name)` **[ASUMSI]**; FK `media_uploaded_by_foreign`. Pembersihan `media:prune` (baris `model_id` NULL berumur > 24 jam) memindai tabel kecil sehingga tidak perlu index tambahan.
 - **CHECK constraint:** `chk_media_owner ((model_type IS NULL AND model_id IS NULL) OR (model_type IS NOT NULL AND model_id IS NOT NULL))` **[ASUMSI]** — pasangan morph terisi bersama atau kosong bersama.
 - **Cast Eloquent:** `size_bytes`, `width`, `height`, `sort_order` → `integer`.
@@ -1326,7 +1326,7 @@ Invarian adalah kebenaran yang **harus selalu berlaku** setelah setiap transaksi
 | **I-2** | `last_queue_number` ≥ `MAX(queue_number)` sesi itu (dalam praktik sama persis karena appointment tidak pernah dihapus), dan ≥ `booked_count`. Nomor tidak pernah dipakai ulang. | Service (`++last_queue_number` di bawah kunci sesi); DB: UNIQUE (`practice_session_id`, `queue_number`) dan `chk_sessions_queue`. | Kueri K-2. |
 | **I-3** | `appointments.doctor_id`, `clinic_id`, `session_date` = nilai pada `practice_sessions` induknya. | Service (disalin dari sesi saat `book()`); `doctor_id`/`clinic_id`/`session_date` sesi tidak dapat diubah (I-32). DB: tidak ada (lintas tabel). | Kueri K-3. |
 | **I-4** | `0 ≤ room_categories.beds_available ≤ bed_capacity`. | DB (`chk_room_categories_beds`) + Form Request. | Dijamin DB. |
-| **I-5** | Setiap dokter punya ≥ 1 spesialisasi dan **tepat satu** `doctor_specialties.is_primary = 1`. | Service `DoctorService::syncSpecialties()` (transaksi: nolkan semua, lalu set satu) + Form Request. Tidak dipasang sebagai generated-column UNIQUE karena `sync()` pivot dapat membuat dua baris utama sesaat sehingga constraint per baris gagal. | Kueri K-5. |
+| **I-5** | Setiap dokter punya ≥ 1 spesialisasi dan **tepat satu** `doctor_specialties.is_primary = 1`. | Service `Doctors\DoctorService::syncSpecialties()` (satu-satunya jalur tulis dokter, F2-R20; transaksi: nolkan semua, lalu set satu) + Form Request. Tidak dipasang sebagai generated-column UNIQUE karena `sync()` pivot dapat membuat dua baris utama sesaat sehingga constraint per baris gagal. | Kueri K-5. |
 | **I-6** | Paling banyak satu `media` per (`model_type`, `model_id`, `collection`) pada koleksi tunggal (`photo`, `cover`, `image`, `logo`). | Service `MediaService::replace()` yang mengunci baris pemilik (`lockForUpdate`) saat mengganti; tidak ada partial unique index di MariaDB 10.4. | Kueri K-6; tes unggah paralel. |
 | **I-7** | Tidak ada dua appointment dengan `queue_number` sama pada satu sesi. | DB UNIQUE `appointments_practice_session_id_queue_number_unique`. | Dijamin DB. |
 | **I-8** | Seorang pasien memiliki paling banyak satu appointment **aktif** (`pending`/`confirmed`/`checked_in`) pada satu sesi. | DB UNIQUE `appointments_patient_session_active_unique` (via `active_flag`) + pemeriksaan service (pesan jelas). | Dijamin DB. |
@@ -1624,7 +1624,7 @@ Angka mengikuti rencana seeder di [13-data-contoh.md](13-data-contoh.md) bagian 
 | `specialties` | 13 | daftar di kebutuhan §6 |
 | `clinics` | 17 | 13 poliklinik + 4 layanan penunjang |
 | `doctors` | 18 | 16 aktif, 1 nonaktif, 1 arsip |
-| `doctor_specialties` | ±22 | sebagian dokter dua spesialisasi |
+| `doctor_specialties` | 20 (18 primer + 2 sekunder, 13 §6) | sebagian dokter dua spesialisasi |
 | `doctor_schedules` | 52 | 51 aktif + 1 nonaktif |
 | `schedule_exceptions` | 3 | 2 dari seeder jadwal + 1 dari seeder appointment |
 | `practice_sessions` | ±300 | 14 hari lampau + 30 hari ke depan, + 1 sesi tambahan manual |

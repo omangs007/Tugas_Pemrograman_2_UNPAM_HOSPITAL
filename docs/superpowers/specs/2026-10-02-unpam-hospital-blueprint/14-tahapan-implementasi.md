@@ -83,8 +83,8 @@ ID fitur mengikuti [02 — Ruang lingkup](02-ruang-lingkup.md) (`F-PUB`, `F-AUTH
 | Fase | Fitur (ID 02) |
 |---|---|
 | 0 | F-SYS-18 (zona waktu, locale; `lang/id` dasar) — selebihnya lingkungan dan skeleton |
-| 1 | F-AUTH-03 (logout staf), F-AUTH-06, F-AUTH-07, F-AUTH-08, F-AUTH-09, F-SYS-07, F-SYS-08, F-SYS-09, F-SYS-10, F-SYS-11, F-SYS-12 (`app:create-super-admin`, `media:prune`), F-SYS-15, F-SYS-16, F-SYS-17, F-SYS-18, F-PUB-19, F-PUB-20, F-ADM-29 |
-| 2 | F-ADM-02, F-ADM-03, F-ADM-04, F-PUB-04 (dan F-SYS-14 bagian data master) |
+| 1 | F-AUTH-03 (logout staf), F-AUTH-06, F-AUTH-07, F-AUTH-08, F-AUTH-09, F-SYS-07, F-SYS-08, F-SYS-09, F-SYS-10, F-SYS-11, F-SYS-12 (`app:create-super-admin`, `media:prune`), F-SYS-15, F-SYS-16, F-SYS-17, F-SYS-18, F-PUB-19, F-PUB-20 |
+| 2 | F-ADM-02, F-ADM-03, F-ADM-04, F-ADM-29 (endpoint media + editor, D-28), F-PUB-04 (dan F-SYS-14 bagian data master) |
 | 3 | F-ADM-05, F-ADM-06, F-ADM-07, F-SYS-01, F-SYS-02, F-SYS-06 (sebagian: propagasi), F-SYS-12 (`sessions:generate`), F-PUB-05, F-PUB-06, F-PUB-07 |
 | 4a | F-PUB-01, F-PUB-02, F-PUB-03, F-PUB-10, F-PUB-11, F-PUB-12, F-PUB-13, F-PUB-14, F-PUB-17, F-PUB-18, F-ADM-18, F-ADM-19, F-ADM-20, F-ADM-21, F-ADM-22, F-ADM-23 |
 | 4b | F-PUB-08, F-PUB-09, F-PUB-15, F-PUB-16, F-ADM-09, F-ADM-10, F-ADM-11, F-ADM-24 |
@@ -146,7 +146,7 @@ ID fitur mengikuti [02 — Ruang lingkup](02-ruang-lingkup.md) (`F-PUB`, `F-AUTH
 
 **Keluaran.**
 - Halaman: **#31 Login admin**, layar ganti password staf, kerangka `layouts.admin` (halaman beranda admin sementara berisi sapaan sampai fase 8), error page dasar 403/404.
-- Fitur: F-AUTH-03 (logout staf), F-AUTH-06, F-AUTH-07, F-AUTH-08, F-AUTH-09, F-SYS-07 sampai F-SYS-12, F-SYS-15 sampai F-SYS-18, F-PUB-19, F-PUB-20, F-ADM-29 (endpoint media). Antarmuka dasar: SCSS tema Bootstrap, token warna 00 M, komponen Blade generik (SCSS tema Bootstrap, token warna 00 M, komponen Blade J.5 yang bersifat generik: `x-image`, `form.*`, `data-table`, `status-badge`, `empty-state`, `flash-alert`, `loading-button`, `confirm-modal`, `breadcrumb`, `page-header`, `stat-card`).
+- Fitur: F-AUTH-03 (logout staf), F-AUTH-06, F-AUTH-07, F-AUTH-08, F-AUTH-09, F-SYS-07 sampai F-SYS-12, F-SYS-15 sampai F-SYS-18, F-PUB-19, F-PUB-20 (F-ADM-29, endpoint media, dikerjakan di fase 2: D-28, F2-R3). Antarmuka dasar: SCSS tema Bootstrap, token warna 00 M, komponen Blade generik (SCSS tema Bootstrap, token warna 00 M, komponen Blade J.5 yang bersifat generik: `x-image`, `form.*`, `data-table`, `status-badge`, `empty-state`, `flash-alert`, `loading-button`, `confirm-modal`, `breadcrumb`, `page-header`, `stat-card`).
 - Skema: `users` (+ kolom 00 E.1), tabel Spatie, `website_settings`, `audit_logs`, `media`, tabel bawaan (`sessions`, `cache`, `jobs`, `notifications`, `password_reset_tokens`).
 - Enum (`App\Enums\*`), `RolePermissionSeeder`, `SettingsSeeder`.
 - Autentikasi pasien: **infrastruktur** (middleware `account`, `active`, `password.changed`, rate limiter `login`/`password-reset`/`register`/`booking`/`contact`); UI pasien menyusul di fase 5 **[ASUMSI]**.
@@ -188,20 +188,20 @@ ID fitur mengikuti [02 — Ruang lingkup](02-ruang-lingkup.md) (`F-PUB`, `F-AUTH
 
 **Keluaran.**
 - Halaman: **#33 Pengelolaan dokter** (index, create, edit, show, status, arsip, foto), **#34 Spesialisasi & poliklinik**, publik **#4 Daftar layanan**, **#5 Detail layanan** (tanpa daftar jadwal sampai fase 3).
-- Fitur: F-ADM-02, F-ADM-03, F-ADM-04, F-PUB-04 (dan F-SYS-14 bagian data master).
+- Fitur: F-ADM-02, F-ADM-03, F-ADM-04, F-ADM-29, F-PUB-04 (dan F-SYS-14 bagian data master).
 - Skema: `specialties`, `clinics`, `doctors`, `doctor_specialties`; seeder demo `SpecialtySeeder`, `ClinicSeeder`, `DoctorSeeder`; `PlaceholderImageGenerator`; factory terkait.
 
 **Dependensi.** Fase 1.
 
 **Tugas utama (berurutan).**
-1. Migration + model + relasi + `slug` (route model binding) untuk empat tabel; FK `restrict` pada `doctors.clinic_id`.
+1. Migration + model + relasi + `slug` otomatis lewat trait `HasUniqueSlug` (route publik `{clinic:slug}` ditulis eksplisit, model tanpa `getRouteKeyName()`; F2-R4, F2-R5) untuk tabel yang ber-slug; FK `restrict` pada `doctors.clinic_id`.
 2. Policy (`SpecialtyPolicy`, `ClinicPolicy`, `DoctorPolicy`) dan Form Request.
 3. Controller admin + view (`data-table` dengan pencarian, filter status, pagination, kartu di mobile).
 4. Editor rich text Quill (`clinics.description`) + penyimpanan lewat `HtmlSanitizer`; gambar editor via `admin.media.editor-upload`.
 5. Unggah dan ganti foto dokter (`admin.doctors.photo`) dengan `MediaService::replace` (file lama dihapus setelah commit).
-6. Aktif/nonaktif/arsip dokter lewat `UpdateDoctorStatusRequest` (`admin.doctors.status`) dan `ArchiveDoctorRequest` (`admin.doctors.archive`), dua kelas terpisah; aturan F.4 (nonaktif → sesi mendatang `cancelled`/`needs_review` sumber `doctor_inactive`; arsip ditolak bila ada appointment aktif mendatang) dilengkapi di fase 3 setelah tabel `appointments` dan `ScheduleChangeService` ada; nama tampilan `{title_prefix} {name}, {title_suffix}`.
+6. Aktif/nonaktif/arsip dokter lewat `UpdateDoctorStatusRequest` (`admin.doctors.status`) dan `ArchiveDoctorRequest` (`admin.doctors.archive`), dua kelas terpisah; aturan F.4 (nonaktif → sesi mendatang `cancelled`/`needs_review` sumber `doctor_inactive`; arsip ditolak bila ada appointment aktif mendatang) dilengkapi di fase 3 setelah tabel `appointments` dan `ScheduleChangeService` ada (fase 2: titik sambung `DoctorService::futureActiveAppointmentsCount()` selalu 0, arsip diizinkan, F2-R8; pemulihan arsip lewat `admin.doctors.status` dengan `inactive`, F2-R7); nama tampilan `{title_prefix} {name}, {title_suffix}`.
 7. Halaman publik #4 dan #5; komponen `x-image` fallback.
-8. Seeder dan factory demo; perluas matriks `AKS`.
+8. Seeder dan factory demo; perluas matriks `AKS`. Carry fase 1 yang dikerjakan di sini: `x-form.checkbox` larik (hanya nilai `old()` skalar yang dipakai), `x-data-table` (halaman di luar jangkauan, `preserve`), meta `csrf-token`, poles hasil uji manual, butir (c) `media:prune` (F2-R26); carry pengaturan situs (WhatsApp `62…`, bool/int ketat) ditunda ke fase 8 (F2-R27).
 
 **Kriteria keluar.**
 - `CRD-01`–`CRD-04` (CRUD spesialisasi/poliklinik/dokter tampil di publik), `MED-01` (unggah foto), `MED-02` (ganti foto → file lama terhapus), `MED-08` (gambar hilang → placeholder), `AKS` untuk rute fase ini (content-admin boleh, petugas pendaftaran hanya lihat dokter), `VAL-01` (pesan validasi form dokter).
@@ -272,7 +272,7 @@ Fase ini sebaiknya dibagi menjadi **dua rencana implementasi**: **4a** (halaman 
 **Dependensi.** Fase 1 (media, sanitizer, komponen), Fase 2 (halaman layanan, kartu dokter di beranda), Fase 3 (kolom pencarian jadwal di beranda).
 
 **Tugas utama (berurutan).**
-1. (4a) `PageSeeder` + `admin.pages.*` + Quill; beranda mengambil `home`, banner aktif, dokter unggulan, artikel terbaru.
+1. (4a) `PageSeeder` + `admin.pages.*` + editor Quill yang sudah dibangun di fase 2 (dipakai ulang untuk `pages.body`/`articles.body`, F2-R2); beranda mengambil `home`, banner aktif, dokter unggulan, artikel terbaru.
 2. (4a) Banner (jadwal tayang `starts_at`/`ends_at`), artikel (`soft delete`, status, `published_at`), kategori artikel, galeri (album + unggah banyak foto, urutkan), FAQ (kelompok), mitra asuransi (logo).
 3. (4a) Halaman publik terkait + SEO (`meta_title`/`meta_description` yang dapat dikelola; fallback otomatis) + breadcrumb.
 4. (4b) Fasilitas + kategori kamar (JSON `amenities`, galeri, `rooms.update-availability`, tampilan "Diperbarui manual pada …", tanpa kata real-time).

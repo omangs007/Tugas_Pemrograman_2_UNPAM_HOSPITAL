@@ -410,7 +410,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->dontReport([BookingException::class]);
         $exceptions->dontFlash(['password', 'password_confirmation', 'current_password', 'bpjs_number', 'payment_reference']);
         $exceptions->shouldRenderJsonWhen(fn (Request $r, Throwable $e) =>
-            $r->expectsJson() || $r->routeIs('admin.dashboard.chart', 'admin.media.*'));
+            $r->expectsJson() || $r->routeIs('admin.dashboard.chart')
+            || ($r->routeIs('admin.media.*') && ! $e instanceof ValidationException)); // galat validasi admin.media.* hanya JSON bila klien meminta JSON; form HTML biasa mendapat redirect + $errors
 
         $exceptions->render(function (BookingException $e, Request $r) { /* isi: §11.2 — redirect + flash error */ });
         $exceptions->render(function (HttpExceptionInterface $e, Request $r) { /* isi: §11.3 — 403 / 419 / 429 Indonesia */ });
@@ -583,7 +584,7 @@ Registrasi resource kedua kali dengan `->names('doctors')` tidak menimbulkan dup
 
 | Method | Langkah |
 |---|---|
-| `index` | `authorize('viewAny', Model::class)` → `Model::query()->search($filters['q'])->…->paginate(15)->withQueryString()` → `view('admin.{res}.index')` memakai `<x-data-table>`. |
+| `index` | `authorize('viewAny', Model::class)` → `Model::query()->search($filters['q'])->…->paginate($request->perPage())->withQueryString()` → `view('admin.{res}.index')` memakai `<x-data-table>`. |
 | `create` | `authorize('create', Model::class)` → `view('admin.{res}.create')` (form `_form`). |
 | `store` | Request tervalidasi → `DB::transaction`: `Model::create()`, unggah media lewat `MediaService::store()/replace()` bila ada file, sinkronisasi relasi → flash `success` ("… berhasil ditambahkan.") → redirect `index`. Audit dicatat `AuditObserver`. |
 | `edit` / `update` | `authorize('update', $model)` → sama seperti `store` dengan `fill()`/`save()`; slug **tidak** berubah otomatis saat nama diubah (menjaga tautan) kecuali dikosongkan **[ASUMSI]**. |
@@ -674,7 +675,7 @@ Semua model berada di `App\Models`, memakai `HasFactory`, dan **mengikuti nama t
 - **Kolom `TIME`** (`start_time`, `end_time`) dibaca sebagai string `H:i:s`; accessor `startsAt`/`endsAt` menggabungkannya dengan `session_date`.
 - **Kolom enum** dicast ke enum PHP (`App\Enums`, [10 §4](10-struktur-folder.md)).
 - **Kolom terenkripsi** (`bpjs_number`, `payment_reference`): cast `encrypted`, masuk `$hidden`, tidak pernah dimasukkan ke audit/log/CSV (00 E.6, L).
-- **Trait kustom** (`App\Models\Concerns`):
+- **Trait kustom** (`App\Models\Concerns`; fase 2 menambah `HasUniqueSlug`: `bootHasUniqueSlug()` mengisi `slug` saat `creating` bila kosong, `slugSource()`, `slugMaxLength()`, `static uniqueSlug(string $source, ?int $ignoreId = null): string`, sufiks `-2`, `-3`, tidak berubah saat nama diedit; F2-R5):
 
 ```php
 trait HasMedia {                                   // dipakai Doctor, Clinic, Facility, RoomCategory, Article, Banner, Gallery, InsurancePartner
@@ -782,7 +783,7 @@ trait SanitizesRichText {                          // Clinic.description, Facili
 
 `doctor_specialties` tidak punya model: diakses lewat `Doctor::specialties()` / `Specialty::doctors()` (`withPivot('is_primary')`). Tabel Spatie memakai `Spatie\Permission\Models\Role` dan `Permission`. Tabel bawaan Laravel (`sessions`, `cache`, `jobs`, `notifications`, `password_reset_tokens`) tanpa model aplikasi (notifikasi lewat `$user->notifications`).
 
-### 5.9 `AuditObserver`
+### 5.9 `AuditObserver` (`App\Observers\AuditObserver`, didaftarkan di `AppServiceProvider`; fase 2: hanya `Specialty` dan `Clinic`, `Doctor` dicatat `DoctorService`; F2-R19)
 
 ```php
 class AuditObserver {
@@ -1404,6 +1405,21 @@ public function pdf(Appointment $a): \Barryvdh\DomPDF\PDF; // view 'pdf.appointm
 ```
 Dipakai `Patient\AppointmentController@proof/proofPdf` dan `Admin\AppointmentController@proof`. Otorisasi (`AppointmentPolicy::view`) dilakukan **sebelum** service dipanggil; service tidak memeriksa hak akses.
 
+### 6.17 `Doctors\DoctorService` (fase 2, F2-R8, F2-R20)
+
+`App\Services\Doctors\DoctorService` (`final`, constructor `(AuditLogger $audit, MediaService $media)`) adalah satu-satunya jalur tulis dokter; semua method berjalan dalam `DB::transaction` dengan audit eksplisit (12 §8.2):
+
+```php
+public function create(array $data, Actor $actor, ?UploadedFile $photo = null, ?string $photoAlt = null): Doctor;   // status active; syncSpecialties; foto lewat MediaService::store; audit doctor.created
+public function update(Doctor $doctor, array $data, Actor $actor, ?UploadedFile $photo = null, ?string $photoAlt = null): Doctor; // slug dan status tidak disentuh; audit doctor.updated
+public function syncSpecialties(Doctor $doctor, array $specialtyIds, int $primaryId): void;                        // I-5
+public function changeStatus(Doctor $doctor, DoctorStatus $status, ?string $reason, Actor $actor): Doctor;         // active/inactive; archived -> inactive (pemulihan, F2-R7); audit doctor.status_changed
+public function archive(Doctor $doctor, ?string $reason, Actor $actor): Doctor;                                    // archived + archived_at; audit doctor.archived
+public function replacePhoto(Doctor $doctor, UploadedFile $photo, string $alt, Actor $actor): Media;               // MediaService::replace
+public function archiveBlockedReason(Doctor $doctor): ?string;                                                     // pesan penolakan arsip (BR-05) atau null; dipakai archive() dan ArchiveDoctorRequest
+protected function futureActiveAppointmentsCount(Doctor $doctor): int;                                             // titik sambung F.4: fase 2 selalu 0, fase 3 mengganti isinya (F2-R8)
+```
+
 ---
 ## 7. Middleware
 
@@ -1494,7 +1510,7 @@ Dipanggil `$this->authorize('ability', $model|Model::class)` di controller dan p
 | `PagePolicy` | `viewAny`, `view`, `update` → `content.manage` · `create`, `delete` → `false` (halaman sistem `is_system`) |
 | `BannerPolicy`, `ArticlePolicy`, `ArticleCategoryPolicy`, `GalleryPolicy`, `FaqPolicy`, `InsurancePartnerPolicy` | seluruh method → `content.manage` |
 | `ContactMessagePolicy` | `viewAny`, `view`, `updateStatus` → `messages.manage` · `delete` → `false` |
-| `MediaPolicy` | `upload` → salah satu `content.manage`, `clinics.manage`, `facilities.manage`; `update`, `delete`, `reorder` → izin pemilik media menurut `model_type`: `Doctor`→`doctors.manage`; `Clinic`/`Specialty`→`clinics.manage`; `Facility`/`RoomCategory`→`facilities.manage`; `Article`/`Banner`/`Gallery`/`InsurancePartner`/`Page`→`content.manage`; `model` NULL: koleksi `logo`→`settings.manage`, koleksi `editor`→ pengunggah sendiri atau `content.manage` |
+| `MediaPolicy` | `upload` → salah satu `content.manage`, `clinics.manage`, `facilities.manage`; `update`, `delete`, `reorder` → izin pemilik media menurut `model_type`: `Doctor`→`doctors.manage`; `Clinic`/`Specialty`→`clinics.manage`; `Facility`/`RoomCategory`→`facilities.manage`; `Article`/`Banner`/`Gallery`/`InsurancePartner`/`Page`→`content.manage`; `model` NULL: koleksi `logo`→`settings.manage`, koleksi `editor`→ pengunggah sendiri **atau** salah satu dari `content.manage`/`clinics.manage`/`facilities.manage`; `model_type` yang belum dipetakan ditolak sampai fasenya (F2-R16) |
 | `UserPolicy` (staf) | `viewAny`, `view`, `create` → `staff.manage` · `update`, `changeStatus`, `resetPassword` → `staff.manage` ∧ `$target->account_type = staff` (+ `changeStatus`: `$target->id ≠ $user->id`) · `delete` → `false` |
 | `RolePolicy` | `viewAny`, `view` → `staff.manage` · `update` → `staff.manage` ∧ `$role->name ≠ 'super-admin'` |
 | `AuditLogPolicy` | `viewAny`, `view` → `audit.view` · `create`, `update`, `delete` → `false` |
@@ -1587,12 +1603,12 @@ Semua di `app/Http/Requests/{Area}`. `authorize()` memanggil Policy/izin (bukan 
 | `QueueIndexRequest` | `admin.queue.index` | Turunan `ListFilterRequest`: `tanggal` (default hari ini), `poli`, `dokter`, `kode` (kode booking; dinormalkan `BookingCodeGenerator::normalize()`). |
 | `CreateWalkInAppointmentRequest` | `admin.appointments.create` | Turunan `ListFilterRequest` (wizard walk-in): `pasien` (id profil aktif), `sesi` (id sesi), `tanggal`, `poli`, `dokter`, `kembali`; nilai tidak valid diabaikan. |
 | `AuditLogIndexRequest` | `admin.audit-logs.index` | Turunan `ListFilterRequest`: `dari`, `sampai`, `pengguna`, `aksi` (awalan), `objek`. |
-| `StoreDoctorRequest` | `admin.doctors.store` | `clinic_id` ada; `name`, `slug` unik; gelar; `gender`; `short_bio` ≤ 500; `bio`; `status`; `specialty_ids[]` (1–5) + `primary_specialty_id` (tepat satu, salah satu yang dipilih); foto opsional (aturan unggah 00 K) + `photo_alt` wajib bila ada foto. |
+| `StoreDoctorRequest` | `admin.doctors.store` | `clinic_id` ada dan aktif; `name`; gelar; `gender`; `short_bio` ≤ 500; `bio`; `specialty_ids[]` (1–5; galat per-elemen `specialty_ids.N` dipusatkan ke satu kunci `specialty_ids` lewat hook setelah validasi, sehingga tautan ringkasan galat menuju `#specialty_ids` dan galat kelompok tampil sekali) + `primary_specialty_id` (tepat satu, salah satu yang dipilih); foto opsional (aturan unggah 00 K) + `photo_alt` wajib bila ada foto. |
 | `UpdateDoctorRequest` | `admin.doctors.update` | Seperti Store (slug unik abaikan diri); `clinic_id` boleh berubah. |
-| `UpdateDoctorStatusRequest` | `admin.doctors.status` | `status` ∈ {active, inactive} (menonaktifkan diizinkan walau ada appointment aktif; sesi terdampak ditangani `applyDoctorInactive()`, 00 F.4); `reason?`. Dokter `archived` tidak dapat diubah lewat form ini (dipulihkan menjadi `inactive` lewat aksi tersendiri). |
+| `UpdateDoctorStatusRequest` | `admin.doctors.status` | `status` ∈ {active, inactive} (menonaktifkan diizinkan walau ada appointment aktif; sesi terdampak ditangani `applyDoctorInactive()`, 00 F.4); `reason?`. Dokter `archived` hanya dapat dipulihkan dengan `status = inactive` lewat route ini (`archived_at` dikosongkan); nilai lain ditolak dengan "Dokter yang diarsipkan hanya dapat dipulihkan menjadi nonaktif." (F2-R7). |
 | `ArchiveDoctorRequest` | `admin.doctors.archive` | `reason?`; **ditolak bila ada appointment aktif pada sesi mendatang** ("selesaikan sesi terdampak dahulu", 00 F.4; kelas terpisah dari `UpdateDoctorStatusRequest`, 00 J.6). |
 | `UploadDoctorPhotoRequest` | `admin.doctors.photo` | `photo` (jpg/jpeg/png/webp, ≤ 2048 KB, ≥ 300×300, ≤ 6000×6000), `alt_text` wajib. |
-| `SpecialtyRequest` | `admin.specialties.store` / `.update` | `name`, `slug` unik, `description?`, `is_active`, `sort_order`. |
+| `SpecialtyRequest` | `admin.specialties.store` / `.update` | `name` unik, `description?`, `is_active`, `sort_order` (slug dibuat sistem oleh `HasUniqueSlug`, F2-R5). |
 | `ClinicRequest` | `admin.clinics.store` / `.update` | `name`, `slug` unik, `code` (2–5 huruf kapital A–Z, unik; tidak dapat diubah bila sudah ada appointment pada poliklinik itu), `type` (`ClinicType`), `is_bookable` (hanya `poliklinik`), `specialty_id?`, `short_description`, `description` (rich text), `location`, meta; `cover` (≥ 800×450) / `gallery[]` (≥ 600×400) + alt. |
 | `DoctorScheduleRequest` | `admin.schedules.store` / `.update` | `doctor_id` (dokter tidak `archived`), `clinic_id`, `day_of_week` 1–7, `start_time < end_time`, `quota` 1–200, `valid_from`, `valid_until ≥ valid_from`, `is_active`; **`NoOverlappingSchedule`** (tak beririsan dengan templat aktif dokter yang sama di hari sama pada rentang berlaku beririsan); Update: `assertClinicChangeAllowed()`. |
 | `PracticeSessionRequest` | `admin.sessions.store` / `.update` | `doctor_id`, `clinic_id`, `session_date` (≥ hari ini), jam (`end > start`; **`NoOverlappingSession`**: tidak berbenturan dengan sesi non-batal lain dokter itu), dokter `active`, `quota` (Update: ≥ `booked_count`), `status_reason?`. Update: perubahan jam pada sesi ber-appointment aktif **bukan galat** — sesi menjadi `needs_review` sumber `manual_time` (§6.6). |
@@ -1623,7 +1639,7 @@ Semua di `app/Http/Requests/{Area}`. `authorize()` memanggil Policy/izin (bukan 
 | `UpdateStaffStatusRequest` | `admin.staff.status` | `is_active`; menolak menonaktifkan diri sendiri dan Super Admin aktif terakhir (00 G). `admin.staff.reset-password` tidak punya field sehingga tidak memakai Form Request (otorisasi `UserPolicy::resetPassword` di controller). |
 | `UpdateRolePermissionsRequest` | `admin.roles.update` | `permissions[]` ⊆ daftar baku 00 G; peran `super-admin` ditolak. |
 | `UpdateContactMessageStatusRequest` | `admin.messages.status` | `status` (`ContactMessageStatus`). |
-| `EditorImageUploadRequest` | `admin.media.editor-upload` | `image` (aturan unggah 00 K; `editor` ≥ 200×100), `alt_text` wajib. |
+| `EditorImageUploadRequest` | `admin.media.editor-upload` | `file` (nama field F2-R15; aturan unggah 00 K; `editor` ≥ 200×100), `alt_text` wajib. |
 | `UpdateMediaRequest` | `admin.media.update` | `alt_text` wajib (koleksi publik), `caption?` ≤ 255. |
 | `ReorderMediaRequest` | `admin.media.reorder` | `ids[]` (1–100; seluruhnya milik pemilik dan koleksi yang sama — pemilik dan koleksi diturunkan dari id media, tidak diterima dari input; 12 V-42). |
 

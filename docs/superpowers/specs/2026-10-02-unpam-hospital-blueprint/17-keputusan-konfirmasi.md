@@ -93,6 +93,32 @@ Ambiguitas yang ditemukan saat penulisan blueprint dan sudah ditutup di 00. Dica
 | D-26 | Cakupan `media:prune` fase 1 | (a) baris `model_id` NULL > 24 jam kecuali logo situs, (b) berkas tak tercatat > 1 jam; butir pemilik hilang menunggu model pemilik di fase 2. | 11 §6.9 (F1-R12) |
 | D-27 | Detail pesan halaman 403 | Pesan `UnauthorizedException` Spatie dan pesan bawaan framework (berbahasa Inggris) tidak pernah ditampilkan sebagai `$detail`; halaman 403 memakai teks Indonesia generik. | 11 §11.3, 15 ERR-02 |
 | D-28 | Endpoint media admin (F-ADM-29) | Ditunda dari fase 1 ke fase 2 (bersama model pemilik pertama); `MediaService` sudah tersedia sejak fase 1. | 14 §4 (F1-R21) |
+| D-29 | Editor rich text dan endpoint media | Dibangun di fase 2: `x-form.rich-text`, `resources/js/editor.js`, `MediaController`, `MediaPolicy`, tiga Form Request V-42, empat route `admin.media.*`. Fase 4a memakai ulang editor. Menutup D-28. | 14 §Fase 2 tugas 4, 11 §2.3 J (F2-R2, F2-R3) |
+| D-30 | Route key | Model tidak menimpa `getRouteKeyName()`; route publik `{clinic:slug}`; route admin memakai id numerik. | 11 §2.4 (F2-R4) |
+| D-31 | Slug | Otomatis lewat trait `HasUniqueSlug` (dari nama tanpa gelar; sufiks `-2`, `-3`; dipotong sesuai kolom; tidak berubah saat nama diedit); form tanpa input slug. | 12 V-19/V-21, BR-15 (F2-R5) |
+| D-32 | Form dokter tanpa status | Dokter baru selalu `active`; status lewat `admin.doctors.status`. | 12 V-19 (F2-R6) |
+| D-33 | Pemulihan dari arsip | Lewat `admin.doctors.status` dengan `inactive`; `archived_at` dikosongkan; nilai lain ditolak. | BR-06 (F2-R7) |
+| D-34 | Aturan F.4 pada fase 2 | Belum ditegakkan; titik sambung `DoctorService::futureActiveAppointmentsCount()` (selalu 0) diganti di fase 3. | 14 §Fase 2 tugas 6 (F2-R8) |
+| D-35 | Halaman #5 fase 2 | `x-doctor-card` tanpa jadwal dan tanpa tombol daftar; tautan hanya bila route ada. | 14, F1-R2 (F2-R9) |
+| D-36 | Halaman #4 fase 2 | Judul statis "Layanan Kami" sampai `pages` key `clinics-index` (fase 4a). | 05 hal. 4 (F2-R10) |
+| D-37 | `x-module-tabs` | Dibangun di fase 2 untuk tab Poliklinik/Spesialisasi. | 05 hal. 34 (F2-R11) |
+| D-38 | Paginasi | `per_page` admin default 25; halaman #4 tanpa paginasi, dikelompokkan per `ClinicType`. | 00 I.5 (F2-R12) |
+| D-39 | Batas `clinics.description` | `max:30000` pada input mentah. | 09 §1.2 butir 10 (F2-R13) |
+| D-40 | Sanitasi rich text | Hanya di trait `SanitizesRichText` saat `saving`. | 11 §6.12 (F2-R14) |
+| D-41 | Nama field unggahan | Editor `file` + `alt_text`; foto dokter `photo` + `alt_text`/`photo_alt`; poliklinik `cover`/`cover_alt`, `gallery[]`/`gallery_alt[]` (maks. 20). | 12 V-19/V-20/V-22/V-42 (F2-R15) |
+| D-42 | `MediaPolicy` | Pemetaan per pemilik; `model_type` NULL: `logo` → `settings.manage`, `editor` → pengunggah atau salah satu izin kelompok; tipe lain ditolak sampai fasenya. | 11 §8, 04 §5.1 (F2-R16) |
+| D-43 | Hapus media | Foto, cover, galeri boleh dihapus; yang dirujuk `site.logo_media_id` ditolak. | 12 V-42 (F2-R17) |
+| D-44 | Penolakan hapus | Di controller lewat `deletionBlockedReason()` (berlaku juga bagi Super Admin). | 11 §2.3/§4.4 (F2-R18) |
+| D-45 | `AuditObserver` | `App\Observers\AuditObserver`; fase 2 hanya `Specialty` dan `Clinic`. | 10 §2, 11 §5.9 (F2-R19) |
+| D-46 | `DoctorService` | Satu-satunya jalur tulis dokter, dengan audit eksplisit. | 09 I-5/I-23 (F2-R20) |
+| D-47 | Setelah simpan | Redirect ke `index` dengan flash dari `lang/id/messages.php`. | 11 P-CRUD (F2-R21) |
+| D-48 | Seeder master | `SpecialtySeeder`, `ClinicSeeder`, `DoctorSeeder` hanya demo, dipanggil `DemoSeeder`; gambar dari `PlaceholderImageGenerator`. | 13 §2.1–2.3 (F2-R22) |
+| D-49 | `meta_title` | Maksimal 70 karakter. | 12 BR-123 (F2-R23) |
+| D-50 | `Doctor::primarySpecialty` | Accessor dari relasi `specialties` yang dimuat; tanpa model pivot dan tanpa relasi media khusus. | 11 §5.2 (F2-R24) |
+| D-51 | Filter daftar admin | `DoctorIndexRequest` dan `MasterDataIndexRequest` (turunan `ListFilterRequest`). | 07 W-15, 12 V-45 (F2-R25) |
+| D-52 | Carry fase 1 | Dikerjakan di fase 2: checkbox larik, `x-data-table`, meta CSRF, poles uji manual, `media:prune` butir (c). | CHECKPOINT §4 (F2-R26) |
+| D-53 | Carry pengaturan situs | WhatsApp `62…` dan bool/int ketat ditunda ke fase 8 (form pengaturan). | 14 §Fase 8 (F2-R27) |
+| D-54 | Asersi CRD fase 2 | CRD-01/CRD-03 memakai scope `publiclyVisible` dan tampilan #5; asersi URL dokter di fase 3. | 14 §Fase 2 (F2-R28) |
 
 Asumsi berdampak terbesar dari daftar induk 01 yang juga layak ditinjau pemilik:
 

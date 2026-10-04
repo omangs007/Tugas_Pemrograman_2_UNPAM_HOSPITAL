@@ -40,7 +40,7 @@ Setiap aturan: **ID**, pernyataan, **penegakan** (lapisan yang menegakkan), dan 
 | BR-12 | Menurut 00 C, templat boleh dihapus **hanya bila tidak ada sesi miliknya yang ber-appointment** (termasuk riwayat batal); sesi tanpa appointment milik templat itu ikut dihapus lebih dulu dalam transaksi yang sama. Bila ada sesi ber-appointment, tombol hapus diganti "Nonaktifkan" (`is_active = false`) dengan pesan alasan. | `ScheduleChangeService::deleteTemplate()` (service, bukan Policy; `DoctorSchedulePolicy::delete` memeriksa hal yang sama). | "Jadwal ini sudah memiliki sesi dengan pendaftaran dan hanya dapat dinonaktifkan." |
 | BR-13 **[ASUMSI]** | `clinics.code` berupa huruf kapital A–Z sepanjang 2–5, unik, dan tidak dapat diubah setelah poliklinik memiliki appointment (nomor antrean tercetak, mis. `ANK-007`, tetap konsisten). | `ClinicRequest` + UNIQUE `code`. | "Kode poliklinik harus 2 sampai 5 huruf kapital." / "Kode poliklinik sudah digunakan." / "Kode poliklinik tidak dapat diubah karena sudah dipakai pada nomor antrean." |
 | BR-14 **[ASUMSI]** | `is_bookable = true` hanya untuk `type = poliklinik`; layanan penunjang tidak memiliki sesi. | `ClinicRequest` (`prohibited_if`). | "Layanan penunjang tidak dapat dibuka untuk pendaftaran kunjungan." |
-| BR-15 | `slug` entitas publik dibuat sistem dari nama/judul, unik (sufiks `-2`, `-3`), dan tidak berubah saat nama diedit. | Observer `creating` + UNIQUE `slug`. | — |
+| BR-15 | `slug` entitas publik dibuat sistem dari nama/judul, unik (sufiks `-2`, `-3`), dan tidak berubah saat nama diedit. | Trait `HasUniqueSlug` (event `creating`; sumber nama tanpa gelar, dipotong sesuai panjang kolom) + UNIQUE `slug` (F2-R5). | — |
 | BR-16 | **Satu sumber jadwal** (§6 kebutuhan): halaman publik (`doctors.index` dengan filter tanggal, `doctors.show`, `schedules.index`), wizard `patient.appointments.create`, dan form walk-in memakai `DoctorAvailabilityQuery`; tidak ada query jadwal lain. | Kelas tunggal; tes konsistensi membandingkan keluaran halaman publik dan wizard. | — |
 | BR-17 | Spesialisasi/poliklinik (juga mitra asuransi) yang dirujuk data lain tidak dihapus permanen; bila dirujuk tombol hapus diganti "Nonaktifkan" dengan pesan alasan (00 C). | FK `RESTRICT`/`nullOnDelete`; `deletionBlockedReason()` pada controller penghapusan. | "{Spesialisasi/Poliklinik} masih dipakai oleh {N} data. Nonaktifkan saja." |
 
@@ -191,7 +191,7 @@ Setiap aturan: **ID**, pernyataan, **penegakan** (lapisan yang menegakkan), dan 
 | ID | Aturan | Penegakan | Pesan galat |
 |---|---|---|---|
 | BR-121 | Halaman sistem (`pages.key` baku, `is_system = true`) tidak dapat dibuat atau dihapus; hanya judul, subjudul, isi (untuk kunci yang memiliki `body`), dan meta yang dapat diubah. | `PagePolicy` (tanpa create/delete); `PageRequest` (`body` dilarang untuk kunci tanpa isi). | "Halaman ini tidak memiliki isi yang dapat diedit." |
-| BR-122 | Hanya lima kolom rich text (`pages.body`, `articles.body`, `clinics.description`, `facilities.description`, `room_categories.description`) yang boleh berisi HTML dan dirender dengan `{!! !!}`; wajib disanitasi **saat disimpan**. Semua kolom lain dirender dengan `{{ }}`. | `HtmlSanitizer` (profil `rich_text` `mews/purifier`) dipanggil di Form Request/`prepareForValidation`; tinjauan kode melarang `{!! !!}` di luar daftar. | — |
+| BR-122 | Hanya lima kolom rich text (`pages.body`, `articles.body`, `clinics.description`, `facilities.description`, `room_categories.description`) yang boleh berisi HTML dan dirender dengan `{!! !!}`; wajib disanitasi **saat disimpan**. Semua kolom lain dirender dengan `{{ }}`. | `HtmlSanitizer` (profil `rich_text` `mews/purifier`) dipanggil hanya oleh trait `SanitizesRichText` pada event `saving` sehingga setiap jalur simpan (form, seeder, `update()`) tersanitasi; Form Request tidak membersihkan HTML (F2-R14); tinjauan kode melarang `{!! !!}` di luar daftar. | — |
 | BR-123 | `meta_title` ≤ 70 dan `meta_description` ≤ 160 karakter; bila kosong, halaman detail memakai nama + ringkasan sebagai cadangan. | Form Request; accessor `seoTitle`/`seoDescription` (11 §5). | "Meta title maksimal 70 karakter." / "Meta description maksimal 160 karakter." |
 | BR-124 | Banner: `button_url` berupa jalur internal (diawali `/`, bukan `//`) atau URL `https://`; skema lain (`javascript:`, `data:`, `http:`) ditolak. Banner tayang bila `is_active` dan sekarang berada dalam [`starts_at`, `ends_at`] (`ends_at` NULL = tanpa batas). | Rule `InternalOrHttpsUrl`; scope `Banner::currentlyActive()` (starts_at/ends_at NULL = tanpa batas). | "Tautan harus berupa alamat internal (diawali /) atau URL https." |
 | BR-125 | Artikel tayang bila `status = published` dan `published_at <= now()`; penghapusan memakai soft delete; `excerpt` ≤ 300 karakter. | Scope `Article::published()`; `SoftDeletes`. | "Ringkasan artikel maksimal 300 karakter." |
@@ -560,7 +560,7 @@ Field di luar tabel (mis. `user_id`, `patient_number`, `is_active`, `consent_at`
 | `gender` | `required` `Rule::enum(Gender::class)` | "Jenis kelamin wajib dipilih."<br>"Jenis kelamin tidak valid." |
 | `clinic_id` | `required` `integer` `Rule::exists('clinics','id')->where('is_active', true)` | "Poliklinik utama wajib dipilih."<br>"Poliklinik yang dipilih tidak tersedia." |
 | `specialty_ids` | `required` `array` `min:1` `max:5` | "Pilih minimal satu spesialisasi."<br>"Spesialisasi maksimal 5."<br>"Spesialisasi tidak valid." |
-| `specialty_ids.*` | `integer` `distinct` `Rule::exists('specialties','id')->where('is_active', true)` | "Spesialisasi tidak boleh dipilih dua kali."<br>"Spesialisasi yang dipilih tidak tersedia." |
+| `specialty_ids.*` | `integer` `distinct` `Rule::exists('specialties','id')->where('is_active', true)` | "Spesialisasi tidak boleh dipilih dua kali."<br>"Spesialisasi yang dipilih tidak tersedia."<br>(semua galat per-elemen dilaporkan pada kunci `specialty_ids`, bukan `specialty_ids.N`) |
 | `primary_specialty_id` | `required` `integer` `Rule::in($this->specialty_ids)` | "Spesialisasi utama wajib dipilih."<br>"Spesialisasi utama harus salah satu spesialisasi yang dipilih." |
 | `short_bio` | `nullable` `string` `max:500` | "Profil singkat maksimal 500 karakter." |
 | `bio` | `nullable` `string` `max:5000` `new NoHtml` | "Profil lengkap maksimal 5000 karakter."<br>"Profil lengkap tidak boleh mengandung tag HTML." |
@@ -580,7 +580,7 @@ Field di luar tabel (mis. `user_id`, `patient_number`, `is_active`, `consent_at`
 |---|---|---|
 | `photo` (ganti foto) | `required` `ImageRules::for('photo')` | "Foto wajib dipilih."<br>(pesan gambar sama dengan V-19 `photo`) |
 | `alt_text` | `required` `string` `max:255` | "Teks alternatif foto wajib diisi."<br>"Teks alternatif foto maksimal 255 karakter." |
-| `status` (aktif/nonaktif; `UpdateDoctorStatusRequest`) | `required` `Rule::in(['active','inactive'])` | "Status dokter wajib dipilih."<br>"Status dokter tidak valid." |
+| `status` (aktif/nonaktif; `UpdateDoctorStatusRequest`) | `required` `Rule::in(['active','inactive'])` | "Status dokter wajib dipilih."<br>"Status dokter tidak valid."<br>Dari `archived` hanya `inactive` yang diterima (pemulihan; `archived_at` dikosongkan): "Dokter yang diarsipkan hanya dapat dipulihkan menjadi nonaktif." (F2-R7) |
 | `reason` (`UpdateDoctorStatusRequest`, `ArchiveDoctorRequest`) | `nullable` `string` `max:255` | "Alasan maksimal 255 karakter." |
 | (aturan bisnis nonaktif; BR-05) | **Menonaktifkan diizinkan** walau ada appointment aktif mendatang: `applyDoctorInactive()` membatalkan sesi tanpa appointment aktif dan menjadikan sesi ber-appointment aktif `needs_review` sumber `doctor_inactive` | Flash `warning`: "{N} sesi perlu ditindaklanjuti petugas pendaftaran." |
 | (aturan bisnis arsip; BR-05, `ArchiveDoctorRequest`) | **Ditolak** bila ada appointment aktif pada sesi mendatang (`ScheduleChangeService::countFutureActiveAppointments`) | "Dokter masih memiliki {N} pendaftaran aktif pada sesi mendatang. Selesaikan sesi terdampak terlebih dahulu, lalu arsipkan dokter." |
@@ -608,7 +608,7 @@ Field di luar tabel (mis. `user_id`, `patient_number`, `is_active`, `consent_at`
 | `is_bookable` | `required` `boolean` `Rule::prohibitedIf($type === 'penunjang')` (hanya boleh `true` untuk `poliklinik`) | "Status pendaftaran tidak valid."<br>"Layanan penunjang tidak dapat dibuka untuk pendaftaran kunjungan." |
 | `specialty_id` | `nullable` `integer` `Rule::exists('specialties','id')` | "Spesialisasi yang dipilih tidak tersedia." |
 | `short_description` | `required` `string` `max:255` | "Deskripsi singkat wajib diisi."<br>"Deskripsi singkat maksimal 255 karakter." |
-| `description` (rich text) | `nullable` `string` `max:50000`; disanitasi `HtmlSanitizer` sebelum disimpan | "Deskripsi maksimal 50.000 karakter." |
+| `description` (rich text) | `nullable` `string` `max:30000` (dihitung pada input mentah; kolom `TEXT` 65.535 byte, 09 §1.2 butir 10, F2-R13); disanitasi `HtmlSanitizer` saat simpan lewat trait `SanitizesRichText` | "Deskripsi maksimal 30.000 karakter." |
 | `location` | `required` `string` `max:100` | "Lokasi wajib diisi."<br>"Lokasi maksimal 100 karakter." |
 | `is_active` | `required` `boolean` | "Status aktif tidak valid." |
 | `sort_order` | `nullable` `integer` `between:0,9999` | "Urutan harus antara 0 dan 9999." |
@@ -893,7 +893,7 @@ Dependensi izin ditambahkan server (bukan galat): `doctors.manage` → `doctors.
 
 ### V-42 Unggahan media (editor, metadata, urutan, hapus)
 
-`EditorImageUploadRequest` · `POST /admin/media/editor` (`admin.media.editor-upload`); `UpdateMediaRequest` · `PATCH /admin/media/{media}` (`admin.media.update`); `ReorderMediaRequest` · `POST /admin/media/urutkan` (`admin.media.reorder`); `DELETE /admin/media/{media}` (`admin.media.destroy`) · otorisasi: izin pemilik media lewat `MediaPolicy` (dokter → `doctors.manage`, poliklinik → `clinics.manage`, fasilitas/kamar → `facilities.manage`, artikel/banner/galeri/mitra/halaman → `content.manage`, logo situs → `settings.manage`)
+`EditorImageUploadRequest` · `POST /admin/media/editor` (`admin.media.editor-upload`); `UpdateMediaRequest` · `PATCH /admin/media/{media}` (`admin.media.update`); `ReorderMediaRequest` · `POST /admin/media/urutkan` (`admin.media.reorder`); `DELETE /admin/media/{media}` (`admin.media.destroy`) · otorisasi: izin pemilik media lewat `MediaPolicy` (dokter → `doctors.manage`, poliklinik → `clinics.manage`, fasilitas/kamar → `facilities.manage`, artikel/banner/galeri/mitra/halaman → `content.manage`, logo situs → `settings.manage`; media `editor` tanpa pemilik → pengunggah atau salah satu dari `content.manage`/`clinics.manage`/`facilities.manage`; `model_type` yang belum dipetakan ditolak, F2-R16)
 
 | Field | Aturan Laravel | Pesan galat (Indonesia) |
 |---|---|---|
@@ -902,7 +902,7 @@ Dependensi izin ditambahkan server (bukan galat): `doctors.manage` → `doctors.
 | `caption` | `nullable` `string` `max:255` | "Keterangan gambar maksimal 255 karakter." |
 | `ids` (urutan) | `required` `array` `min:1` `max:100` | "Daftar gambar wajib diisi."<br>"Maksimal 100 gambar dapat diurutkan sekaligus." |
 | `ids.*` | `integer` `distinct` `Rule::exists('media','id')`; setelah validasi: semua milik pemilik dan koleksi yang sama | "Gambar tidak ditemukan."<br>"Urutan gambar tidak valid." |
-| (hapus) | `MediaPolicy::delete`; koleksi tunggal wajib tetap berisi bila halaman publik memerlukannya | "Gambar tidak dapat dihapus karena sedang dipakai." |
+| (hapus) | `MediaPolicy::delete`; ditolak (422, atau flash `error` pada permintaan non-JSON) hanya bila media dirujuk `site.logo_media_id`; foto dokter, cover, dan galeri boleh dihapus (halaman publik jatuh ke placeholder, F2-R17) | "Gambar tidak dapat dihapus karena sedang dipakai." |
 
 ### V-43 Ekspor CSV pendaftaran
 
