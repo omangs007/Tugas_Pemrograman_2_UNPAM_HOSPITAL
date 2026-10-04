@@ -10,7 +10,7 @@ class PruneMedia extends Command
 {
     protected $signature = 'media:prune {--dry-run : Hanya melaporkan, tidak ada yang dihapus}';
 
-    protected $description = 'Hapus media yatim: baris tanpa pemilik lebih dari 24 jam dan berkas tak tercatat lebih dari 1 jam';
+    protected $description = 'Hapus media yatim: baris tanpa pemilik lebih dari 24 jam, baris yang pemiliknya sudah dihapus, dan berkas tak tercatat lebih dari 1 jam';
 
     public function handle(MediaService $media): int
     {

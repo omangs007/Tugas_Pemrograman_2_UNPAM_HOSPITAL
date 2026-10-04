@@ -12,7 +12,9 @@ use App\Services\Settings\SettingsService;
 use App\Support\Actor;
 use finfo;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -156,12 +158,14 @@ final class MediaService
      */
     public function deleteFor(Model $owner): void
     {
-        Media::query()
-            ->where('model_type', $owner->getMorphClass())
-            ->where('model_id', $owner->getKey())
-            ->orderBy('id')
-            ->get()
-            ->each(fn (Media $media) => $this->delete($media));
+        DB::transaction(function () use ($owner): void {
+            Media::query()
+                ->where('model_type', $owner->getMorphClass())
+                ->where('model_id', $owner->getKey())
+                ->orderBy('id')
+                ->get()
+                ->each(fn (Media $media) => $this->delete($media));
+        });
     }
 
     /**
@@ -209,25 +213,34 @@ final class MediaService
 
     /**
      * Bersihkan media yatim (F1-R12): (a) baris tanpa pemilik berumur > 24 jam kecuali logo situs,
-     * (b) berkas di folder koleksi disk public yang tidak tercatat dan berumur > 1 jam.
+     * (b) berkas di folder koleksi disk public yang tidak tercatat dan berumur > 1 jam,
+     * (c) baris yang `model_type`/`model_id`-nya terisi tetapi baris pemiliknya sudah tidak ada (tanpa batas umur;
+     * dihitung dalam `orphanRows`). Pemilik dari kelas yang tidak dikenal dibiarkan.
      * Pada $dryRun hanya menghitung dan menyusun daftar; eksekusi nyata menulis audit `media.pruned`.
      */
     public function prune(bool $dryRun = false): MediaPruneReport
     {
         $logoId = $this->logoMediaId();
-        $rows = Media::query()
+        $unowned = Media::query()
             ->orphaned(self::ORPHAN_ROW_HOURS)
             ->when($logoId > 0, fn (Builder $query): Builder => $query->whereKeyNot($logoId))
             ->orderBy('id')
             ->get();
+        $ownerless = $this->ownerlessRows();
+        $rows = $unowned->concat($ownerless);
         $files = $this->orphanFiles();
 
         $bytes = 0;
         $items = [];
 
-        foreach ($rows as $media) {
+        foreach ($unowned as $media) {
             $bytes += $media->size_bytes + $this->thumbnailSize($media);
             $items[] = "Baris media #{$media->id}: {$media->directory}/{$media->file_name} ({$media->human_size})";
+        }
+
+        foreach ($ownerless as $media) {
+            $bytes += $media->size_bytes + $this->thumbnailSize($media);
+            $items[] = "Baris media #{$media->id} (pemilik ".class_basename($media->model_type)." #{$media->model_id} sudah tidak ada): {$media->directory}/{$media->file_name} ({$media->human_size})";
         }
 
         foreach ($files as $file) {
@@ -498,6 +511,43 @@ final class MediaService
         }
 
         return $orphans;
+    }
+
+    /**
+     * Baris media yang pemiliknya (menurut `model_type` + `model_id`) sudah tidak ada. Hanya tipe pemilik
+     * yang kelasnya dikenal dan berupa model Eloquent yang diperiksa; tipe lain dibiarkan (tidak dapat dipastikan).
+     * Pemilik dengan soft delete dianggap masih ada selama barisnya ada.
+     *
+     * @return Collection<int, Media>
+     */
+    private function ownerlessRows(): Collection
+    {
+        $ids = [];
+        $types = Media::query()->whereNotNull('model_type')->whereNotNull('model_id')->distinct()->pluck('model_type');
+
+        foreach ($types as $type) {
+            $class = Relation::getMorphedModel($type) ?? $type;
+
+            if (! class_exists($class) || ! is_subclass_of($class, Model::class)) {
+                continue;
+            }
+
+            $owner = new $class;
+
+            $found = Media::query()
+                ->where('model_type', $type)
+                ->whereNotNull('model_id')
+                ->whereNotExists(fn ($query) => $query
+                    ->select(DB::raw('1'))
+                    ->from($owner->getTable())
+                    ->whereColumn($owner->getQualifiedKeyName(), 'media.model_id'))
+                ->pluck('id')
+                ->all();
+
+            $ids = [...$ids, ...$found];
+        }
+
+        return $ids === [] ? new Collection : Media::query()->whereIn('id', $ids)->orderBy('id')->get();
     }
 
     private function logoMediaId(): int
