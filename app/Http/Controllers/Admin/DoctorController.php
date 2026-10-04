@@ -26,4 +26,13 @@ class DoctorController extends Controller
             'specialtyOptions' => Specialty::query()->ordered()->pluck('name', 'slug')->all(),
         ]);
     }
+
+    public function show(Doctor $doctor): View
+    {
+        $this->authorize('view', $doctor);
+
+        return view('admin.doctors.show', [
+            'doctor' => $doctor->load(['clinic', 'specialties', 'media']),
+        ]);
+    }
 }
