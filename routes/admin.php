@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ClinicController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\SpecialtyController;
@@ -40,6 +41,14 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
     Route::get('/', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
+
+    // Poliklinik (halaman #34, tab Poliklinik): izin tunggal clinics.manage, tanpa show (11 §3.4).
+    Route::middleware('permission:clinics.manage')->group(function (): void {
+        Route::resource('poliklinik', ClinicController::class)
+            ->names('clinics')
+            ->parameters(['poliklinik' => 'clinic'])
+            ->except(['show']);
+    });
 
     // Spesialisasi (halaman #34, tab Spesialisasi): izin tunggal clinics.manage, tanpa show (11 §3.4).
     Route::middleware('permission:clinics.manage')->group(function (): void {

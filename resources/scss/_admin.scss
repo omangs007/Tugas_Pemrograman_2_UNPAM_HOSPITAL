@@ -113,6 +113,12 @@ $admin-sidebar-width: 260px;
   }
 }
 
+// Gambar kecil pada baris tabel admin (dokter, poliklinik).
+.admin-thumb {
+  flex: 0 0 3rem;
+  width: 3rem;
+}
+
 .stat-card {
   height: 100%;
   border-radius: $border-radius;
