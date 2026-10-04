@@ -2,7 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Clinic;
+use App\Models\Specialty;
 use App\Models\User;
+use App\Observers\AuditObserver;
 use App\Services\Settings\SettingsService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -38,10 +41,14 @@ class AppServiceProvider extends ServiceProvider
         // aturan mutlak (peran terkunci, minimal satu Super Admin aktif) ditegakkan di StaffAccountService.
         Gate::before(fn (User $user, string $ability) => $user->hasRole('super-admin') ? true : null);
 
-        // URI resource berbahasa Indonesia: /buat dan /ubah (11 ง3.3).
+        // URI resource berbahasa Indonesia: /buat dan /ubah (11 ยง3.3).
         Route::resourceVerbs(['create' => 'buat', 'edit' => 'ubah']);
 
         Paginator::useBootstrapFive();
+
+        // Audit otomatis model master sederhana (F2-R19). Doctor dicatat DoctorService.
+        Specialty::observe(AuditObserver::class);
+        Clinic::observe(AuditObserver::class);
 
         // Pengaturan situs tersedia di semua layout sebagai $site (SettingsService).
         View::composer(['components.layouts.*'], function ($view): void {
