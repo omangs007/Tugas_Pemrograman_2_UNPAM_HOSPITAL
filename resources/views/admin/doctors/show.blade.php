@@ -29,7 +29,16 @@
                     <p class="form-text mb-0 mt-2">{{ $photo ? 'Foto profil dokter.' : 'Belum ada foto; situs publik memakai gambar pengganti.' }}</p>
                 </div>
             </div>
-            {{-- Ganti foto dokter --}}
+            @can('update', $doctor)
+                <div class="card mt-3">
+                    <div class="card-header fw-semibold">Ganti foto</div>
+                    <form method="POST" action="{{ route('admin.doctors.photo', $doctor) }}" enctype="multipart/form-data" class="card-body">
+                        @csrf
+                        <x-form.file name="photo" label="Foto baru" alt-name="alt_text" :alt-value="old('alt_text', $photo?->alt_text)" :required="true" help="Foto lama dihapus setelah foto baru berhasil disimpan." />
+                        <x-loading-button icon="bi-upload" loading-text="Mengunggah foto…">Simpan Foto</x-loading-button>
+                    </form>
+                </div>
+            @endcan
         </div>
 
         <div class="col-12 col-md-8 col-lg-9">

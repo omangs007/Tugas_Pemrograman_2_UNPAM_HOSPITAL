@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\DoctorIndexRequest;
 use App\Http\Requests\Admin\StoreDoctorRequest;
 use App\Http\Requests\Admin\UpdateDoctorRequest;
 use App\Http\Requests\Admin\UpdateDoctorStatusRequest;
+use App\Http\Requests\Admin\UploadDoctorPhotoRequest;
 use App\Models\Clinic;
 use App\Models\Doctor;
 use App\Models\Specialty;
@@ -110,6 +111,15 @@ class DoctorController extends Controller
         $service->archive($doctor, $request->reason(), Actor::staff($request->user()));
 
         return back(fallback: route('admin.doctors.show', $doctor))->with('success', 'Dokter diarsipkan.');
+    }
+
+    public function photo(UploadDoctorPhotoRequest $request, Doctor $doctor, DoctorService $service): RedirectResponse
+    {
+        $this->authorize('update', $doctor);
+
+        $service->replacePhoto($doctor, $request->photoFile(), $request->altText(), Actor::staff($request->user()));
+
+        return redirect()->route('admin.doctors.show', $doctor)->with('success', 'Foto dokter berhasil diperbarui.');
     }
 
     /**
