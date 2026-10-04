@@ -13,7 +13,7 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Fase 1 — Fondasi | **Selesai** dan **sudah di-merge** ke `master` (fast-forward `0b87342`, 2026-10-04; cabang `fase-1-fondasi` dihapus). Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang beserta perbaikannya sudah selesai. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
 | Cabang git | `master` (fase 0 + fase 1). Repo tanpa remote. Cabang fase berikutnya dibuat dari `master`. |
 | Keputusan tertunda pemilik | (1) Konfirmasi manual login per peran (opsional, lihat §3). (2) Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
-| Fase berikutnya | **Fase 2 — Master Data** (blueprint `14-tahapan-implementasi.md` §Fase 2). Fase 4a (CMS statis) dan fase 5 (akun pasien) juga hanya membutuhkan fondasi. Rencana implementasinya belum ada. |
+| Fase berikutnya | **Fase 2 — Master Data**. Rencananya sudah ditulis dan **menunggu persetujuan pemilik**: `docs/superpowers/plans/2026-10-04-fase-2-master-data.md` (16 tugas, keputusan F2-R1–F2-R28). Rencana ini ada di cabang `fase-2-master-data` (dari `master`). |
 
 Yang sudah ada di aplikasi: enum, akun & peran (Spatie), audit log, media + sanitasi HTML, pengaturan situs, tema & komponen Blade, layout publik/pasien/auth/admin, login/logout staf, ganti password wajib, header keamanan, `StaffAccountService` (aturan mutlak Super Admin), `app:create-super-admin`, `media:prune`, dan seeder demo staf. Area admin fase 1 terdiri dari login, ganti password, dan dasbor sapaan (`route:list --path=admin` menampilkan 6 route).
 
@@ -42,7 +42,7 @@ curl.exe -s -o NUL -w '%{http_code}' http://unpam-hospital.test/admin/login   # 
 
 Konfirmasi manual (opsional, ±5 menit): buka <http://unpam-hospital.test/admin/login>, login sebagai ketiga akun demo, buka menu pengguna lalu **Keluar**. Daftar periksa lengkap ada di rencana fase 1, Task 19 Step 22.
 
-Bila semua hijau: minta Claude menulis rencana **Fase 2** dengan skill `superpowers:writing-plans` dan mengeksekusinya dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
+Bila semua hijau: pindah ke cabang `fase-2-master-data` (`git switch fase-2-master-data`). Tinjau dan setujui rencana Fase 2, lalu minta Claude mengeksekusinya dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
 
 ## 4. Bawaan (carry) untuk fase berikutnya
 
@@ -94,3 +94,7 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0 dan fase 1
    - Gerbang fase 1 terpenuhi: 980 tes; login diverifikasi lewat Playwright.
    - Blueprint direkonsiliasi (D-21–D-28, `scoped`, `FileReader`).
    - M-3/M-6 dari fase 0 ditutup.
+4. **2026-10-04:**
+   - Fase 1 di-merge ke `master`.
+   - Uji manual login dengan Playwright (laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-04`).
+   - Rencana Fase 2 disusun: tiga digest spesifikasi, kerangka kontrak, empat penulis, dua pemeriksa konsistensi. Hasilnya 16 tugas dengan keputusan F2-R1–F2-R28, dan menunggu persetujuan pemilik.
