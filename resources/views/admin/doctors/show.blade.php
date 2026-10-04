@@ -18,7 +18,7 @@
                 <i class="bi bi-pencil" aria-hidden="true"></i> Ubah Data
             </a>
         @endcan
-        {{-- Aksi status dokter --}}
+        @include('admin.doctors._status-actions', ['doctor' => $doctor])
     </x-slot:actions>
 
     <div class="row g-4">
@@ -88,5 +88,5 @@
         </div>
     </div>
 
-    {{-- Modal konfirmasi status dokter --}}
+    @include('admin.doctors._status-modals')
 </x-layouts.admin>

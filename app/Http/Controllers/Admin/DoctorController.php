@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\DoctorStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DoctorIndexRequest;
 use App\Http\Requests\Admin\StoreDoctorRequest;
 use App\Http\Requests\Admin\UpdateDoctorRequest;
+use App\Http\Requests\Admin\UpdateDoctorStatusRequest;
 use App\Models\Clinic;
 use App\Models\Doctor;
 use App\Models\Specialty;
@@ -76,6 +78,24 @@ class DoctorController extends Controller
 
         return redirect()->route('admin.doctors.show', $doctor)
             ->with('success', __('messages.updated', ['entity' => __('messages.entities.doctor')]));
+    }
+
+    public function status(UpdateDoctorStatusRequest $request, Doctor $doctor, DoctorService $service): RedirectResponse
+    {
+        $this->authorize('changeStatus', $doctor);
+
+        $restoring = $doctor->status === DoctorStatus::Archived;
+        $target = $request->targetStatus();
+
+        $service->changeStatus($doctor, $target, $request->reason(), Actor::staff($request->user()));
+
+        $message = match (true) {
+            $restoring => 'Dokter dipulihkan sebagai nonaktif.',
+            $target === DoctorStatus::Active => 'Dokter diaktifkan.',
+            default => 'Dokter dinonaktifkan.',
+        };
+
+        return back(fallback: route('admin.doctors.show', $doctor))->with('success', $message);
     }
 
     /**

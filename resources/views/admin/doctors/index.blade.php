@@ -90,11 +90,11 @@
                     @can('update', $doctor)
                         <a href="{{ route('admin.doctors.edit', $doctor) }}" class="btn btn-sm btn-outline-primary" aria-label="Ubah {{ $doctor->display_name }}">Ubah</a>
                     @endcan
-                    {{-- Aksi status dokter --}}
+                    @include('admin.doctors._status-actions', ['doctor' => $doctor])
                 </td>
             </tr>
         @endforeach
     </x-data-table>
 
-    {{-- Modal konfirmasi status dokter --}}
+    @include('admin.doctors._status-modals')
 </x-layouts.admin>

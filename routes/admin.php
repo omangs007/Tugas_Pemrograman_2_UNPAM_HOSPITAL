@@ -50,6 +50,9 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
             ->names('doctors')
             ->parameters(['dokter' => 'doctor'])
             ->except(['index', 'show', 'destroy']);
+        Route::patch('dokter/{doctor}/status', [DoctorController::class, 'status'])->name('doctors.status');
+        Route::patch('dokter/{doctor}/arsip', [DoctorController::class, 'archive'])->name('doctors.archive');
+        Route::post('dokter/{doctor}/foto', [DoctorController::class, 'photo'])->name('doctors.photo');
     });
     Route::middleware('permission:doctors.view')->group(function (): void {
         Route::resource('dokter', DoctorController::class)
