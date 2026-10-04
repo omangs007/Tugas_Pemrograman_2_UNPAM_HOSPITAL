@@ -11,6 +11,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Exceptions\UnauthorizedException;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
@@ -78,8 +79,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $sensitive = ['password', 'password_confirmation', 'current_password', 'bpjs_number', 'payment_reference'];
 
         $exceptions->dontFlash($sensitive);
+        // Galat validasi pada admin.media.* hanya JSON bila klien meminta JSON; form HTML biasa mendapat redirect + $errors.
         $exceptions->shouldRenderJsonWhen(fn (Request $request, Throwable $e): bool => $request->expectsJson()
-            || $request->routeIs('admin.dashboard.chart', 'admin.media.*'));
+            || $request->routeIs('admin.dashboard.chart')
+            || ($request->routeIs('admin.media.*') && ! $e instanceof ValidationException));
 
         // 403 / 419 / 429 berbahasa Indonesia (11 §11.3 + F1-R6). AuthorizationException sudah menjadi 403 dan
         // TokenMismatchException menjadi 419 sebelum callback ini dipanggil; ThrottleRequestsException adalah 429.

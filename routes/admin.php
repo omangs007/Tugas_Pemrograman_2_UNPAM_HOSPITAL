@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\AdminPasswordController;
 use Illuminate\Support\Facades\Route;
@@ -38,4 +39,17 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
     Route::get('/', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
+
+    // J. Media (11 §2.3 J, F2-R3). JSON; izin akhir ditentukan MediaPolicy menurut pemilik media.
+    // `editor` dan `urutkan` bersifat statis dan harus didaftarkan SEBELUM `{media}`.
+    Route::post('/media/editor', [MediaController::class, 'editorUpload'])
+        ->middleware('permission:content.manage|clinics.manage|facilities.manage')
+        ->name('media.editor-upload');
+    Route::post('/media/urutkan', [MediaController::class, 'reorder'])
+        ->middleware('permission:doctors.manage|clinics.manage|facilities.manage|content.manage')
+        ->name('media.reorder');
+    Route::middleware('permission:doctors.manage|clinics.manage|facilities.manage|content.manage|settings.manage')->group(function (): void {
+        Route::patch('/media/{media}', [MediaController::class, 'update'])->name('media.update');
+        Route::delete('/media/{media}', [MediaController::class, 'destroy'])->name('media.destroy');
+    });
 });
