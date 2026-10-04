@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Specialty;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\InteractsWithMasterData;
 use Tests\Support\InteractsWithStaff;
 use Tests\TestCase;
@@ -146,6 +147,62 @@ class AdminSpecialtyCrudTest extends TestCase
         $this->actingAs($this->createStaff('content-admin'))
             ->get('/admin/spesialisasi/abc/ubah')
             ->assertNotFound();
+    }
+
+    public function test_unreferenced_specialty_is_deleted_with_a_success_flash(): void
+    {
+        $specialty = $this->createSpecialty(['name' => 'Bisa Dihapus']);
+
+        $this->actingAs($this->createStaff('content-admin'))
+            ->delete(route('admin.specialties.destroy', $specialty))
+            ->assertRedirect(route('admin.specialties.index'))
+            ->assertSessionHas('success', 'Spesialisasi berhasil dihapus.');
+
+        $this->assertDatabaseMissing('specialties', ['id' => $specialty->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'specialty.deleted']);
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function deleters(): array
+    {
+        return ['admin konten' => ['content-admin'], 'super admin' => ['super-admin']];
+    }
+
+    #[DataProvider('deleters')]
+    public function test_specialty_used_by_a_doctor_is_not_deleted_even_for_super_admin(string $role): void
+    {
+        $specialty = $this->createSpecialty(['name' => 'Dipakai Dokter']);
+        $this->createDoctor([], null, [$specialty]);
+        $reason = 'Spesialisasi ini masih dipakai oleh dokter atau poliklinik sehingga tidak dapat dihapus. Nonaktifkan saja.';
+
+        $this->actingAs($this->createStaff($role))
+            ->delete(route('admin.specialties.destroy', $specialty))
+            ->assertRedirect(route('admin.specialties.index'))
+            ->assertSessionHas('error', $reason);
+
+        $this->assertDatabaseHas('specialties', ['id' => $specialty->id]);
+        $this->assertDatabaseCount('doctor_specialties', 1);
+
+        $this->followingRedirects()
+            ->delete(route('admin.specialties.destroy', $specialty))
+            ->assertOk()
+            ->assertSee('masih dipakai oleh dokter atau poliklinik');
+    }
+
+    #[DataProvider('deleters')]
+    public function test_specialty_used_by_a_clinic_is_not_deleted(string $role): void
+    {
+        $specialty = $this->createSpecialty(['name' => 'Dipakai Poliklinik']);
+        $clinic = $this->createClinic(['specialty_id' => $specialty->id]);
+
+        $this->actingAs($this->createStaff($role))
+            ->delete(route('admin.specialties.destroy', $specialty))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('specialties', ['id' => $specialty->id]);
+        $this->assertSame($specialty->id, $clinic->fresh()->specialty_id);
     }
 
     public function test_registration_officer_patient_and_guest_cannot_use_mutating_routes(): void

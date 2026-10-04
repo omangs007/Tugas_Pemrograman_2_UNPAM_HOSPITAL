@@ -56,4 +56,23 @@ class SpecialtyController extends Controller
         return redirect()->route('admin.specialties.index')
             ->with('success', __('messages.updated', ['entity' => __('messages.entities.specialty')]));
     }
+
+    /**
+     * Penolakan di controller (bukan Policy) supaya berlaku juga untuk Super Admin (F2-R18).
+     */
+    public function destroy(Specialty $specialty): RedirectResponse
+    {
+        $this->authorize('delete', $specialty);
+
+        $reason = $specialty->deletionBlockedReason();
+
+        if ($reason !== null) {
+            return redirect()->route('admin.specialties.index')->with('error', __('messages.delete_blocked', ['reason' => $reason]));
+        }
+
+        DB::transaction(fn (): ?bool => $specialty->delete());
+
+        return redirect()->route('admin.specialties.index')
+            ->with('success', __('messages.deleted', ['entity' => __('messages.entities.specialty')]));
+    }
 }
