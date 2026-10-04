@@ -11,9 +11,9 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Blueprint (spesifikasi) | Selesai & disetujui — `docs/superpowers/specs/2026-10-02-unpam-hospital-blueprint/` (mulai dari `README.md`, lalu `00-keputusan-inti.md`). Diperbarui di fase 1: 00 J.6, 06 §14.A, 10 (pratinjau `FileReader`), 11 §3.3/§6.10/§6.11 (`scoped`), 12 V-03, 15 SEK-03, 16 §5/§7, 17 §4 (D-21–D-28). |
 | Fase 0 — Lingkungan & skeleton | **Selesai**, di-merge ke `master`. Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
 | Fase 1 — Fondasi | **Selesai** dan **sudah di-merge** ke `master` (fast-forward `0b87342`, 2026-10-04; cabang `fase-1-fondasi` dihapus). Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang beserta perbaikannya sudah selesai. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
-| Fase 2 — Master Data | **Eksekusi selesai** di cabang `fase-2-master-data` (47 commit + commit catatan). Semua 16 tugas lulus review. Final review seluruh cabang beserta satu gelombang perbaikan (F1–F5) selesai. Hasilnya 1842 tes lulus (8470 asersi), Pint PASS, `npm run build` OK, dan 31 route admin. **Belum di-merge** ke `master`: menunggu pilihan pemilik. Rencana, catatan eksekusi, dan keputusan X1–X13: `docs/superpowers/plans/2026-10-04-fase-2-master-data.md` (bagian akhir). |
+| Fase 2 — Master Data | **Eksekusi dan gerbang fase selesai** di cabang `fase-2-master-data`. Semua 16 tugas lulus review. Final review seluruh cabang beserta satu gelombang perbaikan (F1–F5) selesai. `migrate:fresh --seed` dijalankan dengan izin pemilik dan jumlah datanya persis sesuai target. Uji manual Step 19 dijalankan lewat Playwright (laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-05`); dua cacat temuannya (M1 `&nbsp;` editor, M2 panah galeri) sudah diperbaiki di `929c13a`. Hasil akhir: 1845 tes lulus (8479 asersi), Pint PASS, `npm run build` OK, 31 route admin. **Belum di-merge** ke `master`: menunggu pilihan pemilik. Rencana, catatan eksekusi, dan keputusan X1–X14 ada di bagian akhir `docs/superpowers/plans/2026-10-04-fase-2-master-data.md`. |
 | Cabang git | `master` (fase 0 + fase 1); `fase-2-master-data` (fase 2, siap merge). Repo tanpa remote. |
-| Keputusan tertunda pemilik | (1) **Seed ulang DB pengembangan** (`migrate:fresh --seed`, Task 16 Step 16) ditolak pengaman auto mode Claude Code. Pemilik menjalankannya sendiri atau mengizinkan; setelah itu dilakukan smoke `/layanan` dan MANUAL Step 19 (bisa lewat Playwright). (2) Opsi merge fase 2. (3) Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
+| Keputusan tertunda pemilik | (1) Opsi merge fase 2. (2) Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
 | Fase berikutnya | **Fase 3 — Jadwal Dokter** (rencana belum ditulis). |
 
 Yang sudah ada di aplikasi:
@@ -26,7 +26,7 @@ Yang sudah ada di aplikasi:
 - Runtime PHP 8.2.12 (`C:\xampp3\php\php.exe`). PHP 8.4 di PATH **jangan** dipakai untuk proyek. Composer selalu dijalankan sebagai `& $PHP C:\composer\composer.phar …`, bukan `composer.bat` (karakter `^` hilang).
 - Database `unpam_hospital` (dev) dan `unpam_hospital_test` (uji), user `unpam_app`. Password hanya ada di `.env`/`.env.testing` (git-ignored, jangan dihapus).
 - URL: <http://unpam-hospital.test> (VirtualHost; cadangan konfigurasi `httpd-vhosts.conf.bak-fase0`). Alternatif: `php artisan serve` → <http://127.0.0.1:8000>. Login admin: <http://unpam-hospital.test/admin/login>.
-- Akun demo (hanya lokal, password `Demo12345` atau `DEMO_PASSWORD`): `superadmin@`, `konten@`, `pendaftaran@unpamhospital.test`. Akun ini dibuat oleh `php artisan migrate:fresh --seed`, yang menghapus seluruh isi database pengembangan. Database pengembangan saat ini **masih berskema fase 1** (9 migration) dan hanya berisi 3 akun demo serta audit login. Tabel dan data demo fase 2 baru ada setelah `migrate:fresh --seed`, yang menunggu persetujuan pemilik (§1).
+- Akun demo (hanya lokal, password `Demo12345` atau `DEMO_PASSWORD`): `superadmin@`, `konten@`, `pendaftaran@unpamhospital.test`. Akun ini dibuat oleh `php artisan migrate:fresh --seed`, yang menghapus seluruh isi database pengembangan. Database pengembangan sudah di-seed ulang dengan data demo fase 2 (2026-10-05). Isinya ditambah sedikit data dari uji manual: dokter "Laras Wulandari Putri" (Nonaktif), serta dua foto galeri dan satu kalimat tambahan di Poliklinik Penyakit Dalam. Perintah `migrate:fresh --seed` menghapus seluruh isi DB pengembangan, jadi Claude perlu izin eksplisit pemilik untuk menjalankannya karena pengaman auto mode memblokir.
 - Tabel sistem MariaDB XAMPP pernah rusak (`mysql.db` + log Aria) dan sudah diperbaiki. Bila hak akses DB hilang lagi, lihat blueprint 16 §13 baris "`GRANT` tidak tersimpan".
 
 ## 3. Cara melanjutkan (PowerShell)
@@ -37,21 +37,12 @@ $env:Path = "$XAMPP\php;$env:Path"; Set-Location "D:\Project Web RS"
 
 git status; git branch --show-current          # harus bersih; fase-2-master-data (atau master setelah merge)
 & $PHP scripts\check-env.php                    # "status": "OK"
-& $PHP artisan test                             # 1842 passed (±160 s)
+& $PHP artisan test                             # 1845 passed (±160 s)
 & $PHP vendor\bin\pint --test                   # PASS
 & $PHP artisan route:list --path=admin          # 31 route
-curl.exe -s -o NUL -w '%{http_code}' http://unpam-hospital.test/admin/login   # 200
+& $PHP artisan media:prune --dry-run            # 0 baris, 0 berkas yatim
+curl.exe -s -o NUL -w '%{http_code}' http://unpam-hospital.test/layanan       # 200
 ```
-
-Langkah tertunda fase 2 (setelah pemilik setuju; menghapus isi DB pengembangan):
-
-```powershell
-& $PHP artisan migrate:fresh --seed            # 13 spesialisasi, 17 layanan, 18 dokter, 20 pivot, 32 media
-& $PHP artisan media:prune --dry-run           # 0 baris, 0 berkas yatim
-foreach ($u in '/layanan', '/layanan/poliklinik-anak', '/layanan/igd-24-jam') { curl.exe -s -o NUL -w "$u => %{http_code}`n" "http://unpam-hospital.test$u" }   # 200
-```
-
-Lalu MANUAL Step 19 rencana fase 2 (CRUD dokter/poliklinik/spesialisasi, editor dengan unggah gambar, halaman publik #4/#5). Claude bisa menjalankannya lewat Playwright dengan laporan bergambar.
 
 Setelah fase 2 di-merge: tulis rencana **Fase 3 — Jadwal Dokter** dengan `superpowers:writing-plans`, lalu eksekusi dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
 
@@ -75,6 +66,7 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
   - Suite ±150 s (seed demo per tes).
   - `errorBag` per media galeri.
   - Gambar editor lintas poliklinik.
+  - Logo kecil di header publik dan sidebar admin tampak sempit (lebar = tinggi).
   - Lainnya tercantum di Catatan Eksekusi fase 2.
 - **Fase 5:**
   - Hapus cadangan `Route::has('login')`/`Route::has('patient.dashboard')` (F1-R2).
@@ -116,4 +108,5 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
    - Rencana fase 2 disetujui pemilik. Scan pra-eksekusi S1–S13 ditambal (`539ffbb`).
    - Task 1–16 selesai lewat subagent-driven-development (Sonnet 5.5), dengan putaran perbaikan di Task 2, 7, 11, dan 16.
    - Final review seluruh cabang menemukan 3 butir Important: gambar editor terhapus `media:prune`, spesialisasi nonaktif tampil publik, dan alt diabaikan. Ketiganya beserta 2 Minor ditutup dalam satu gelombang perbaikan (`fb4ab7d`). Blueprint direkonsiliasi (D-29–D-58).
-   - `migrate:fresh --seed` DB pengembangan ditolak pengaman auto mode dan menunggu pemilik.
+   - `migrate:fresh --seed` DB pengembangan sempat ditolak pengaman auto mode, lalu dijalankan setelah izin pemilik.
+   - Uji manual Playwright menemukan 2 cacat: spasi `&nbsp;` dari Quill 2 dan panah galeri. Keduanya diperbaiki (`929c13a`, 1845 tes).

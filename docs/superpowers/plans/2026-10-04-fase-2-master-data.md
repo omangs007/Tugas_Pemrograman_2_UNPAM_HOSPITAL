@@ -19297,19 +19297,20 @@ Laporan gerbang fase 2 ke koordinator: keluaran Step 15–18, hasil MANUAL Step 
 
 Dieksekusi dengan `superpowers:subagent-driven-development`. Semua peran memakai subagent **Sonnet 5.5** (preferensi pemilik): implementer, reviewer per tugas, re-reviewer, final reviewer, dan implementer gelombang perbaikan final. Eksekusi berlangsung 2026-10-04/05 dalam satu sesi panjang. Beberapa subagent sempat terputus karena galat jaringan API (ENOTFOUND), lalu dilanjutkan tanpa kehilangan pekerjaan.
 
-Cabang `fase-2-master-data` berisi 47 commit di atas `master` (`f1ecb15`..`fb4ab7d`), ditambah commit catatan ini.
+Cabang `fase-2-master-data` berisi 47 commit kerja di atas `master` (`f1ecb15`..`fb4ab7d`), ditambah commit catatan `d69ea9a`, perbaikan hasil uji manual `929c13a`, dan commit pembaruan catatan ini.
 
 **Hasil akhir:**
 
 | Pemeriksaan | Hasil |
 |---|---|
-| `artisan test` | **1842 tes lulus (8470 asersi)** |
+| `artisan test` | **1845 tes lulus (8479 asersi)** setelah perbaikan uji manual; sebelumnya 1842 di `fb4ab7d` |
 | `pint --test` | PASS |
 | `npm run build` | Sukses; manifest memuat `app.scss`, `app.js`, `admin.js`, `editor.js` |
 | `route:list --path=admin` | 31 route (6 fase 1 + 25 fase 2); daftar nama persis sama dengan Step 17 |
 | `AdminPageMatrixTest` + `Phase2RoutePermissionTest` + `AdminRouteMiddlewareTest` | 184 tes hijau (AKS-01–AKS-06, KNS-02) |
-| `migrate:fresh --seed` (DB pengembangan, Step 16) | **Belum dijalankan.** Pengaman auto mode Claude Code menolaknya sebagai penghapusan lokal yang tidak dapat dibatalkan, jadi keputusannya diserahkan ke pemilik. DB pengembangan saat ini masih skema fase 1 dengan 3 akun demo. Data demo fase 2 diverifikasi lewat `DemoSeederInvariantsTest` (13/17/18/20/32, `media:prune` 0 yatim) pada DB uji. |
-| Smoke publik dan MANUAL (Step 18–19) | Menunggu Step 16. |
+| `migrate:fresh --seed` (DB pengembangan, Step 16) | OK setelah izin pemilik (percobaan pertama ditolak pengaman auto mode). Hitungan persis: 3 peran, 19 izin, 19 pengaturan, 3 staf, 13 spesialisasi, 17 layanan (4 penunjang), 18 dokter (16 aktif), 20 pivot, 32 media (16 foto, 16 cover). `media:prune --dry-run`: 0 baris, 0 berkas, exit 0. |
+| Smoke publik (Step 18) | `/layanan`, `/layanan/poliklinik-anak`, `/layanan/poliklinik-gigi`, `/layanan/igd-24-jam`, `/admin/login` semuanya 200. |
+| MANUAL (Step 19) | Dijalankan koordinator lewat Playwright; laporan bergambar ada di `Documents\UNPAM-Uji-Manual-2026-10-05\index.html`. Butir 1–7 sesuai setelah dua cacat diperbaiki (`929c13a`): (M1) `getSemanticHTML()` Quill 2 mengubah setiap spasi menjadi `&nbsp;` sehingga teks #5 patah di tengah kata di ponsel, kini dinormalkan di `editor.js` dan `SanitizesRichText`; (M2) tombol panah galeri modal tidak berfungsi karena instance Carousel belum dibuat, kini dibuat di `initGalleryModals()`. Keduanya diverifikasi ulang lewat Playwright. |
 
 **Putaran perbaikan per tugas** (masing-masing satu putaran, semuanya lulus re-review):
 
@@ -19334,11 +19335,12 @@ Cabang `fase-2-master-data` berisi 47 commit di atas `master` (`f1ecb15`..`fb4ab
 | X6 | Tes tamu memakai `forgetGuards()` (Task 6). `shouldRenderJsonWhen` mengembalikan JSON bila `expectsJson()`, untuk `admin.dashboard.chart`, atau untuk `admin.media.*` bila exception bukan `ValidationException` (S2). | Tamu di `admin.media.*` menerima 401 JSON, bukan redirect. |
 | X7 | `StoreDoctorRequest::after()` memindahkan pesan `specialty_ids.*` ke kunci tunggal `specialty_ids` (Task 11). | Galat spesialisasi tampil di akhir ringkasan. |
 | X8 | Asersi autofocus memakai `preg_match_all('/\sautofocus(?=[\s=>])/')`, karena `x-form.input` merender `autofocus="autofocus"` (Task 15). | Tidak ada. |
-| X9 | Task 16 dipecah: Step 1–15 dan 17 oleh implementer; Step 16, 18, dan 19 oleh koordinator. DB pengembangan diperiksa dulu (3 akun demo, 29 audit login, 0 media). `migrate:fresh --seed` ditolak pengaman auto mode, sehingga menunggu pemilik. | Gerbang INS/MANUAL pada DB pengembangan belum diverifikasi. |
+| X9 | Task 16 dipecah: Step 1–15 dan 17 oleh implementer; Step 16, 18, dan 19 oleh koordinator. DB pengembangan diperiksa dulu (3 akun demo, 29 audit login, 0 media). `migrate:fresh --seed` sempat ditolak pengaman auto mode, lalu dijalankan setelah pemilik mengizinkan ("izinkan seed ulang dan lanjutkan uji manual"). | Pemilik harus login ulang (sesi lama tidak valid). |
 | X10 | Final F1: `MediaService::syncEditorImages()` per 08 §5.2, ditambah `Media::orphaned()` berbasis `updated_at` dan guard `EDITOR_REFERENCE_COLUMNS` di `prune` (D-55). Tanpa ini, `media:prune` menghapus gambar editor yang dipakai di deskripsi poliklinik. Rencana melewatkan 08 §5.2. | Tes prune lama kini memundurkan `created_at` dan `updated_at`. |
 | X11 | Final F2: data dokter publik hanya memuat spesialisasi aktif (D-56, Review Focus 4). | Lencana kartu publik berubah bila spesialisasi utama nonaktif. |
 | X12 | Final F3: `cover_alt`/`photo_alt` tanpa berkas baru memperbarui alt media yang ada; alt kosong ditolak (D-57). | Kecil. |
 | X13 | Final F4/F5: `.admin-shell` `100dvh`; rich text yang kosong secara visual disimpan NULL (D-58). | Tidak ada. |
+| X14 | Uji manual M1/M2 diperbaiki sebelum merge (`929c13a`). U+00A0/`&nbsp;`/`&#160;` dinormalkan menjadi spasi di klien dan di `SanitizesRichText`. Data yang telanjur tersimpan dengan `&nbsp;` ikut terperbaiki saat disimpan ulang. Carousel galeri dibuat sejak awal (`keyboard: true`, tanpa putar otomatis). Perubahan produksi hanya 11 baris: dibaca utuh oleh koordinator dan diverifikasi lewat Playwright tanpa reviewer subagen terpisah. | `&nbsp;` yang disengaja (jarang) ikut menjadi spasi biasa. |
 
 ### Bawaan (carry) untuk rencana fase berikutnya
 
@@ -19367,4 +19369,6 @@ Cabang `fase-2-master-data` berisi 47 commit di atas `master` (`f1ecb15`..`fb4ab
 - Tes `PlaceholderImageGenerator` jalur TrueType/fallback lemah.
 - Redaksi 05 "nonaktif memicu di fase 3".
 
-**Gerbang yang tertunda:** `migrate:fresh --seed` pada DB pengembangan, smoke `/layanan`, dan MANUAL Step 19. Jalankan setelah pemilik menyetujui seed ulang. Koordinator dapat menjalankan MANUAL lewat Playwright dengan laporan bergambar.
+**Catatan uji manual:**
+- Logo kecil di header publik dan sidebar admin masih tampak sempit (cacat fase 1 yang diketahui, sengaja tidak diubah di Task 15).
+- DB pengembangan kini memuat sedikit data uji: dokter "Laras Wulandari Putri" (Nonaktif), serta dua foto galeri dan satu kalimat tambahan di Poliklinik Penyakit Dalam. Untuk data demo murni, jalankan `migrate:fresh --seed`.
