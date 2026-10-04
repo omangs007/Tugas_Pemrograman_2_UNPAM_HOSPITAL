@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\ClinicController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\SpecialtyController;
 use App\Http\Controllers\Auth\AdminLoginController;
@@ -41,6 +42,21 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
     Route::get('/', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
+
+    // Dokter (halaman #33), 11 §3.4: izin lihat ≠ kelola, jadi kelola didaftarkan DAHULU agar /dokter/buat
+    // tidak tertangkap {doctor}, lalu lihat. Dokter tidak punya destroy (diarsipkan, bukan dihapus; BR-03).
+    Route::middleware('permission:doctors.manage')->group(function (): void {
+        Route::resource('dokter', DoctorController::class)
+            ->names('doctors')
+            ->parameters(['dokter' => 'doctor'])
+            ->except(['index', 'show', 'destroy']);
+    });
+    Route::middleware('permission:doctors.view')->group(function (): void {
+        Route::resource('dokter', DoctorController::class)
+            ->names('doctors')
+            ->parameters(['dokter' => 'doctor'])
+            ->only(['index', 'show']);
+    });
 
     // Poliklinik (halaman #34, tab Poliklinik): izin tunggal clinics.manage, tanpa show (11 §3.4).
     Route::middleware('permission:clinics.manage')->group(function (): void {
