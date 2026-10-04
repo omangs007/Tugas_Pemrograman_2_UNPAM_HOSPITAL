@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\SpecialtyController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\AdminPasswordController;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +40,14 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
     Route::get('/', [DashboardController::class, 'index'])
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
+
+    // Spesialisasi (halaman #34, tab Spesialisasi): izin tunggal clinics.manage, tanpa show (11 §3.4).
+    Route::middleware('permission:clinics.manage')->group(function (): void {
+        Route::resource('spesialisasi', SpecialtyController::class)
+            ->names('specialties')
+            ->parameters(['spesialisasi' => 'specialty'])
+            ->except(['show']);
+    });
 
     // J. Media (11 §2.3 J, F2-R3). JSON; izin akhir ditentukan MediaPolicy menurut pemilik media.
     // `editor` dan `urutkan` bersifat statis dan harus didaftarkan SEBELUM `{media}`.
