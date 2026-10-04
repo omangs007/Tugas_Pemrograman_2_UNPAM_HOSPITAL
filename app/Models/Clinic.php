@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ClinicType;
+use App\Models\Concerns\HasMedia;
 use App\Models\Concerns\HasUniqueSlug;
 use App\Models\Concerns\SanitizesRichText;
 use Database\Factories\ClinicFactory;
@@ -17,7 +18,7 @@ use Illuminate\Support\Str;
 class Clinic extends Model
 {
     /** @use HasFactory<ClinicFactory> */
-    use HasFactory, HasUniqueSlug, SanitizesRichText;
+    use HasFactory, HasMedia, HasUniqueSlug, SanitizesRichText;
 
     /**
      * @var list<string>
@@ -79,6 +80,16 @@ class Clinic extends Model
     protected function seoDescription(): Attribute
     {
         return Attribute::get(fn (): string => filled($this->meta_description) ? (string) $this->meta_description : (string) $this->short_description);
+    }
+
+    /**
+     * URL cover (koleksi `cover`), atau placeholder `clinic.svg`. Muat `media` pada daftar.
+     *
+     * @return Attribute<string, never>
+     */
+    protected function coverUrl(): Attribute
+    {
+        return Attribute::get(fn (): string => $this->mediaUrl('cover', 'full', 'images/placeholders/clinic.svg'));
     }
 
     /** Panjang kolom `clinics.slug` (09 §3.2). */

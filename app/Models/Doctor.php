@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DoctorStatus;
 use App\Enums\Gender;
+use App\Models\Concerns\HasMedia;
 use App\Models\Concerns\HasUniqueSlug;
 use Database\Factories\DoctorFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Doctor extends Model
 {
     /** @use HasFactory<DoctorFactory> */
-    use HasFactory, HasUniqueSlug;
+    use HasFactory, HasMedia, HasUniqueSlug;
 
     /**
      * `archived_at` sengaja tidak termasuk: diisi `DoctorService` (Task 8) lewat forceFill().
@@ -82,6 +83,26 @@ class Doctor extends Model
             return $specialties->first(fn (Specialty $specialty): bool => (bool) $specialty->pivot->is_primary)
                 ?? $specialties->first();
         })->withoutObjectCaching();
+    }
+
+    /**
+     * URL foto (koleksi `photo`), atau placeholder `doctor.svg`. Muat `media` pada daftar.
+     *
+     * @return Attribute<string, never>
+     */
+    protected function photoUrl(): Attribute
+    {
+        return Attribute::get(fn (): string => $this->mediaUrl('photo', 'full', 'images/placeholders/doctor.svg'));
+    }
+
+    /**
+     * URL thumbnail foto 400 px, atau placeholder `doctor.svg`.
+     *
+     * @return Attribute<string, never>
+     */
+    protected function photoThumbUrl(): Attribute
+    {
+        return Attribute::get(fn (): string => $this->mediaUrl('photo', 'thumb', 'images/placeholders/doctor.svg'));
     }
 
     /** Panjang kolom `doctors.slug` (09 §3.3). */
