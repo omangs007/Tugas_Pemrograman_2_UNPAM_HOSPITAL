@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use ReflectionClass;
+use ReflectionMethod;
 use RuntimeException;
 use Tests\Support\ImageFixtures;
 use Tests\Support\InteractsWithMasterData;
@@ -623,5 +624,215 @@ class DoctorServiceTest extends TestCase
         $this->assertSame(1, Media::query()->where('collection', 'photo')->count());
     }
 
-    // ---- akhir siklus B
+    // ------------------------------------------------------------------ changeStatus
+
+    public function test_change_status_deactivates_and_reactivates_with_audit(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        $inactive = $this->service->changeStatus($doctor, DoctorStatus::Inactive, '  Cuti panjang  ', $this->actor());
+
+        $this->assertSame(DoctorStatus::Inactive, $inactive->status);
+        $this->assertSame(DoctorStatus::Inactive, Doctor::query()->findOrFail($doctor->id)->status);
+
+        $log = $this->auditRows('doctor.status_changed')->sole();
+
+        $this->assertSame($this->staff->id, (int) $log->user_id);
+        $this->assertSame($doctor->id, (int) $log->auditable_id);
+        $this->assertEquals(['status' => 'active'], $log->old_values);
+        $this->assertEquals(['status' => 'inactive', 'reason' => 'Cuti panjang'], $log->new_values);
+        $this->assertStringContainsString('dr. Andi Pratama, Sp.A', $log->description);
+
+        $this->service->changeStatus($doctor, DoctorStatus::Active, null, $this->actor());
+
+        $this->assertSame(DoctorStatus::Active, Doctor::query()->findOrFail($doctor->id)->status);
+
+        $second = $this->auditRows('doctor.status_changed')->last();
+        $this->assertEquals(['status' => 'inactive'], $second->old_values);
+        $this->assertEquals(['status' => 'active'], $second->new_values);
+        $this->assertInvariants();
+    }
+
+    public function test_change_status_to_the_same_status_is_a_no_op_without_audit(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        $result = $this->service->changeStatus($doctor, DoctorStatus::Active, 'alasan', $this->actor());
+
+        $this->assertSame(DoctorStatus::Active, $result->status);
+        $this->assertSame(0, $this->auditRows('doctor.status_changed')->count());
+    }
+
+    public function test_change_status_to_archived_is_a_misuse(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Gunakan archive() untuk mengarsipkan dokter.');
+
+        $this->service->changeStatus($doctor, DoctorStatus::Archived, null, $this->actor());
+    }
+
+    public function test_archived_doctor_can_only_be_restored_as_inactive_and_archived_at_is_cleared(): void
+    {
+        $doctor = $this->makeDoctor();
+        $this->service->archive($doctor, null, $this->actor());
+        $archivedAt = Doctor::query()->findOrFail($doctor->id)->archived_at->format('Y-m-d H:i:s');
+
+        $this->assertRejected(
+            fn () => $this->service->changeStatus($doctor, DoctorStatus::Active, null, $this->actor()),
+            'status',
+            'Dokter yang diarsipkan hanya dapat dipulihkan menjadi nonaktif.',
+        );
+
+        $this->assertSame(DoctorStatus::Archived, Doctor::query()->findOrFail($doctor->id)->status);
+        $this->assertSame(0, $this->auditRows('doctor.status_changed')->count());
+
+        $restored = $this->service->changeStatus($doctor, DoctorStatus::Inactive, 'Kembali bertugas', $this->actor());
+
+        $this->assertSame(DoctorStatus::Inactive, $restored->status);
+        $this->assertNull($restored->archived_at);
+
+        $fresh = Doctor::query()->findOrFail($doctor->id);
+        $this->assertSame(DoctorStatus::Inactive, $fresh->status);
+        $this->assertNull($fresh->archived_at);
+
+        $log = $this->auditRows('doctor.status_changed')->sole();
+        $this->assertEquals(['status' => 'archived', 'archived_at' => $archivedAt], $log->old_values);
+        $this->assertEquals(['status' => 'inactive', 'archived_at' => null, 'reason' => 'Kembali bertugas'], $log->new_values);
+        $this->assertStringContainsString('dipulihkan', $log->description);
+        $this->assertInvariants();
+    }
+
+    public function test_stale_instance_cannot_bypass_the_archive_restore_rule(): void
+    {
+        $doctor = $this->makeDoctor();
+        $stale = Doctor::query()->findOrFail($doctor->id);
+
+        $this->service->archive($doctor, null, $this->actor());
+
+        $this->assertRejected(
+            fn () => $this->service->changeStatus($stale, DoctorStatus::Active, null, $this->actor()),
+            'status',
+            'Dokter yang diarsipkan hanya dapat dipulihkan menjadi nonaktif.',
+        );
+
+        $this->assertSame(DoctorStatus::Archived, Doctor::query()->findOrFail($doctor->id)->status);
+    }
+
+    public function test_change_status_is_rolled_back_when_the_audit_row_cannot_be_written(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        AuditLog::creating(fn () => throw new RuntimeException('audit gagal'));
+
+        $thrown = false;
+
+        try {
+            $this->service->changeStatus($doctor, DoctorStatus::Inactive, null, $this->actor());
+        } catch (RuntimeException) {
+            $thrown = true;
+        }
+
+        $this->assertTrue($thrown);
+        $this->assertSame(DoctorStatus::Active, Doctor::query()->findOrFail($doctor->id)->status);
+    }
+
+    // ------------------------------------------------------------------ archive
+
+    public function test_archive_sets_status_and_timestamp_and_writes_the_audit_row(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        $archived = $this->service->archive($doctor, '  Pensiun  ', $this->actor());
+
+        $fresh = Doctor::query()->findOrFail($doctor->id);
+
+        $this->assertSame(DoctorStatus::Archived, $archived->status);
+        $this->assertSame(DoctorStatus::Archived, $fresh->status);
+        $this->assertNotNull($fresh->archived_at);
+
+        $log = $this->auditRows('doctor.archived')->sole();
+
+        $this->assertSame($this->staff->id, (int) $log->user_id);
+        $this->assertSame($doctor->id, (int) $log->auditable_id);
+        $this->assertEquals(['status' => 'active', 'archived_at' => null], $log->old_values);
+        $this->assertEquals([
+            'status' => 'archived',
+            'archived_at' => $fresh->archived_at->format('Y-m-d H:i:s'),
+            'reason' => 'Pensiun',
+        ], $log->new_values);
+        $this->assertInvariants();
+    }
+
+    public function test_an_inactive_doctor_can_be_archived_and_is_no_longer_publicly_visible(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        $this->assertTrue(Doctor::query()->publiclyVisible()->whereKey($doctor->id)->exists());
+
+        $this->service->changeStatus($doctor, DoctorStatus::Inactive, null, $this->actor());
+        $this->assertFalse(Doctor::query()->publiclyVisible()->whereKey($doctor->id)->exists());
+
+        $this->service->archive($doctor, null, $this->actor());
+
+        $this->assertSame(DoctorStatus::Archived, Doctor::query()->findOrFail($doctor->id)->status);
+        $this->assertFalse(Doctor::query()->publiclyVisible()->whereKey($doctor->id)->exists());
+        $this->assertInvariants();
+    }
+
+    public function test_archiving_twice_is_rejected_without_a_second_audit_row(): void
+    {
+        $doctor = $this->makeDoctor();
+        $this->service->archive($doctor, null, $this->actor());
+
+        $this->assertRejected(fn () => $this->service->archive($doctor, null, $this->actor()), 'status', 'Dokter sudah diarsipkan.');
+
+        $this->assertSame(1, $this->auditRows('doctor.archived')->count());
+    }
+
+    public function test_archive_is_rolled_back_when_the_audit_row_cannot_be_written(): void
+    {
+        $doctor = $this->makeDoctor();
+
+        AuditLog::creating(fn () => throw new RuntimeException('audit gagal'));
+
+        $thrown = false;
+
+        try {
+            $this->service->archive($doctor, null, $this->actor());
+        } catch (RuntimeException) {
+            $thrown = true;
+        }
+
+        $this->assertTrue($thrown);
+
+        $fresh = Doctor::query()->findOrFail($doctor->id);
+        $this->assertSame(DoctorStatus::Active, $fresh->status);
+        $this->assertNull($fresh->archived_at);
+    }
+
+    // ------------------------------------------------------------------ titik sambung fase 3 (F2-R8)
+
+    public function test_future_appointment_seam_is_protected_and_always_zero_in_phase_two(): void
+    {
+        $doctor = $this->makeDoctor();
+        $method = new ReflectionMethod(DoctorService::class, 'futureActiveAppointmentsCount');
+
+        $this->assertTrue($method->isProtected());
+        $this->assertSame(0, $method->invoke($this->service, $doctor));
+        $this->assertNull($this->service->archiveBlockedReason($doctor));
+    }
+
+    public function test_archive_refusal_message_matches_the_specification(): void
+    {
+        $method = new ReflectionMethod(DoctorService::class, 'blockedMessage');
+
+        $this->assertTrue($method->isPrivate());
+        $this->assertTrue($method->isStatic());
+        $this->assertSame(
+            'Dokter masih memiliki 3 pendaftaran aktif pada sesi mendatang. Selesaikan sesi terdampak terlebih dahulu, lalu arsipkan dokter.',
+            $method->invoke(null, 3),
+        );
+    }
 }

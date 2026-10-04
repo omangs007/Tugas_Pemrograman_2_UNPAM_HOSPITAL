@@ -171,6 +171,129 @@ final class DoctorService
     }
 
     /**
+     * Aktifkan/nonaktifkan dokter, atau pulihkan dokter arsip menjadi nonaktif (F2-R7).
+     * Pengaruh ke sesi/appointment (00 F.4) baru ada di fase 3.
+     */
+    public function changeStatus(Doctor $doctor, DoctorStatus $status, ?string $reason, Actor $actor): Doctor
+    {
+        if ($status === DoctorStatus::Archived) {
+            throw new InvalidArgumentException('Gunakan archive() untuk mengarsipkan dokter.');
+        }
+
+        $reason = $this->nullableTrim($reason);
+
+        return DB::transaction(function () use ($doctor, $status, $reason, $actor): Doctor {
+            $this->lock($doctor);
+
+            $current = $doctor->status;
+
+            if ($current === DoctorStatus::Archived && $status !== DoctorStatus::Inactive) {
+                throw ValidationException::withMessages(['status' => 'Dokter yang diarsipkan hanya dapat dipulihkan menjadi nonaktif.']);
+            }
+
+            if ($current === $status) {
+                return $doctor;
+            }
+
+            $old = ['status' => $current->value];
+            $new = ['status' => $status->value];
+
+            if ($current === DoctorStatus::Archived) {
+                $old['archived_at'] = $doctor->archived_at;
+                $new['archived_at'] = null;
+                $doctor->archived_at = null;
+            }
+
+            $doctor->status = $status;
+            $doctor->save();
+
+            if ($reason !== null) {
+                $new['reason'] = $reason;
+            }
+
+            $verb = match (true) {
+                $current === DoctorStatus::Archived => 'dipulihkan dari arsip',
+                $status === DoctorStatus::Inactive => 'dinonaktifkan',
+                default => 'diaktifkan',
+            };
+
+            $this->audit->log('doctor.status_changed', $doctor, $old, $new, "Dokter \"{$doctor->displayName}\" {$verb}.", $actor);
+
+            return $doctor;
+        });
+    }
+
+    /**
+     * Arsipkan dokter (BR-03/BR-06). Ditolak bila masih ada pendaftaran aktif pada sesi mendatang (00 F.4);
+     * aturan ini berlaku juga untuk Super Admin karena dijaga di sini, bukan di Policy.
+     */
+    public function archive(Doctor $doctor, ?string $reason, Actor $actor): Doctor
+    {
+        $reason = $this->nullableTrim($reason);
+
+        return DB::transaction(function () use ($doctor, $reason, $actor): Doctor {
+            $this->lock($doctor);
+
+            if ($doctor->status === DoctorStatus::Archived) {
+                throw ValidationException::withMessages(['status' => 'Dokter sudah diarsipkan.']);
+            }
+
+            $blocked = $this->archiveBlockedReason($doctor);
+
+            if ($blocked !== null) {
+                throw ValidationException::withMessages(['status' => $blocked]);
+            }
+
+            $old = ['status' => $doctor->status->value, 'archived_at' => null];
+
+            $doctor->status = DoctorStatus::Archived;
+            $doctor->archived_at = now();
+            $doctor->save();
+
+            $new = ['status' => DoctorStatus::Archived->value, 'archived_at' => $doctor->archived_at];
+
+            if ($reason !== null) {
+                $new['reason'] = $reason;
+            }
+
+            $this->audit->log('doctor.archived', $doctor, $old, $new, "Dokter \"{$doctor->displayName}\" diarsipkan.", $actor);
+
+            return $doctor;
+        });
+    }
+
+    /**
+     * Alasan arsip ditolak (atau null bila boleh). Dipakai ArchiveDoctorRequest dan archive().
+     */
+    public function archiveBlockedReason(Doctor $doctor): ?string
+    {
+        $count = $this->futureActiveAppointmentsCount($doctor);
+
+        return $count > 0 ? self::blockedMessage($count) : null;
+    }
+
+    /**
+     * Titik sambung fase 3 (F2-R8): jumlah appointment aktif pada sesi mendatang. Fase 2 belum memiliki
+     * tabel appointment sehingga selalu 0; fase 3 cukup mengganti isi method ini.
+     */
+    protected function futureActiveAppointmentsCount(Doctor $doctor): int
+    {
+        return 0;
+    }
+
+    private static function blockedMessage(int $count): string
+    {
+        return "Dokter masih memiliki {$count} pendaftaran aktif pada sesi mendatang. Selesaikan sesi terdampak terlebih dahulu, lalu arsipkan dokter.";
+    }
+
+    private function nullableTrim(?string $value): ?string
+    {
+        $value = $value === null ? '' : trim($value);
+
+        return $value === '' ? null : $value;
+    }
+
+    /**
      * Baca ulang baris dengan kunci tulis dan perbarui instance pemanggil, agar instance basi tidak menimpa
      * perubahan lain (status, arsip). Dipanggil di dalam transaksi.
      */
