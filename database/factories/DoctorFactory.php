@@ -8,7 +8,6 @@ use App\Models\Clinic;
 use App\Models\Doctor;
 use App\Models\Specialty;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 /**
  * @extends Factory<Doctor>
@@ -26,8 +25,6 @@ class DoctorFactory extends Factory
         return [
             'clinic_id' => Clinic::factory(),
             'name' => fake()->unique()->firstName().' '.fake()->lastName(),
-            // Slug sementara dari nama; dihapus di Task 2 saat trait HasUniqueSlug mengambil alih.
-            'slug' => fn (array $attributes): string => Str::slug((string) $attributes['name']),
             'title_prefix' => 'dr.',
             'title_suffix' => 'Sp.PD',
             'gender' => fake()->randomElement(Gender::cases()),

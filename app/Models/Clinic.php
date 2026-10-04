@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ClinicType;
+use App\Models\Concerns\HasUniqueSlug;
 use Database\Factories\ClinicFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -15,7 +16,7 @@ use Illuminate\Support\Str;
 class Clinic extends Model
 {
     /** @use HasFactory<ClinicFactory> */
-    use HasFactory;
+    use HasFactory, HasUniqueSlug;
 
     /**
      * @var list<string>
@@ -77,6 +78,12 @@ class Clinic extends Model
     protected function seoDescription(): Attribute
     {
         return Attribute::get(fn (): string => filled($this->meta_description) ? (string) $this->meta_description : (string) $this->short_description);
+    }
+
+    /** Panjang kolom `clinics.slug` (09 §3.2). */
+    protected function slugMaxLength(): int
+    {
+        return 140;
     }
 
     public function specialty(): BelongsTo

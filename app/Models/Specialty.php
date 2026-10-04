@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasUniqueSlug;
 use Database\Factories\SpecialtyFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Specialty extends Model
 {
     /** @use HasFactory<SpecialtyFactory> */
-    use HasFactory;
+    use HasFactory, HasUniqueSlug;
 
     /**
      * @var list<string>
@@ -47,6 +48,12 @@ class Specialty extends Model
     public function clinics(): HasMany
     {
         return $this->hasMany(Clinic::class);
+    }
+
+    /** Panjang kolom `specialties.slug` (09 §3.1). */
+    protected function slugMaxLength(): int
+    {
+        return 120;
     }
 
     public function scopeActive(Builder $query): Builder

@@ -20,8 +20,6 @@ class SpecialtyFactory extends Factory
     {
         return [
             'name' => Str::title(fake()->unique()->words(2, true)),
-            // Slug sementara dari nama; dihapus di Task 2 saat trait HasUniqueSlug mengambil alih.
-            'slug' => fn (array $attributes): string => Str::slug((string) $attributes['name']),
             'description' => fake()->sentence(),
             'is_active' => true,
             'sort_order' => 0,

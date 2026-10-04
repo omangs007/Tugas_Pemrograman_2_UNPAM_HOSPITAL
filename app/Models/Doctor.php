@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DoctorStatus;
 use App\Enums\Gender;
+use App\Models\Concerns\HasUniqueSlug;
 use Database\Factories\DoctorFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Doctor extends Model
 {
     /** @use HasFactory<DoctorFactory> */
-    use HasFactory;
+    use HasFactory, HasUniqueSlug;
 
     /**
      * `archived_at` sengaja tidak termasuk: diisi `DoctorService` (Task 8) lewat forceFill().
@@ -81,6 +82,12 @@ class Doctor extends Model
             return $specialties->first(fn (Specialty $specialty): bool => (bool) $specialty->pivot->is_primary)
                 ?? $specialties->first();
         })->withoutObjectCaching();
+    }
+
+    /** Panjang kolom `doctors.slug` (09 §3.3). */
+    protected function slugMaxLength(): int
+    {
+        return 170;
     }
 
     public function clinic(): BelongsTo
