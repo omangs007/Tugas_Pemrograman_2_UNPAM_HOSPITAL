@@ -1294,7 +1294,10 @@ replace($owner, $collection, $file, …):    // 00 K "Penggantian"
   $old = $owner->firstMedia($collection) (query segar);  $new = store(...)       // simpan file + baris baru dulu
   DB::afterCommit(fn () => $old && $this->delete($old))                           // hapus file + baris lama SETELAH commit
 prune($dryRun):                                                                    // 00 K "Pembersihan"
-  (a) Media::orphaned(24)  = baris model_id NULL berumur > 24 jam (kecuali koleksi `logo` yang dirujuk website_settings) → hapus file + baris
+  (a) Media::orphaned(24)  = baris model_id NULL dengan updated_at > 24 jam (kecuali koleksi `logo` yang dirujuk website_settings,
+      dan baris `editor` yang file_name-nya masih dirujuk kolom rich text di MediaService::EDITOR_REFERENCE_COLUMNS) → hapus file + baris (D-55)
+syncEditorImages($owner):                                                          // 08 §5.2; dipicu hook `saved` SanitizesRichText (D-55)
+  ikat baris `editor` NULL yang dirujuk HTML pemilik (tanpa merebut milik model lain); lepas baris milik pemilik yang tak lagi dirujuk (NULL + updated_at)
   (b) file di disk `public` pada folder koleksi yang tidak tercatat di `media` dan berumur > 1 jam [ASUMSI: menghindari balapan dengan unggahan berjalan] → hapus
   $dryRun → hanya menghitung & mencetak daftar; return MediaPruneReport(orphanRows, orphanFiles, bytes, dryRun)
 ```

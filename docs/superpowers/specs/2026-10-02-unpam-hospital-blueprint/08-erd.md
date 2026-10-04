@@ -898,7 +898,7 @@ Kombinasi (pemilik, koleksi) di luar tabel ini ditolak oleh `MediaService` (daft
 ### 5.2 Gambar sisipan rich text (`editor`)
 
 1. Editor Quill mengunggah gambar lewat `admin.media.editor-upload` → baris `media` dibuat dengan `collection = editor`, `model_type`/`model_id` = NULL, dan `alt_text` yang diisi pengguna.
-2. Saat formulir pemilik disimpan, `MediaService::syncEditorImages($model)` memindai HTML (setelah sanitasi) untuk URL `storage/editor/...`, lalu mengisi `model_type`/`model_id` pada baris yang dipakai. **[ASUMSI]** Baris editor milik model yang tidak lagi dipakai di HTML dikembalikan ke NULL (dan `updated_at` diperbarui) sehingga ikut dibersihkan `media:prune` setelah 24 jam.
+2. Saat formulir pemilik disimpan, `MediaService::syncEditorImages($model)` memindai HTML (setelah sanitasi) untuk URL `storage/editor/...`, lalu mengisi `model_type`/`model_id` pada baris yang dipakai. Baris editor milik model yang tidak lagi dipakai di HTML dikembalikan ke NULL (dan `updated_at` diperbarui) sehingga ikut dibersihkan `media:prune` setelah 24 jam (`Media::orphaned()` menghitung umur dari `updated_at`). Dipicu otomatis oleh hook `saved` trait `SanitizesRichText` bila kolom rich text berubah atau model baru dibuat; baris yang sudah dimiliki model lain tidak direbut (D-55, fase 2).
 3. Gambar yang tidak pernah disimpan bersama formulir tetap berstatus NULL dan dihapus `media:prune`.
 
 ---

@@ -19292,3 +19292,79 @@ Laporan gerbang fase 2 ke koordinator: keluaran Step 15–18, hasil MANUAL Step 
 
 ---
 
+
+## Catatan Eksekusi (2026-10-05)
+
+Dieksekusi dengan `superpowers:subagent-driven-development`. Semua peran memakai subagent **Sonnet 5.5** (preferensi pemilik): implementer, reviewer per tugas, re-reviewer, final reviewer, dan implementer gelombang perbaikan final. Eksekusi berlangsung 2026-10-04/05 dalam satu sesi panjang. Beberapa subagent sempat terputus karena galat jaringan API (ENOTFOUND), lalu dilanjutkan tanpa kehilangan pekerjaan.
+
+Cabang `fase-2-master-data` berisi 47 commit di atas `master` (`f1ecb15`..`fb4ab7d`), ditambah commit catatan ini.
+
+**Hasil akhir:**
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `artisan test` | **1842 tes lulus (8470 asersi)** |
+| `pint --test` | PASS |
+| `npm run build` | Sukses; manifest memuat `app.scss`, `app.js`, `admin.js`, `editor.js` |
+| `route:list --path=admin` | 31 route (6 fase 1 + 25 fase 2); daftar nama persis sama dengan Step 17 |
+| `AdminPageMatrixTest` + `Phase2RoutePermissionTest` + `AdminRouteMiddlewareTest` | 184 tes hijau (AKS-01–AKS-06, KNS-02) |
+| `migrate:fresh --seed` (DB pengembangan, Step 16) | **Belum dijalankan.** Pengaman auto mode Claude Code menolaknya sebagai penghapusan lokal yang tidak dapat dibatalkan, jadi keputusannya diserahkan ke pemilik. DB pengembangan saat ini masih skema fase 1 dengan 3 akun demo. Data demo fase 2 diverifikasi lewat `DemoSeederInvariantsTest` (13/17/18/20/32, `media:prune` 0 yatim) pada DB uji. |
+| Smoke publik dan MANUAL (Step 18–19) | Menunggu Step 16. |
+
+**Putaran perbaikan per tugas** (masing-masing satu putaran, semuanya lulus re-review):
+
+| Tugas | Perbaikan |
+|---|---|
+| Task 2 | `mediaIn` N+1 senyap diganti `getRelationValue` |
+| Task 7 | Umpan balik editor tampil, inisialisasi aman, pesan HTTP Indonesia, ARIA |
+| Task 11 | Tautan ringkasan galat `specialty_ids` |
+| Task 16 | Kalimat slug/status basi di blueprint 05/07/09/11 |
+
+**Final review** (seluruh cabang): tidak ada temuan Critical. Ada tiga temuan Important dan dua Minor murah, dan semuanya ditutup dalam satu gelombang perbaikan (`fb4ab7d`, F1–F5). Re-review menyatakan kelimanya ADDRESSED tanpa kerusakan baru.
+
+### Keputusan (rulings) selama eksekusi
+
+| ID | Keputusan | Biaya bila keliru |
+|---|---|---|
+| X1 | Tanpa git worktree; bekerja di checkout utama pada cabang `fase-2-master-data` (sama dengan R1 fase 1). | Cabang aktif checkout utama berpindah selama eksekusi. |
+| X2 | Semua subagent, termasuk final review, memakai Sonnet 5.5 (preferensi pemilik). | Final review sedikit kurang tajam; dimitigasi review per tugas. |
+| X3 | Scan pra-eksekusi S1–S13 ditambal ke rencana (`539ffbb`). Isinya: `sortUrl` membuang `kembali`/`page`; callback render JSON (S2); `ClinicSeeder::shortDescription`; `&amp;quot;`; teks dan jumlah RED; pint sebelum `--test`; byte Latin-1 di `AppServiceProvider`; `messages.delete_blocked`; teks Review Focus. | Kecil. |
+| X4 | `HasMedia::mediaIn()` memakai `getRelationValue('media')` agar lazy load terdeteksi strict mode (Task 2). | Tidak ada. |
+| X5 | `x-form.checkbox` bernama larik menyaring `old()` dengan `is_scalar` (Task 5). | Tidak ada. |
+| X6 | Tes tamu memakai `forgetGuards()` (Task 6). `shouldRenderJsonWhen` mengembalikan JSON bila `expectsJson()`, untuk `admin.dashboard.chart`, atau untuk `admin.media.*` bila exception bukan `ValidationException` (S2). | Tamu di `admin.media.*` menerima 401 JSON, bukan redirect. |
+| X7 | `StoreDoctorRequest::after()` memindahkan pesan `specialty_ids.*` ke kunci tunggal `specialty_ids` (Task 11). | Galat spesialisasi tampil di akhir ringkasan. |
+| X8 | Asersi autofocus memakai `preg_match_all('/\sautofocus(?=[\s=>])/')`, karena `x-form.input` merender `autofocus="autofocus"` (Task 15). | Tidak ada. |
+| X9 | Task 16 dipecah: Step 1–15 dan 17 oleh implementer; Step 16, 18, dan 19 oleh koordinator. DB pengembangan diperiksa dulu (3 akun demo, 29 audit login, 0 media). `migrate:fresh --seed` ditolak pengaman auto mode, sehingga menunggu pemilik. | Gerbang INS/MANUAL pada DB pengembangan belum diverifikasi. |
+| X10 | Final F1: `MediaService::syncEditorImages()` per 08 §5.2, ditambah `Media::orphaned()` berbasis `updated_at` dan guard `EDITOR_REFERENCE_COLUMNS` di `prune` (D-55). Tanpa ini, `media:prune` menghapus gambar editor yang dipakai di deskripsi poliklinik. Rencana melewatkan 08 §5.2. | Tes prune lama kini memundurkan `created_at` dan `updated_at`. |
+| X11 | Final F2: data dokter publik hanya memuat spesialisasi aktif (D-56, Review Focus 4). | Lencana kartu publik berubah bila spesialisasi utama nonaktif. |
+| X12 | Final F3: `cover_alt`/`photo_alt` tanpa berkas baru memperbarui alt media yang ada; alt kosong ditolak (D-57). | Kecil. |
+| X13 | Final F4/F5: `.admin-shell` `100dvh`; rich text yang kosong secara visual disimpan NULL (D-58). | Tidak ada. |
+
+### Bawaan (carry) untuk rencana fase berikutnya
+
+**Fase 3 (Jadwal dokter):**
+- Isi titik sambung `DoctorService::futureActiveAppointmentsCount()` dan `ClinicRequest::clinicHasAppointments()`.
+- Uji end-to-end penolakan arsip dokter yang memiliki janji mendatang.
+- Asersi URL publik dokter (D-54).
+- `applyDoctorInactive()`.
+- `x-doctor-card` dengan jadwal terdekat (F2-R9).
+- Tombol "Daftar Kunjungan" dan "Jadwal Dokter".
+
+**Fase 4a (Halaman/Artikel):**
+- Tambahkan kolom rich text baru ke `MediaService::EDITOR_REFERENCE_COLUMNS` dan `richTextAttributes()` model (D-55).
+- `Page` untuk judul halaman #4 (F2-R10).
+
+**Minor yang ditunda (tidak memblokir):**
+- Suite ±150 s karena ±11 tes menjalankan `DemoSeeder` penuh. Opsi: seed sekali per kelas di `DemoSeederInvariantsTest`.
+- Galat `alt_text` galeri belum memakai `errorBag` per media.
+- Seeder tanpa transaksi per baris.
+- Gambar editor yang dirujuk dua poliklinik ikut terhapus bila poliklinik pertama dihapus.
+- Ganti status yang sama memberi flash sukses tanpa perubahan.
+- `ValidationException` balapan arsip tanpa flash.
+- Bagian "Dokter di poliklinik ini" tampil untuk layanan penunjang.
+- `aria-label` galeri berakhir ": " bila alt kosong.
+- `og:image` tetap dipasang walau berkas hilang.
+- Tes `PlaceholderImageGenerator` jalur TrueType/fallback lemah.
+- Redaksi 05 "nonaktif memicu di fase 3".
+
+**Gerbang yang tertunda:** `migrate:fresh --seed` pada DB pengembangan, smoke `/layanan`, dan MANUAL Step 19. Jalankan setelah pemilik menyetujui seed ulang. Koordinator dapat menjalankan MANUAL lewat Playwright dengan laporan bergambar.

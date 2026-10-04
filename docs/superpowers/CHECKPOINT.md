@@ -1,6 +1,6 @@
 # Checkpoint — UNPAM HOSPITAL
 
-**Terakhir diperbarui:** 2026-10-04 (akhir fase 1) · **Tag git:** `checkpoint/2026-10-04-fase-1` (sebelumnya `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
+**Terakhir diperbarui:** 2026-10-05 (akhir eksekusi fase 2) · **Tag git:** `checkpoint/2026-10-05-fase-2` (sebelumnya `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
 
 Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah sebelum bekerja.
 
@@ -11,11 +11,14 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Blueprint (spesifikasi) | Selesai & disetujui — `docs/superpowers/specs/2026-10-02-unpam-hospital-blueprint/` (mulai dari `README.md`, lalu `00-keputusan-inti.md`). Diperbarui di fase 1: 00 J.6, 06 §14.A, 10 (pratinjau `FileReader`), 11 §3.3/§6.10/§6.11 (`scoped`), 12 V-03, 15 SEK-03, 16 §5/§7, 17 §4 (D-21–D-28). |
 | Fase 0 — Lingkungan & skeleton | **Selesai**, di-merge ke `master`. Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
 | Fase 1 — Fondasi | **Selesai** dan **sudah di-merge** ke `master` (fast-forward `0b87342`, 2026-10-04; cabang `fase-1-fondasi` dihapus). Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang beserta perbaikannya sudah selesai. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
-| Cabang git | `master` (fase 0 + fase 1). Repo tanpa remote. Cabang fase berikutnya dibuat dari `master`. |
-| Keputusan tertunda pemilik | (1) Konfirmasi manual login per peran (opsional, lihat §3). (2) Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
-| Fase berikutnya | **Fase 2 — Master Data**. Rencananya sudah ditulis dan **menunggu persetujuan pemilik**: `docs/superpowers/plans/2026-10-04-fase-2-master-data.md` (16 tugas, keputusan F2-R1–F2-R28). Rencana ini ada di cabang `fase-2-master-data` (dari `master`). |
+| Fase 2 — Master Data | **Eksekusi selesai** di cabang `fase-2-master-data` (47 commit + commit catatan). Semua 16 tugas lulus review. Final review seluruh cabang beserta satu gelombang perbaikan (F1–F5) selesai. Hasilnya 1842 tes lulus (8470 asersi), Pint PASS, `npm run build` OK, dan 31 route admin. **Belum di-merge** ke `master`: menunggu pilihan pemilik. Rencana, catatan eksekusi, dan keputusan X1–X13: `docs/superpowers/plans/2026-10-04-fase-2-master-data.md` (bagian akhir). |
+| Cabang git | `master` (fase 0 + fase 1); `fase-2-master-data` (fase 2, siap merge). Repo tanpa remote. |
+| Keputusan tertunda pemilik | (1) **Seed ulang DB pengembangan** (`migrate:fresh --seed`, Task 16 Step 16) ditolak pengaman auto mode Claude Code. Pemilik menjalankannya sendiri atau mengizinkan; setelah itu dilakukan smoke `/layanan` dan MANUAL Step 19 (bisa lewat Playwright). (2) Opsi merge fase 2. (3) Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
+| Fase berikutnya | **Fase 3 — Jadwal Dokter** (rencana belum ditulis). |
 
-Yang sudah ada di aplikasi: enum, akun & peran (Spatie), audit log, media + sanitasi HTML, pengaturan situs, tema & komponen Blade, layout publik/pasien/auth/admin, login/logout staf, ganti password wajib, header keamanan, `StaffAccountService` (aturan mutlak Super Admin), `app:create-super-admin`, `media:prune`, dan seeder demo staf. Area admin fase 1 terdiri dari login, ganti password, dan dasbor sapaan (`route:list --path=admin` menampilkan 6 route).
+Yang sudah ada di aplikasi:
+- Fase 1: enum, akun & peran (Spatie), audit log, media + sanitasi HTML, pengaturan situs, tema & komponen Blade, layout publik/pasien/auth/admin, login/logout staf, ganti password wajib, header keamanan, `StaffAccountService`, `app:create-super-admin`, `media:prune`, seeder demo staf.
+- Fase 2: master data spesialisasi, poliklinik/layanan penunjang, dan dokter (CRUD admin, filter, tab, status/arsip dokter lewat `DoctorService`); editor rich text Quill dengan unggah gambar (`admin.media.*`, `MediaPolicy`, `syncEditorImages`); halaman publik `/layanan` (#4) dan `/layanan/{slug}` (#5); seeder demo 13 spesialisasi, 17 layanan, 18 dokter, 32 gambar contoh; poles login/ganti password/footer admin.
 
 ## 2. Lingkungan (mesin pemilik)
 
@@ -23,7 +26,7 @@ Yang sudah ada di aplikasi: enum, akun & peran (Spatie), audit log, media + sani
 - Runtime PHP 8.2.12 (`C:\xampp3\php\php.exe`). PHP 8.4 di PATH **jangan** dipakai untuk proyek. Composer selalu dijalankan sebagai `& $PHP C:\composer\composer.phar …`, bukan `composer.bat` (karakter `^` hilang).
 - Database `unpam_hospital` (dev) dan `unpam_hospital_test` (uji), user `unpam_app`. Password hanya ada di `.env`/`.env.testing` (git-ignored, jangan dihapus).
 - URL: <http://unpam-hospital.test> (VirtualHost; cadangan konfigurasi `httpd-vhosts.conf.bak-fase0`). Alternatif: `php artisan serve` → <http://127.0.0.1:8000>. Login admin: <http://unpam-hospital.test/admin/login>.
-- Akun demo (hanya lokal, password `Demo12345` atau `DEMO_PASSWORD`): `superadmin@`, `konten@`, `pendaftaran@unpamhospital.test`. Akun ini dibuat oleh `php artisan migrate:fresh --seed`, yang menghapus seluruh isi database pengembangan. Database pengembangan saat ini sudah di-seed dan hanya berisi akun demo.
+- Akun demo (hanya lokal, password `Demo12345` atau `DEMO_PASSWORD`): `superadmin@`, `konten@`, `pendaftaran@unpamhospital.test`. Akun ini dibuat oleh `php artisan migrate:fresh --seed`, yang menghapus seluruh isi database pengembangan. Database pengembangan saat ini **masih berskema fase 1** (9 migration) dan hanya berisi 3 akun demo serta audit login. Tabel dan data demo fase 2 baru ada setelah `migrate:fresh --seed`, yang menunggu persetujuan pemilik (§1).
 - Tabel sistem MariaDB XAMPP pernah rusak (`mysql.db` + log Aria) dan sudah diperbaiki. Bila hak akses DB hilang lagi, lihat blueprint 16 §13 baris "`GRANT` tidak tersimpan".
 
 ## 3. Cara melanjutkan (PowerShell)
@@ -32,36 +35,47 @@ Yang sudah ada di aplikasi: enum, akun & peran (Spatie), audit log, media + sani
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"
 $env:Path = "$XAMPP\php;$env:Path"; Set-Location "D:\Project Web RS"
 
-git status; git branch --show-current          # harus bersih, di master
+git status; git branch --show-current          # harus bersih; fase-2-master-data (atau master setelah merge)
 & $PHP scripts\check-env.php                    # "status": "OK"
-& $PHP artisan test                             # 980 passed
+& $PHP artisan test                             # 1842 passed (±160 s)
 & $PHP vendor\bin\pint --test                   # PASS
-& $PHP artisan route:list --path=admin          # 6 route
+& $PHP artisan route:list --path=admin          # 31 route
 curl.exe -s -o NUL -w '%{http_code}' http://unpam-hospital.test/admin/login   # 200
 ```
 
-Konfirmasi manual (opsional, ±5 menit): buka <http://unpam-hospital.test/admin/login>, login sebagai ketiga akun demo, buka menu pengguna lalu **Keluar**. Daftar periksa lengkap ada di rencana fase 1, Task 19 Step 22.
+Langkah tertunda fase 2 (setelah pemilik setuju; menghapus isi DB pengembangan):
 
-Bila semua hijau: pindah ke cabang `fase-2-master-data` (`git switch fase-2-master-data`). Tinjau dan setujui rencana Fase 2, lalu minta Claude mengeksekusinya dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
+```powershell
+& $PHP artisan migrate:fresh --seed            # 13 spesialisasi, 17 layanan, 18 dokter, 20 pivot, 32 media
+& $PHP artisan media:prune --dry-run           # 0 baris, 0 berkas yatim
+foreach ($u in '/layanan', '/layanan/poliklinik-anak', '/layanan/igd-24-jam') { curl.exe -s -o NUL -w "$u => %{http_code}`n" "http://unpam-hospital.test$u" }   # 200
+```
+
+Lalu MANUAL Step 19 rencana fase 2 (CRUD dokter/poliklinik/spesialisasi, editor dengan unggah gambar, halaman publik #4/#5). Claude bisa menjalankannya lewat Playwright dengan laporan bergambar.
+
+Setelah fase 2 di-merge: tulis rencana **Fase 3 — Jadwal Dokter** dengan `superpowers:writing-plans`, lalu eksekusi dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
 
 ## 4. Bawaan (carry) untuk fase berikutnya
 
-Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0 dan fase 1.
+Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, dan fase 2. Bawaan fase 2 dari fase 1 sudah dikerjakan (D-52), kecuali form pengaturan (D-53, fase 8).
 
-- **Fase 2:**
-  - Endpoint media F-ADM-29 (`MediaController`, `MediaPolicy`, `admin.media.*`, V-42; F1-R21/D-28).
-  - Format tanggal Indonesia (`translatedFormat`).
-  - `HasMedia`/`SanitizesRichText`, `AuditObserver`, butir (c) `media:prune`, `lang/id/messages.php`.
-  - Advisori `quill@2.0.3` (GHSA-v3m3-f69x-jf25): wajib sanitasi `HtmlSanitizer` saat simpan.
-  - Validasi form pengaturan: WhatsApp `62…`, bool/int ketat.
-  - `deleteFor()` di dalam `DB::transaction`.
-  - `x-form.checkbox` bernama array butuh `id` eksplisit dan perbaikan `old()`.
-  - Data-table: halaman di luar jangkauan. Confirm-modal: kolom `reason`.
-- **Fase 3–4:**
-  - `module-tabs`, `availability-badge`, `doctor-card`, `schedule-table` (3).
+- **Fase 3:**
+  - Isi `DoctorService::futureActiveAppointmentsCount()` dan `ClinicRequest::clinicHasAppointments()`.
+  - Uji end-to-end penolakan arsip dokter.
+  - Asersi URL publik dokter (D-54).
+  - `applyDoctorInactive()`.
+  - `availability-badge`, `schedule-table`, dan `x-doctor-card` dengan jadwal terdekat (F2-R9).
+- **Fase 4:**
   - `HomeController` menggantikan `Route::view('/', 'public.home')` (F1-R3).
-  - `PageSeeder` ditambahkan ke `DatabaseSeeder`, `form.rich-text` + `editor.js` (4a).
+  - `PageSeeder` ditambahkan ke `DatabaseSeeder` (4a).
+  - Model `Page` untuk judul #4 (F2-R10).
+  - Kolom rich text baru wajib masuk `MediaService::EDITOR_REFERENCE_COLUMNS` (D-55, 4a).
   - `map-embed` (4b).
+- **Minor fase 2 yang ditunda:**
+  - Suite ±150 s (seed demo per tes).
+  - `errorBag` per media galeri.
+  - Gambar editor lintas poliklinik.
+  - Lainnya tercantum di Catatan Eksekusi fase 2.
 - **Fase 5:**
   - Hapus cadangan `Route::has('login')`/`Route::has('patient.dashboard')` (F1-R2).
   - `passwords.throttled` dipetakan ke pesan generik `passwords.sent` (mencegah enumerasi email).
@@ -97,4 +111,9 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0 dan fase 1
 4. **2026-10-04:**
    - Fase 1 di-merge ke `master`.
    - Uji manual login dengan Playwright (laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-04`).
-   - Rencana Fase 2 disusun: tiga digest spesifikasi, kerangka kontrak, empat penulis, dua pemeriksa konsistensi. Hasilnya 16 tugas dengan keputusan F2-R1–F2-R28, dan menunggu persetujuan pemilik.
+   - Rencana Fase 2 disusun: tiga digest spesifikasi, kerangka kontrak, empat penulis, dua pemeriksa konsistensi. Hasilnya 16 tugas dengan keputusan F2-R1–F2-R28.
+5. **2026-10-04/05:**
+   - Rencana fase 2 disetujui pemilik. Scan pra-eksekusi S1–S13 ditambal (`539ffbb`).
+   - Task 1–16 selesai lewat subagent-driven-development (Sonnet 5.5), dengan putaran perbaikan di Task 2, 7, 11, dan 16.
+   - Final review seluruh cabang menemukan 3 butir Important: gambar editor terhapus `media:prune`, spesialisasi nonaktif tampil publik, dan alt diabaikan. Ketiganya beserta 2 Minor ditutup dalam satu gelombang perbaikan (`fb4ab7d`). Blueprint direkonsiliasi (D-29–D-58).
+   - `migrate:fresh --seed` DB pengembangan ditolak pengaman auto mode dan menunggu pemilik.

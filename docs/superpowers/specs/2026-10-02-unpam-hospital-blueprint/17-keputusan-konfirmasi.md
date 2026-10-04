@@ -119,6 +119,10 @@ Ambiguitas yang ditemukan saat penulisan blueprint dan sudah ditutup di 00. Dica
 | D-52 | Carry fase 1 | Dikerjakan di fase 2: checkbox larik, `x-data-table`, meta CSRF, poles uji manual, `media:prune` butir (c). | CHECKPOINT §4 (F2-R26) |
 | D-53 | Carry pengaturan situs | WhatsApp `62…` dan bool/int ketat ditunda ke fase 8 (form pengaturan). | 14 §Fase 8 (F2-R27) |
 | D-54 | Asersi CRD fase 2 | CRD-01/CRD-03 memakai scope `publiclyVisible` dan tampilan #5; asersi URL dokter di fase 3. | 14 §Fase 2 (F2-R28) |
+| D-55 | Gambar editor dan `media:prune` | `MediaService::syncEditorImages()` mengikat gambar editor yang dirujuk ke pemiliknya (hook `saved` `SanitizesRichText`) dan melepas yang tidak dirujuk; `Media::orphaned()` memakai `updated_at`; `prune` butir (a) melewati baris `editor` yang masih dirujuk kolom di `MediaService::EDITOR_REFERENCE_COLUMNS`. Fase 4a wajib menambah kolom rich text halaman/artikel ke konstanta itu. Gambar yang dirujuk dua pemilik tetap milik yang pertama (hapus pemilik pertama menghapus berkasnya). | 08 §5.2, 11 §6.9 (final review fase 2) |
+| D-56 | Spesialisasi nonaktif di halaman publik | Data dokter publik hanya memuat spesialisasi aktif; spesialisasi utama nonaktif jatuh ke spesialisasi aktif pertama, tanpa spesialisasi aktif = tanpa lencana. | Review Focus 4 rencana fase 2 (final review) |
+| D-57 | Alt cover/foto tanpa berkas baru | Mengubah `cover_alt`/`photo_alt` tanpa berkas baru memperbarui alt media yang ada (`MediaService::updateMeta`); alt kosong saat media ada ditolak. | 12 V-20/V-22 (final review fase 2) |
+| D-58 | Rich text kosong | Hasil sanitasi tanpa teks dan tanpa `<img>` (mis. `<p><br></p>` dari Quill) disimpan NULL. | 11 §5.1 `SanitizesRichText` (final review fase 2) |
 
 Asumsi berdampak terbesar dari daftar induk 01 yang juga layak ditinjau pemilik:
 
