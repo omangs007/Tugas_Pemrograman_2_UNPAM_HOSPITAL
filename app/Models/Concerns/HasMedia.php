@@ -15,6 +15,8 @@ use InvalidArgumentException;
 /**
  * Relasi media polimorfik (`media.model_type` + `media.model_id`, tanpa FK; 08 §polimorfik).
  * Saat pemilik dihapus, baris dan berkas media-nya ikut dihapus lewat MediaService::deleteFor().
+ * `deleteQuietly()` dan `Model::query()->delete()` tidak memicu event `deleting`, sehingga media-nya tidak ikut
+ * dibersihkan; baris yang tertinggal itu dibersihkan `media:prune` butir (c).
  *
  * @mixin Model
  */
@@ -36,8 +38,7 @@ trait HasMedia
     }
 
     /**
-     * Media pertama koleksi, atau null. Memakai relasi `media` bila sudah dimuat (tanpa query),
-     * kalau tidak satu query langsung (bukan lazy loading).
+     * Media pertama koleksi, atau null. Bertumpu pada mediaIn(), jadi mengikuti aturan mode ketatnya.
      */
     public function firstMedia(string $collection): ?Media
     {
@@ -45,17 +46,16 @@ trait HasMedia
     }
 
     /**
-     * Semua media satu koleksi dalam urutan relasi.
+     * Semua media satu koleksi dalam urutan relasi. Memakai relasi `media` lewat getRelationValue(): bila sudah
+     * dimuat tanpa query; model yang diambil sendirian memuatnya satu kali lalu menyimpannya; model dari query
+     * banyak baris tanpa `with('media')` melempar LazyLoadingViolationException di non-produksi (mode ketat),
+     * sehingga eager load yang terlupa pada daftar tertangkap alih-alih menjadi N+1 senyap.
      *
      * @return Collection<int, Media>
      */
     public function mediaIn(string $collection): Collection
     {
-        if ($this->relationLoaded('media')) {
-            return $this->getRelation('media')->where('collection', $collection)->values();
-        }
-
-        return $this->media()->where('collection', $collection)->get();
+        return $this->getRelationValue('media')->where('collection', $collection)->values();
     }
 
     /**

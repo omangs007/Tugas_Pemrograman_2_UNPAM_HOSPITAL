@@ -111,7 +111,7 @@ class HasMediaTest extends TestCase
         DB::disableQueryLog();
     }
 
-    public function test_first_media_and_media_in_query_directly_when_the_relation_is_not_loaded(): void
+    public function test_first_media_and_media_in_lazy_load_the_relation_once_for_a_single_model(): void
     {
         $clinic = $this->createClinic();
         $other = $this->createClinic();
@@ -124,7 +124,7 @@ class HasMediaTest extends TestCase
         $this->assertFalse($fresh->relationLoaded('media'));
         $this->assertSame('Cover', $fresh->firstMedia('cover')->alt_text);
         $this->assertSame(['Satu'], $fresh->mediaIn('gallery')->pluck('alt_text')->all());
-        $this->assertFalse($fresh->relationLoaded('media'), 'Pembacaan langsung tidak memuat relasi.');
+        $this->assertTrue($fresh->relationLoaded('media'), 'Model tunggal memuat relasi sekali lalu menyimpannya.');
     }
 
     public function test_listing_several_owners_with_eager_loaded_media_is_safe_in_strict_mode(): void
@@ -146,18 +146,32 @@ class HasMediaTest extends TestCase
         $this->assertSame(asset('images/placeholders/doctor.svg'), $urls[2]);
     }
 
-    public function test_listing_without_eager_loading_does_not_trigger_lazy_loading_violations_but_queries_per_row(): void
+    public function test_listing_without_eager_loading_throws_a_lazy_loading_violation_in_strict_mode(): void
     {
         $this->createDoctor();
         $this->createDoctor();
         $doctors = Doctor::query()->get();
 
-        DB::enableQueryLog();
-        $doctors->each(fn (Doctor $doctor): string => $doctor->photo_url);
-        $queries = count(DB::getQueryLog());
-        DB::disableQueryLog();
+        $this->expectException(LazyLoadingViolationException::class);
 
-        $this->assertSame(2, $queries, 'Tanpa with(media), setiap baris melakukan satu query (bukan lazy loading).');
+        $doctors->each(fn (Doctor $doctor): string => $doctor->photo_url);
+    }
+
+    public function test_a_single_doctor_without_eager_loading_still_resolves_photo_url_and_caches_the_relation(): void
+    {
+        $doctor = $this->createDoctor();
+        $photo = $this->photo($doctor);
+
+        $found = Doctor::query()->find($doctor->id);
+
+        $this->assertFalse($found->relationLoaded('media'));
+        $this->assertSame(Storage::disk('public')->url($photo->directory.'/'.$photo->file_name), $found->photo_url);
+        $this->assertTrue($found->relationLoaded('media'));
+
+        DB::enableQueryLog();
+        $found->photo_thumb_url;
+        $this->assertSame([], DB::getQueryLog(), 'Relasi sudah tersimpan: akses berikutnya tanpa query.');
+        DB::disableQueryLog();
     }
 
     public function test_media_url_returns_full_and_thumb_urls_of_the_first_media(): void
@@ -243,7 +257,7 @@ class HasMediaTest extends TestCase
         $this->assertSame(0, AuditLog::query()->where('action', 'media.deleted')->count());
     }
 
-    public function test_has_media_on_doctor_is_available_through_relation_loading_errors_in_strict_mode(): void
+    public function test_reading_the_media_relation_on_a_multi_row_list_without_eager_loading_throws_in_strict_mode(): void
     {
         $this->createDoctor();
         $this->createDoctor();

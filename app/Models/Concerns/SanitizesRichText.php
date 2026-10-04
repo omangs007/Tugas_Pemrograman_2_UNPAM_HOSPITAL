@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Model;
 /**
  * Sanitasi kolom rich text pada event `saving` (F2-R14): setiap jalur simpan model (form, seeder,
  * `update()`, `forceFill()->save()`, `updateOrCreate()`) melewatinya, sehingga yang tersimpan di DB selalu
- * hasil HtmlSanitizer::clean(). Hasil kosong disimpan sebagai NULL. Operasi massal di tingkat query
- * (`Model::query()->update()`, `upsert()`) tidak memicu event model dan dilarang untuk kolom ini.
+ * hasil HtmlSanitizer::clean(). Hasil kosong disimpan sebagai NULL. Jalur yang melewati event model tidak
+ * disanitasi dan dilarang untuk kolom ini: `saveQuietly()`, `Model::withoutEvents()`, `Model::insert()`,
+ * `DB::table()`, `Model::query()->update()`, dan `upsert()`.
  *
  * @mixin Model
  */
