@@ -24,7 +24,12 @@ class DemoSeeder extends Seeder
         config(['mail.default' => 'array']); // surat notifikasi seeding dibuang, bukan ditumpuk di log
 
         // Seeder data master (fase 2 dst.) ditambahkan ke daftar ini mengikuti urutan 13 §2.1.
-        $this->call([DemoUserSeeder::class]);
+        $this->call([
+            DemoUserSeeder::class,
+            SpecialtySeeder::class,
+            ClinicSeeder::class,
+            DoctorSeeder::class,
+        ]);
 
         $password = (string) config('app.demo_password');
 

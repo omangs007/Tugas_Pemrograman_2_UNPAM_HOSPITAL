@@ -9,6 +9,8 @@ use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Database\Seeders\DemoUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -17,6 +19,14 @@ use Tests\TestCase;
 class SeederProductionGuardTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // DemoSeeder membuat 32 gambar contoh (fase 2): jangan menulis ke storage nyata.
+        Storage::fake('public');
+    }
 
     public function test_database_seeder_seeds_only_core_data_and_warns_in_production(): void
     {
@@ -29,6 +39,7 @@ class SeederProductionGuardTest extends TestCase
         $this->assertSame(3, Role::query()->count());
         $this->assertSame(19, Permission::query()->count());
         $this->assertSame(19, WebsiteSetting::query()->count());
+        $this->assertSame(0, DB::table('specialties')->count() + DB::table('clinics')->count() + DB::table('doctors')->count() + DB::table('media')->count());
         $this->assertSame(0, User::query()->count());
         $this->assertSame(0, User::query()->where('email', 'like', '%.test')->count());
     }

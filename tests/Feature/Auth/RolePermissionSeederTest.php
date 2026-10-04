@@ -9,6 +9,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -230,6 +231,7 @@ class RolePermissionSeederTest extends TestCase
 
     public function test_database_seeder_runs_the_role_permission_seeder(): void
     {
+        Storage::fake('public'); // DatabaseSeeder menjalankan DemoSeeder (gambar contoh) di lingkungan testing.
         $this->seed(DatabaseSeeder::class);
 
         $this->assertSame(3, Role::query()->count());
