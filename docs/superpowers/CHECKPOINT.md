@@ -11,9 +11,9 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Blueprint (spesifikasi) | Selesai & disetujui — `docs/superpowers/specs/2026-10-02-unpam-hospital-blueprint/` (mulai dari `README.md`, lalu `00-keputusan-inti.md`). Diperbarui di fase 1: 00 J.6, 06 §14.A, 10 (pratinjau `FileReader`), 11 §3.3/§6.10/§6.11 (`scoped`), 12 V-03, 15 SEK-03, 16 §5/§7, 17 §4 (D-21–D-28). |
 | Fase 0 — Lingkungan & skeleton | **Selesai**, di-merge ke `master`. Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
 | Fase 1 — Fondasi | **Selesai** dan **sudah di-merge** ke `master` (fast-forward `0b87342`, 2026-10-04; cabang `fase-1-fondasi` dihapus). Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang beserta perbaikannya sudah selesai. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
-| Fase 2 — Master Data | **Eksekusi dan gerbang fase selesai** di cabang `fase-2-master-data`. Semua 16 tugas lulus review. Final review seluruh cabang beserta satu gelombang perbaikan (F1–F5) selesai. `migrate:fresh --seed` dijalankan dengan izin pemilik dan jumlah datanya persis sesuai target. Uji manual Step 19 dijalankan lewat Playwright (laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-05`); dua cacat temuannya (M1 `&nbsp;` editor, M2 panah galeri) sudah diperbaiki di `929c13a`. Hasil akhir: 1845 tes lulus (8479 asersi), Pint PASS, `npm run build` OK, 31 route admin. **Belum di-merge** ke `master`: menunggu pilihan pemilik. Rencana, catatan eksekusi, dan keputusan X1–X14 ada di bagian akhir `docs/superpowers/plans/2026-10-04-fase-2-master-data.md`. |
-| Cabang git | `master` (fase 0 + fase 1); `fase-2-master-data` (fase 2, siap merge). Repo tanpa remote. |
-| Keputusan tertunda pemilik | (1) Opsi merge fase 2. (2) Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
+| Fase 2 — Master Data | **Eksekusi dan gerbang fase selesai** di cabang `fase-2-master-data`. Semua 16 tugas lulus review. Final review seluruh cabang beserta satu gelombang perbaikan (F1–F5) selesai. `migrate:fresh --seed` dijalankan dengan izin pemilik dan jumlah datanya persis sesuai target. Uji manual Step 19 dijalankan lewat Playwright (laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-05`); dua cacat temuannya (M1 `&nbsp;` editor, M2 panah galeri) sudah diperbaiki di `929c13a`. Hasil akhir: 1845 tes lulus (8479 asersi), Pint PASS, `npm run build` OK, 31 route admin. **Sudah di-merge** ke `master` (fast-forward `51134af`, 2026-10-05; cabang `fase-2-master-data` dihapus; suite pada hasil merge 1845 lulus). Rencana, catatan eksekusi, dan keputusan X1–X14 ada di bagian akhir `docs/superpowers/plans/2026-10-04-fase-2-master-data.md`. |
+| Cabang git | `master` (fase 0 + fase 1 + fase 2). Repo tanpa remote. Cabang fase berikutnya dibuat dari `master`. |
+| Keputusan tertunda pemilik | Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
 | Fase berikutnya | **Fase 3 — Jadwal Dokter** (rencana belum ditulis). |
 
 Yang sudah ada di aplikasi:
@@ -35,7 +35,7 @@ Yang sudah ada di aplikasi:
 $XAMPP = "C:\xampp3"; $PHP = "$XAMPP\php\php.exe"; $COMPOSER = "C:\composer\composer.phar"
 $env:Path = "$XAMPP\php;$env:Path"; Set-Location "D:\Project Web RS"
 
-git status; git branch --show-current          # harus bersih; fase-2-master-data (atau master setelah merge)
+git status; git branch --show-current          # harus bersih, di master
 & $PHP scripts\check-env.php                    # "status": "OK"
 & $PHP artisan test                             # 1845 passed (±160 s)
 & $PHP vendor\bin\pint --test                   # PASS
@@ -44,7 +44,7 @@ git status; git branch --show-current          # harus bersih; fase-2-master-dat
 curl.exe -s -o NUL -w '%{http_code}' http://unpam-hospital.test/layanan       # 200
 ```
 
-Setelah fase 2 di-merge: tulis rencana **Fase 3 — Jadwal Dokter** dengan `superpowers:writing-plans`, lalu eksekusi dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
+Bila semua hijau: buat cabang fase 3 dari `master`, lalu tulis rencana **Fase 3 — Jadwal Dokter** dengan `superpowers:writing-plans`, lalu eksekusi dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
 
 ## 4. Bawaan (carry) untuk fase berikutnya
 
@@ -110,3 +110,4 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
    - Final review seluruh cabang menemukan 3 butir Important: gambar editor terhapus `media:prune`, spesialisasi nonaktif tampil publik, dan alt diabaikan. Ketiganya beserta 2 Minor ditutup dalam satu gelombang perbaikan (`fb4ab7d`). Blueprint direkonsiliasi (D-29–D-58).
    - `migrate:fresh --seed` DB pengembangan sempat ditolak pengaman auto mode, lalu dijalankan setelah izin pemilik.
    - Uji manual Playwright menemukan 2 cacat: spasi `&nbsp;` dari Quill 2 dan panah galeri. Keduanya diperbaiki (`929c13a`, 1845 tes).
+   - Fase 2 di-merge ke `master` (fast-forward `51134af`), dan cabang `fase-2-master-data` dihapus.
