@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\DoctorStatus;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ArchiveDoctorRequest;
 use App\Http\Requests\Admin\DoctorIndexRequest;
 use App\Http\Requests\Admin\StoreDoctorRequest;
 use App\Http\Requests\Admin\UpdateDoctorRequest;
@@ -96,6 +97,19 @@ class DoctorController extends Controller
         };
 
         return back(fallback: route('admin.doctors.show', $doctor))->with('success', $message);
+    }
+
+    public function archive(ArchiveDoctorRequest $request, Doctor $doctor, DoctorService $service): RedirectResponse
+    {
+        $this->authorize('archive', $doctor);
+
+        if ($doctor->status === DoctorStatus::Archived) {
+            return back(fallback: route('admin.doctors.show', $doctor))->with('error', 'Dokter sudah diarsipkan.');
+        }
+
+        $service->archive($doctor, $request->reason(), Actor::staff($request->user()));
+
+        return back(fallback: route('admin.doctors.show', $doctor))->with('success', 'Dokter diarsipkan.');
     }
 
     /**
