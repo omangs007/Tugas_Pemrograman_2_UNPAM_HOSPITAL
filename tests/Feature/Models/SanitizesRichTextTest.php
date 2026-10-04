@@ -61,6 +61,14 @@ class SanitizesRichTextTest extends TestCase
         ];
     }
 
+    public function test_non_breaking_spaces_are_normalized_to_plain_spaces(): void
+    {
+        $clinic = Clinic::factory()->create(['description' => "<p>Kata&nbsp;satu\u{00A0}dua&#160;tiga</p>"]);
+
+        $this->assertSame('<p>Kata satu dua tiga</p>', DB::table('clinics')->where('id', $clinic->id)->value('description'));
+        $this->assertSame('<p>Kata satu dua tiga</p>', $clinic->description);
+    }
+
     #[DataProvider('visuallyBlankHtml')]
     public function test_visually_blank_description_is_stored_as_null(string $html): void
     {

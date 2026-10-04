@@ -77,4 +77,18 @@ class RawOutputScanTest extends TestCase
         $this->assertStringContainsString('data-gallery-index', $app);
         $this->assertSame(1, preg_match_all("/addEventListener\\(\\s*'error'/", $app));
     }
+
+    public function test_gallery_carousel_instance_is_created_eagerly_with_keyboard_support(): void
+    {
+        $app = (string) file_get_contents(base_path('resources/js/app.js'));
+
+        $start = strpos($app, 'function initGalleryModals()');
+        $end = strpos($app, 'function init()');
+        $this->assertNotFalse($start);
+        $body = substr($app, $start, $end - $start);
+
+        $this->assertMatchesRegularExpression('/Carousel\.getOrCreateInstance\(\s*carousel\s*,\s*\{[^}]*keyboard:\s*true/s', $body);
+        $this->assertMatchesRegularExpression('/ride:\s*false/', $body);
+        $this->assertMatchesRegularExpression('/interval:\s*false/', $body);
+    }
 }

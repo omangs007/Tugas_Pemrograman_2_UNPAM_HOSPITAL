@@ -40,6 +40,9 @@ trait SanitizesRichText
                 $value = $model->getAttributes()[$attribute] ?? null;
                 $clean = app(HtmlSanitizer::class)->clean(is_string($value) ? $value : null);
 
+                // Spasi non-breaking (U+00A0, &nbsp;, &#160;) dari Quill 2 diganti spasi biasa agar teks bisa dipatah baris.
+                $clean = preg_replace('/&nbsp;|&#0*160;|&#x0*a0;|\x{00A0}/iu', ' ', $clean) ?? $clean;
+
                 $model->setAttribute($attribute, self::isBlankRichText($clean) ? null : $clean);
             }
         });

@@ -238,6 +238,15 @@ class FrontendManifestTest extends TestCase
         }
     }
 
+    public function test_editor_script_normalizes_nbsp_from_get_semantic_html(): void
+    {
+        $editor = $this->read('resources/js/editor.js');
+
+        $this->assertStringContainsString('getSemanticHTML()', $editor);
+        $this->assertStringContainsString('&nbsp;', $editor, 'editor.js harus menormalkan &nbsp; hasil getSemanticHTML (Quill 2)');
+        $this->assertStringContainsString('\\u00A0', $editor, 'editor.js harus menormalkan U+00A0');
+    }
+
     public function test_editor_script_gives_visible_feedback_initializes_safely_and_maps_upload_errors(): void
     {
         $editor = $this->read('resources/js/editor.js');

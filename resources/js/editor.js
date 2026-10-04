@@ -458,7 +458,9 @@ function initRichText(root) {
             return '';
         }
 
-        return quill.getSemanticHTML();
+        // Quill 2: getSemanticHTML() mengubah setiap spasi di teks menjadi &nbsp;, sehingga teks tidak bisa
+        // dipatah baris (patah di tengah kata di ponsel). Kembalikan ke spasi biasa.
+        return quill.getSemanticHTML().replace(/&nbsp;|\u00A0/g, ' ');
     };
 
     const form = textarea.form;

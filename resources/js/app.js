@@ -211,6 +211,10 @@ function initGalleryModals() {
             return;
         }
 
+        // Instance dibuat sejak awal agar pendengar keyboard (panah kiri/kanan) sudah terpasang sebelum
+        // ada klik pada tombol kontrol; tanpa putar otomatis.
+        window.bootstrap.Carousel.getOrCreateInstance(carousel, { keyboard: true, ride: false, interval: false });
+
         modal.addEventListener('show.bs.modal', (event) => {
             const trigger = event.relatedTarget;
             const raw = trigger && trigger.dataset ? trigger.dataset.galleryIndex : undefined;
