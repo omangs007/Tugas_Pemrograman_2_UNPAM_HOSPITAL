@@ -21,6 +21,12 @@ return [
         'media' => 'Gambar',
     ],
 
+    // Pesan aturan validasi kustom (12 §3.1); :attribute diganti nama bidang oleh validator.
+    'rules' => [
+        'person_name' => ':Attribute hanya boleh berisi huruf, spasi, titik, apostrof, dan tanda hubung.',
+        'no_html' => ':Attribute tidak boleh mengandung tag HTML.',
+    ],
+
     // Deskripsi baris audit yang ditulis AuditObserver.
     'audit' => [
         'created' => ':entity ":name" ditambahkan.',
