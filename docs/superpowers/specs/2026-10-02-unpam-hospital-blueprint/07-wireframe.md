@@ -2145,8 +2145,8 @@ Galat dan sukses:
 - Mode tambah: berkas foto dikirim bersama formulir (multipart) dan diproses `MediaService` setelah validasi lolos. Mode ubah: kartu foto memiliki formulir sendiri (`admin.doctors.photo`) sehingga foto dapat diganti tanpa menyimpan seluruh data **[ASUMSI]**; penggantian membuat berkas + baris `media` baru dan menghapus yang lama setelah transaksi commit.
 - Pratinjau foto ditampilkan segera di browser (FileReader); validasi sebenarnya di server: `jpg/jpeg/png/webp`, maks 2 MB, dimensi minimum per koleksi (`photo` 300×300) sampai maksimal 6000×6000 px; **SVG ditolak**; gambar dire-encode, EXIF dibuang, nama berkas dibuat sistem (UUID).
 - Teks alternatif terisi saran “Foto {nama tampilan}” yang dapat diubah.
-- Memilih Nonaktif pada dokter yang memiliki sesi mendatang menampilkan peringatan: sesi tanpa booking aktif akan dibatalkan dan sesi dengan booking aktif akan masuk Sesi terdampak (sumber `doctor_inactive`); penyimpanan tidak diblokir (00 F.4; 17 D-01). Pengarsipan (dari daftar/detail) hanya diizinkan bila tidak ada booking aktif mendatang (17 D-02).
-- `slug` dibuat otomatis dari nama saat dibuat dan tidak berubah saat ubah **[ASUMSI]**.
+- Formulir tidak memiliki field status (F2-R6). Menonaktifkan dokter dilakukan dari aksi status di halaman detail (`admin.doctors.status`, dengan modal konfirmasi): pada fase 3 modal itu menampilkan peringatan bahwa sesi tanpa booking aktif akan dibatalkan dan sesi dengan booking aktif akan masuk Sesi terdampak (sumber `doctor_inactive`); tidak diblokir (00 F.4; 17 D-01). Pengarsipan (dari daftar/detail) hanya diizinkan bila tidak ada booking aktif mendatang (17 D-02).
+- `slug` dibuat otomatis dari nama saat dibuat dan tidak pernah berubah saat ubah; tidak ada input slug (F2-R5).
 
 **Kondisi**
 
@@ -2782,7 +2782,7 @@ Grup Booking:
 6. **[ASUMSI]** Jumlah baris per halaman: 12 kartu dokter (publik), 15 baris tabel admin. Urutan tabel lewat parameter `urut` (00 I.5).
 7. **[ASUMSI]** Bukti pendaftaran dicetak pada A5 potret (`@page`), dapat dicetak ke A4 dengan opsi sesuaikan ke halaman; PDF dompdf memakai ukuran yang sama.
 8. **[ASUMSI]** Pada wizard, tanpa JavaScript semua blok pembayaran tampil dengan teks bantuan dan validasi `required_if`; tombol Kembali/Lanjut melekat di bawah layar pada < 576 px.
-9. **[ASUMSI]** Pada mode ubah dokter, foto diganti lewat formulir tersendiri (`admin.doctors.photo`); `slug` dibuat otomatis dan tidak berubah saat nama diubah; minimal satu spesialisasi dan tepat satu Utama.
+9. **[ASUMSI]** Pada mode ubah dokter, foto diganti lewat formulir tersendiri (`admin.doctors.photo`); `slug` dibuat otomatis dan tidak pernah berubah saat nama diubah (F2-R5); minimal satu spesialisasi dan tepat satu Utama.
 10. **[ASUMSI]** Dashboard admin: angka per status mengikuti periode grafik; rentang kustom maksimal 366 hari; kartu status dapat ditautkan ke daftar pendaftaran dengan filter yang sama.
 11. **[ASUMSI]** Alasan wajib untuk semua resolusi sesi terdampak (min. 5 karakter); pada `cancel` menjadi `cancel_reason`.
 12. **[ASUMSI]** Antrean hari ini tidak diperbarui otomatis; petugas memakai **Muat ulang** dan server memeriksa status terkini pada setiap transisi.

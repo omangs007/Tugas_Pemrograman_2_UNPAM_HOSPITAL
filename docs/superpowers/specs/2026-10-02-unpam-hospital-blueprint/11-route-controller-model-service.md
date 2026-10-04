@@ -587,7 +587,7 @@ Registrasi resource kedua kali dengan `->names('doctors')` tidak menimbulkan dup
 | `index` | `authorize('viewAny', Model::class)` → `Model::query()->search($filters['q'])->…->paginate($request->perPage())->withQueryString()` → `view('admin.{res}.index')` memakai `<x-data-table>`. |
 | `create` | `authorize('create', Model::class)` → `view('admin.{res}.create')` (form `_form`). |
 | `store` | Request tervalidasi → `DB::transaction`: `Model::create()`, unggah media lewat `MediaService::store()/replace()` bila ada file, sinkronisasi relasi → flash `success` ("… berhasil ditambahkan.") → redirect `index`. Audit dicatat `AuditObserver`. |
-| `edit` / `update` | `authorize('update', $model)` → sama seperti `store` dengan `fill()`/`save()`; slug **tidak** berubah otomatis saat nama diubah (menjaga tautan) kecuali dikosongkan **[ASUMSI]**. |
+| `edit` / `update` | `authorize('update', $model)` → sama seperti `store` dengan `fill()`/`save()`; slug **tidak pernah** berubah saat nama diedit (`HasUniqueSlug` hanya mengisinya pada event `creating`; form admin tanpa input slug; F2-R5). |
 | `destroy` | `authorize('delete', $model)` → bila `deletionBlockedReason()` tidak null → flash `error` + redirect; selain itu `MediaService::delete()` untuk media pemilik lalu `$model->delete()` → flash `success`. |
 
 ### 4.1 `App\Http\Controllers\Public` (11 controller)
@@ -709,7 +709,7 @@ trait SanitizesRichText {                          // Clinic.description, Facili
 
 ### 5.2 Spesialisasi, poliklinik, dokter
 
-**`Specialty`** (`specialties`): `$fillable` `name`, `slug`, `description`, `is_active`, `sort_order`. Relasi `doctors(): BelongsToMany` (tabel `doctor_specialties`, `withPivot('is_primary')`), `clinics(): HasMany`. Scope `active()`, `ordered()`. Method `deletionBlockedReason(): ?string` (dipakai dokter/poliklinik).
+**`Specialty`** (`specialties`): `$fillable` `name`, `slug` (diisi `HasUniqueSlug`, bukan dari form), `description`, `is_active`, `sort_order`. Relasi `doctors(): BelongsToMany` (tabel `doctor_specialties`, `withPivot('is_primary')`), `clinics(): HasMany`. Scope `active()`, `ordered()`. Method `deletionBlockedReason(): ?string` (dipakai dokter/poliklinik).
 
 **`Clinic`** (`clinics`) — `HasMedia` (`cover`, `gallery`), `SanitizesRichText` (`description`).
 - `$fillable`: `name`, `slug`, `code`, `type`, `is_bookable`, `specialty_id`, `short_description`, `description`, `location`, `is_active`, `sort_order`, `meta_title`, `meta_description`. Casts: `type`→`ClinicType`, `is_bookable`/`is_active`→`bool`, `sort_order`→`int`. Mutator `code` → huruf kapital.
@@ -1604,12 +1604,12 @@ Semua di `app/Http/Requests/{Area}`. `authorize()` memanggil Policy/izin (bukan 
 | `CreateWalkInAppointmentRequest` | `admin.appointments.create` | Turunan `ListFilterRequest` (wizard walk-in): `pasien` (id profil aktif), `sesi` (id sesi), `tanggal`, `poli`, `dokter`, `kembali`; nilai tidak valid diabaikan. |
 | `AuditLogIndexRequest` | `admin.audit-logs.index` | Turunan `ListFilterRequest`: `dari`, `sampai`, `pengguna`, `aksi` (awalan), `objek`. |
 | `StoreDoctorRequest` | `admin.doctors.store` | `clinic_id` ada dan aktif; `name`; gelar; `gender`; `short_bio` ≤ 500; `bio`; `specialty_ids[]` (1–5; galat per-elemen `specialty_ids.N` dipusatkan ke satu kunci `specialty_ids` lewat hook setelah validasi, sehingga tautan ringkasan galat menuju `#specialty_ids` dan galat kelompok tampil sekali) + `primary_specialty_id` (tepat satu, salah satu yang dipilih); foto opsional (aturan unggah 00 K) + `photo_alt` wajib bila ada foto. |
-| `UpdateDoctorRequest` | `admin.doctors.update` | Seperti Store (slug unik abaikan diri); `clinic_id` boleh berubah. |
+| `UpdateDoctorRequest` | `admin.doctors.update` | Seperti Store; `clinic_id` boleh berubah; `slug` dan `status` tidak dapat diubah lewat form ini (F2-R5, F2-R6). |
 | `UpdateDoctorStatusRequest` | `admin.doctors.status` | `status` ∈ {active, inactive} (menonaktifkan diizinkan walau ada appointment aktif; sesi terdampak ditangani `applyDoctorInactive()`, 00 F.4); `reason?`. Dokter `archived` hanya dapat dipulihkan dengan `status = inactive` lewat route ini (`archived_at` dikosongkan); nilai lain ditolak dengan "Dokter yang diarsipkan hanya dapat dipulihkan menjadi nonaktif." (F2-R7). |
 | `ArchiveDoctorRequest` | `admin.doctors.archive` | `reason?`; **ditolak bila ada appointment aktif pada sesi mendatang** ("selesaikan sesi terdampak dahulu", 00 F.4; kelas terpisah dari `UpdateDoctorStatusRequest`, 00 J.6). |
 | `UploadDoctorPhotoRequest` | `admin.doctors.photo` | `photo` (jpg/jpeg/png/webp, ≤ 2048 KB, ≥ 300×300, ≤ 6000×6000), `alt_text` wajib. |
 | `SpecialtyRequest` | `admin.specialties.store` / `.update` | `name` unik, `description?`, `is_active`, `sort_order` (slug dibuat sistem oleh `HasUniqueSlug`, F2-R5). |
-| `ClinicRequest` | `admin.clinics.store` / `.update` | `name`, `slug` unik, `code` (2–5 huruf kapital A–Z, unik; tidak dapat diubah bila sudah ada appointment pada poliklinik itu), `type` (`ClinicType`), `is_bookable` (hanya `poliklinik`), `specialty_id?`, `short_description`, `description` (rich text), `location`, meta; `cover` (≥ 800×450) / `gallery[]` (≥ 600×400) + alt. |
+| `ClinicRequest` | `admin.clinics.store` / `.update` | `name`, `code` (2–5 huruf kapital A–Z, unik; tidak dapat diubah bila sudah ada appointment pada poliklinik itu), `type` (`ClinicType`), `is_bookable` (hanya `poliklinik`), `specialty_id?`, `short_description`, `description` (rich text), `location`, meta; `cover` (≥ 800×450) / `gallery[]` (≥ 600×400) + alt. |
 | `DoctorScheduleRequest` | `admin.schedules.store` / `.update` | `doctor_id` (dokter tidak `archived`), `clinic_id`, `day_of_week` 1–7, `start_time < end_time`, `quota` 1–200, `valid_from`, `valid_until ≥ valid_from`, `is_active`; **`NoOverlappingSchedule`** (tak beririsan dengan templat aktif dokter yang sama di hari sama pada rentang berlaku beririsan); Update: `assertClinicChangeAllowed()`. |
 | `PracticeSessionRequest` | `admin.sessions.store` / `.update` | `doctor_id`, `clinic_id`, `session_date` (≥ hari ini), jam (`end > start`; **`NoOverlappingSession`**: tidak berbenturan dengan sesi non-batal lain dokter itu), dokter `active`, `quota` (Update: ≥ `booked_count`), `status_reason?`. Update: perubahan jam pada sesi ber-appointment aktif **bukan galat** — sesi menjadi `needs_review` sumber `manual_time` (§6.6). |
 | `UpdateSessionStatusRequest` | `admin.sessions.status` | `status` ∈ {open, closed, cancelled}; `status_reason` wajib bila `cancelled` (12 V-24); membuka sesi dokter non-`active` ditolak. |
@@ -1835,7 +1835,7 @@ Dokumen ini ditulis terhadap 00 versi terbaru (termasuk I.5 parameter query, I.6
 12. **[ASUMSI]** "Pendaftaran hari ini" = appointment ber-`session_date` hari ini dengan status ≠ `cancelled`; angka dashboard dicache 60 detik.
 13. **[ASUMSI]** `clinics.code` tidak dapat diubah setelah ada appointment (label nomor antrean sudah tercetak).
 14. **[ASUMSI]** Formulir kontak memakai bidang jebakan `website` (honeypot) selain `throttle:contact`.
-15. **[ASUMSI]** Slug tidak berubah otomatis saat nama/judul diedit (menjaga tautan); pengguna boleh mengubah manual.
+15. Slug tidak berubah saat nama/judul diedit (menjaga tautan). Untuk entitas fase 2 (`Specialty`, `Clinic`, `Doctor`) ini pasti: slug dibuat otomatis oleh `HasUniqueSlug` dan form admin tidak punya input slug (F2-R5); untuk entitas fase berikutnya **[ASUMSI]** pengguna boleh mengubah manual.
 16. **[ASUMSI]** Setelah reset password, seluruh sesi lain pengguna dihapus dari tabel `sessions`; hal sama saat staf dinonaktifkan atau password staf di-reset.
 17. **[ASUMSI]** Selain `email` (disinkronkan menurut 00 E.1), `users.name`/`phone` juga diselaraskan dengan `patient_profiles.full_name`/`phone` untuk akun pasien.
 18. **[ASUMSI]** `media:prune` hanya menghapus berkas yatim berumur > 1 jam (menghindari balapan dengan unggahan berjalan).

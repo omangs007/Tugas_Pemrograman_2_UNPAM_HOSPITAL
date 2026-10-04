@@ -99,7 +99,7 @@ Layanan yang dinonaktifkan menjawab 404 di URL publik, juga untuk staf yang logi
 
 Selain data fase 1, hasilnya: 13 spesialisasi, 17 layanan (13 poliklinik + 4 penunjang), 18 dokter (16 aktif, 1 nonaktif, 1 arsip), dan 32 gambar contoh (foto 16 dokter, cover 16 layanan; poliklinik Gigi dan dua dokter sengaja tanpa gambar untuk menguji placeholder). Gambar dibuat lokal oleh GD tanpa unduhan dari internet dan disimpan di `storage/app/public` (jalankan `& $PHP artisan storage:link` sekali). Seeder master hanya berjalan di `APP_ENV=local`/`testing`.
 
-### Pemeriksaan cepat
+### Pemeriksaan cepat (fase 2)
 
 ```powershell
 & $PHP artisan route:list --path=admin   # 31 route admin (6 fase 1 + 25 fase 2)

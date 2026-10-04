@@ -72,7 +72,7 @@ class Phase2RoutePermissionTest extends TestCase
         }
     }
 
-    public function test_only_the_doctor_resource_has_an_admin_show_screen_among_phase_two_resources(): void
+    public function test_the_doctor_resource_has_an_admin_show_screen(): void
     {
         $this->assertNotNull(Route::getRoutes()->getByName('admin.doctors.show'));
     }

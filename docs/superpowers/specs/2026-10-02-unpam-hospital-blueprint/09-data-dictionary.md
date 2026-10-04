@@ -303,7 +303,7 @@ Total **37 tabel** wajib (00 bagian E) + `migrations` (tabel internal Laravel, d
 - **Primary key:** `id`. **Foreign key:** tidak ada (induk dari `clinics` dan `doctor_specialties`).
 - **Relasi Eloquent:** `Specialty::doctors()` belongsToMany `Doctor` (pivot `doctor_specialties`, `withPivot('is_primary')`); `Specialty::clinics()` hasMany `Clinic`.
 - **Index & unique:** `PRIMARY (id)`; `specialties_slug_unique (slug)`; `specialties_is_active_sort_order_index (is_active, sort_order)`.
-- **CHECK constraint:** tidak ada. **Cast Eloquent:** `is_active` → `boolean`. Route key = `slug`.
+- **CHECK constraint:** tidak ada. **Cast Eloquent:** `is_active` → `boolean`. Tanpa route publik pada fase 2; model tanpa `getRouteKeyName()`, route admin memakai id (F2-R4).
 - **Aturan hapus & arsip:** boleh dihapus hanya bila tidak dipakai dokter maupun poliklinik (`SpecialtyPolicy::delete` menolak; FK `doctor_specialties.specialty_id` `RESTRICT` sebagai jaring pengaman, `clinics.specialty_id` `SET NULL` hanya bila operator menghapus langsung di DB). Selain itu nonaktifkan (`is_active = false`).
 
 ### 3.2 `clinics`
@@ -334,7 +334,7 @@ Total **37 tabel** wajib (00 bagian E) + `migrations` (tabel internal Laravel, d
 - **Relasi Eloquent:** `Clinic::specialty()` belongsTo `Specialty`; `Clinic::doctors()` hasMany `Doctor` (poliklinik utama); `Clinic::schedules()` hasMany `DoctorSchedule`; `Clinic::sessions()` hasMany `PracticeSession`; `Clinic::appointments()` hasMany `Appointment`; cover dan galeri lewat trait `HasMedia` (`firstMedia('cover')`, `mediaIn('gallery')`, urut `sort_order`, `id`); tidak ada relasi `cover()`/`gallery()` khusus (F2-R24).
 - **Index & unique:** `PRIMARY (id)`; `clinics_slug_unique (slug)`; `clinics_code_unique (code)`; `clinics_specialty_id_foreign (specialty_id)`; `clinics_is_active_type_sort_order_index (is_active, type, sort_order)`.
 - **CHECK constraint:** tidak ada.
-- **Cast Eloquent:** `type` → `ClinicType`; `is_bookable` → `boolean`; `is_active` → `boolean`. Route key = `slug`.
+- **Cast Eloquent:** `type` → `ClinicType`; `is_bookable` → `boolean`; `is_active` → `boolean`. Route publik memakai binding slug eksplisit `{clinic:slug}`; model tanpa `getRouteKeyName()` (F2-R4).
 - **Aturan hapus & arsip:** poliklinik yang pernah dirujuk dokter/templat/sesi/appointment tidak dapat dihapus (FK `RESTRICT` dari `doctors`, `doctor_schedules`, `practice_sessions`, `appointments`); nonaktifkan lewat `is_active = false` (hilang dari publik dan wizard; booking lama tetap). Poliklinik tanpa referensi apa pun boleh dihapus (media ikut dihapus).
 
 ### 3.3 `doctors`
@@ -365,7 +365,7 @@ Total **37 tabel** wajib (00 bagian E) + `migrations` (tabel internal Laravel, d
 - **Relasi Eloquent:** `Doctor::clinic()` belongsTo `Clinic`; `Doctor::specialties()` belongsToMany `Specialty` (pivot `doctor_specialties`, `withPivot('is_primary')`); `Doctor::primarySpecialty` = accessor (bukan relasi) dari relasi `specialties` yang sudah dimuat: baris pivot `is_primary`, cadangan spesialisasi pertama (11 §5.2, F2-R24); `Doctor::schedules()` hasMany `DoctorSchedule`; `Doctor::exceptions()` hasMany `ScheduleException`; `Doctor::sessions()` hasMany `PracticeSession`; `Doctor::appointments()` hasMany `Appointment`; foto lewat trait `HasMedia` (`firstMedia('photo')`, accessor `photoUrl`/`photoThumbUrl`); tidak ada relasi `photo()` khusus (F2-R24).
 - **Index & unique:** `PRIMARY (id)`; `doctors_slug_unique (slug)`; `doctors_clinic_id_foreign (clinic_id)`; `doctors_status_sort_order_index (status, sort_order)`. Pencarian nama memakai `LIKE` (volume kecil; tanpa FULLTEXT).
 - **CHECK constraint:** tidak ada (konsistensi `status = archived` ↔ `archived_at` terisi dijaga service, Invarian I-23).
-- **Cast Eloquent:** `gender` → `Gender`; `status` → `DoctorStatus`; `archived_at` → `datetime`. Route key = `slug`.
+- **Cast Eloquent:** `gender` → `Gender`; `status` → `DoctorStatus`; `archived_at` → `datetime`. Route publik memakai binding slug eksplisit `{doctor:slug}` (fase 3); model tanpa `getRouteKeyName()` (F2-R4).
 - **Aturan hapus & arsip:** **tidak ada route hapus** (resource `admin.doctors.*` hanya `index/create/store/show/edit/update`). `inactive` dan `archived` menutup booking baru (F.3 mensyaratkan dokter `active`) dan menyembunyikan dokter dari halaman publik (detail menjawab 404). Menurut 00 F.4 (D-01, D-02): saat dokter **dinonaktifkan**, `ScheduleChangeService::applyDoctorInactive()` membatalkan sesi mendatang tanpa appointment aktif (`cancelled`) dan menjadikan sesi dengan appointment aktif `needs_review` dengan `pending_change` sumber `doctor_inactive` (appointment lama tidak dibatalkan otomatis; petugas menyelesaikannya di `admin.sessions.review`); saat **diarsipkan**, aksi ditolak selama masih ada appointment aktif mendatang ("selesaikan sesi terdampak dahulu"), dokter arsip tidak dapat diberi jadwal, dan `archived_at` terisi. FK `RESTRICT` dari `doctor_schedules`, `schedule_exceptions`, `practice_sessions`, `appointments` mencegah penghapusan fisik.
 
 ### 3.4 `doctor_specialties`
