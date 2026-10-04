@@ -76,3 +76,34 @@ Akun yang dibuat wajib mengganti password pada login pertama dan tercatat di aud
 & $PHP artisan route:list --path=admin   # route admin fase 1
 & $PHP artisan test                      # seluruh suite
 ```
+
+## Fase 2 — Master Data (spesialisasi, poliklinik, dokter)
+
+Yang tersedia: pengelolaan **Dokter** (tambah, ubah, foto, aktif/nonaktif, arsip, pemulihan dari arsip) di <http://unpam-hospital.test/admin/dokter>; **Poliklinik dan Spesialisasi** (CRUD, cover, galeri, editor rich text dengan unggah gambar) di `/admin/poliklinik` dan `/admin/spesialisasi`; halaman publik **Layanan Kami** di `/layanan` dan **Detail Layanan** di `/layanan/{slug}`. Halaman publik dokter dan jadwal menyusul di fase 3.
+
+### Hak akses
+
+| Peran | Dokter (lihat) | Dokter (kelola) | Poliklinik dan Spesialisasi |
+|---|:-:|:-:|:-:|
+| Super Admin | ya | ya | ya |
+| Admin Konten | ya | ya | ya |
+| Petugas Pendaftaran | ya | tidak | tidak |
+
+Layanan yang dinonaktifkan menjawab 404 di URL publik, juga untuk staf yang login. Dokter nonaktif atau arsip tidak tampil di halaman publik. Spesialisasi atau poliklinik yang masih dirujuk tidak dapat dihapus (nonaktifkan saja).
+
+### Data demo
+
+```powershell
+& $PHP artisan migrate:fresh --seed   # LOKAL SAJA: menghapus semua tabel dan isi database unpam_hospital
+```
+
+Selain data fase 1, hasilnya: 13 spesialisasi, 17 layanan (13 poliklinik + 4 penunjang), 18 dokter (16 aktif, 1 nonaktif, 1 arsip), dan 32 gambar contoh (foto 16 dokter, cover 16 layanan; poliklinik Gigi dan dua dokter sengaja tanpa gambar untuk menguji placeholder). Gambar dibuat lokal oleh GD tanpa unduhan dari internet dan disimpan di `storage/app/public` (jalankan `& $PHP artisan storage:link` sekali). Seeder master hanya berjalan di `APP_ENV=local`/`testing`.
+
+### Pemeriksaan cepat
+
+```powershell
+& $PHP artisan route:list --path=admin   # 31 route admin (6 fase 1 + 25 fase 2)
+& $PHP artisan media:prune --dry-run     # setelah seeding: 0 baris dan 0 berkas yatim
+& $PHP artisan test                      # seluruh suite
+npm run build                            # editor Quill ikut dibundel (tanpa CDN)
+```
