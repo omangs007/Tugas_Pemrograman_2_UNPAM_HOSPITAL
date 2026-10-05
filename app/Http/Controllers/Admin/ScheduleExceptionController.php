@@ -66,7 +66,7 @@ class ScheduleExceptionController extends Controller
     {
         $this->authorize('update', $exception);
 
-        return view('admin.exceptions.edit', ['exception' => $exception] + $this->formOptions());
+        return view('admin.exceptions.edit', ['exception' => $exception] + $this->formOptions($exception));
     }
 
     public function update(ScheduleExceptionRequest $request, ScheduleException $exception, ScheduleChangeService $service): RedirectResponse
@@ -125,14 +125,25 @@ class ScheduleExceptionController extends Controller
      *
      * @return array{typeOptions: array<string, string>, doctorOptions: array<int|string, string>}
      */
-    private function formOptions(): array
+    private function formOptions(?ScheduleException $current = null): array
     {
         $doctors = Doctor::query()
-            ->where('status', '!=', DoctorStatus::Archived->value)
+            ->where(function ($query) use ($current): void {
+                $query->where('status', '!=', DoctorStatus::Archived->value);
+
+                // Dokter pengecualian yang sedang diubah tetap tampil (walau diarsipkan) agar tidak melebar ke semua dokter.
+                if ($current?->doctor_id !== null) {
+                    $query->orWhere('id', $current->doctor_id);
+                }
+            })
             ->ordered()
             ->get()
             ->mapWithKeys(fn (Doctor $doctor): array => [
-                $doctor->id => $doctor->display_name.($doctor->status === DoctorStatus::Active ? '' : ' (nonaktif)'),
+                $doctor->id => $doctor->display_name.match ($doctor->status) {
+                    DoctorStatus::Active => '',
+                    DoctorStatus::Archived => ' (diarsipkan)',
+                    default => ' (nonaktif)',
+                },
             ])
             ->all();
 

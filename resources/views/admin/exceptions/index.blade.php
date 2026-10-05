@@ -1,5 +1,5 @@
 @php
-    $jenisNow = (string) request()->query('jenis', '');
+    $jenisNow = (is_string(request()->query('jenis')) ? request()->query('jenis') : '');
     $breadcrumbItems = [
         ['label' => 'Jadwal Praktik', 'url' => route('admin.schedules.index')],
         ['label' => 'Pengecualian'],

@@ -541,4 +541,44 @@ class AdminScheduleExceptionsTest extends TestCase
 
         $this->assertModelExists($exception);
     }
+
+    public function test_index_does_not_fail_on_array_valued_filters(): void
+    {
+        $this->createException();
+
+        $this->actingAs($this->createStaff('content-admin'))
+            ->get(route('admin.exceptions.index', ['jenis' => ['x'], 'status' => ['x'], 'q' => ['x']]))
+            ->assertOk();
+    }
+
+    public function test_edit_keeps_an_archived_doctor_selected_and_saving_does_not_widen_to_all_doctors(): void
+    {
+        $archived = $this->createDoctor(['name' => 'Dokter Arsip', 'status' => 'archived', 'archived_at' => now()->subDay()]);
+        $exception = $this->createException([
+            'type' => ExceptionType::Other,
+            'doctor_id' => $archived->id,
+            'start_date' => '2026-10-07',
+            'end_date' => '2026-10-08',
+            'reason' => 'Pelatihan',
+        ]);
+        $admin = $this->createStaff('content-admin');
+
+        $html = $this->actingAs($admin)
+            ->get(route('admin.exceptions.edit', $exception))
+            ->assertOk()
+            ->getContent();
+        $this->assertMatchesRegularExpression('/<option value="'.$archived->id.'"\s+selected/', $html);
+
+        $this->from(route('admin.exceptions.edit', $exception))
+            ->put(route('admin.exceptions.update', $exception), $this->payload([
+                'type' => 'other',
+                'doctor_id' => (string) $archived->id,
+                'reason' => 'Pelatihan diubah',
+            ]))
+            ->assertSessionHasErrors('doctor_id');
+
+        $exception->refresh();
+        $this->assertSame($archived->id, $exception->doctor_id);
+        $this->assertSame('Pelatihan', $exception->reason);
+    }
 }

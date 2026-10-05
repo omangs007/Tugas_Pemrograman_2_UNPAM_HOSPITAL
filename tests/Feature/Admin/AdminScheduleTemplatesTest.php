@@ -685,4 +685,11 @@ class AdminScheduleTemplatesTest extends TestCase
 
         $this->assertModelExists($schedule);
     }
+
+    public function test_index_does_not_fail_on_array_valued_filters(): void
+    {
+        $this->actingAs($this->createStaff('content-admin'))
+            ->get(route('admin.schedules.index', ['urut' => ['x'], 'status' => ['x'], 'hari' => ['x'], 'dokter' => ['x']]))
+            ->assertOk();
+    }
 }

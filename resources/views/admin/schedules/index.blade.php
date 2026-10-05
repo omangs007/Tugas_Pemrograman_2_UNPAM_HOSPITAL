@@ -1,6 +1,6 @@
 @php
-    $currentSort = (string) request()->query('urut', '');
-    $statusNow = (string) request()->query('status', '');
+    $currentSort = (is_string(request()->query('urut')) ? request()->query('urut') : '');
+    $statusNow = (is_string(request()->query('status')) ? request()->query('status') : '');
     $sortUrl = fn (string $key): string => request()->fullUrlWithQuery(['urut' => $key, 'kembali' => null, 'page' => null]);
     $breadcrumbItems = [
         ['label' => 'Jadwal Praktik', 'url' => route('admin.schedules.index')],
@@ -48,7 +48,7 @@
                 <select id="filter-hari" name="hari" class="form-select">
                     <option value="">Semua</option>
                     @foreach ($dayOptions as $number => $name)
-                        <option value="{{ $number }}" @selected((string) request()->query('hari') === (string) $number)>{{ $name }}</option>
+                        <option value="{{ $number }}" @selected((is_string(request()->query('hari')) ? request()->query('hari') : '') === (string) $number)>{{ $name }}</option>
                     @endforeach
                 </select>
             </div>
