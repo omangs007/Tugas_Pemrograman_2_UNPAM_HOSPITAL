@@ -11,6 +11,36 @@
   }
 }
 
+// Bar menu publik (navbar-dark di atas $primary). Warna tautan bawaan Bootstrap (putih 55%) gagal kontras AA.
+// >= lg: tautan putih 90% (±7,2:1), hover/aktif putih penuh (±8,6:1); halaman aktif dibedakan dengan tebal + garis bawah.
+// < lg: menu menjadi offcanvas berlatar putih, jadi tautan memakai warna teks biasa (bukan putih di atas putih).
+header .navbar-dark {
+  --bs-navbar-color: var(--bs-body-color);
+  --bs-navbar-hover-color: #{$primary};
+  --bs-navbar-active-color: #{$primary};
+
+  @include media-breakpoint-up(lg) {
+    --bs-navbar-color: rgba(255, 255, 255, .9);
+    --bs-navbar-hover-color: #fff;
+    --bs-navbar-active-color: #fff;
+  }
+
+  .nav-link {
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
+      text-underline-offset: .35em;
+    }
+
+    &.active,
+    &[aria-current="page"] {
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: .35em;
+    }
+  }
+}
+
 .site-header {
   background: #fff;
   box-shadow: $box-shadow-sm;

@@ -137,6 +137,8 @@ Sesi dibangkitkan dari templat mingguan untuk hari ini sampai hari ini + `bookin
 
 Windows Task Scheduler (blueprint 16 §11.1) bersifat opsional; tanpa itu, halaman publik tetap membangkitkan sesi sekali per hari.
 
+Agar pekerjaan harian pukul 00.05 berjalan, cron server (atau Windows Task Scheduler) harus menjalankan `php artisan schedule:run` setiap menit. Bila itu belum dipasang, membuka halaman publik Cari Dokter (#6), Detail Dokter (#7), atau Jadwal Dokter (#8) juga memicu pembangkitan sesi harian sebagai cadangan.
+
 ### Aturan yang berlaku untuk semua peran, termasuk Super Admin
 
 Sesi yang sudah berakhir tidak dapat diubah, ditutup, dibatalkan, atau dihapus. Kuota sesi tidak boleh di bawah jumlah terisi. Templat atau sesi yang sudah punya pendaftaran tidak dapat dihapus (nonaktifkan, tutup, atau batalkan). Dokter arsip tidak dapat diberi jadwal, dan dokter dengan pendaftaran aktif pada sesi mendatang tidak dapat diarsipkan.

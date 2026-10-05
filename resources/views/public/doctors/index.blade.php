@@ -36,7 +36,7 @@
             </div>
             <div class="d-flex flex-wrap gap-2">
                 <x-loading-button icon="bi-search" loading-text="Mencari…">Cari Dokter</x-loading-button>
-                <a class="btn btn-outline-secondary" href="{{ route('doctors.index') }}">Reset filter</a>
+                <a class="btn btn-outline-primary" href="{{ route('doctors.index') }}">Reset filter</a>
             </div>
         </div>
     </form>

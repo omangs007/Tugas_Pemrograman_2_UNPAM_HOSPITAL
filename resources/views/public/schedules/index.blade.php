@@ -25,7 +25,7 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             <x-loading-button icon="bi-funnel" loading-text="Menerapkan…">Terapkan</x-loading-button>
-            <a class="btn btn-outline-secondary" href="{{ route('schedules.index') }}">Reset</a>
+            <a class="btn btn-outline-primary" href="{{ route('schedules.index') }}">Reset</a>
         </div>
     </form>
 
@@ -51,7 +51,7 @@
             @if ($nextWeek)
                 <a class="btn btn-outline-primary" href="{{ route('schedules.index', $carry + ['minggu' => $nextWeek->toDateString()]) }}">Lihat minggu berikutnya</a>
             @endif
-            <a class="btn btn-outline-secondary" href="{{ route('schedules.index') }}">Reset</a>
+            <a class="btn btn-outline-primary" href="{{ route('schedules.index') }}">Reset</a>
         </x-empty-state>
     @else
         @include('public.schedules._week-grid')
