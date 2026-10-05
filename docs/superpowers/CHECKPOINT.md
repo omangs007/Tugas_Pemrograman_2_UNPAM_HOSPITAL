@@ -1,6 +1,6 @@
 # Checkpoint — UNPAM HOSPITAL
 
-**Terakhir diperbarui:** 2026-10-05 (penyusunan rencana fase 3 dijeda) · **Tag git:** `checkpoint/2026-10-05-fase-3-rencana` (sebelumnya `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
+**Terakhir diperbarui:** 2026-10-05 (rencana fase 3 selesai disusun, menunggu persetujuan) · **Tag git:** `checkpoint/2026-10-05-fase-3-rencana` (sebelumnya `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
 
 Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah sebelum bekerja.
 
@@ -12,30 +12,43 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Fase 0 — Lingkungan & skeleton | **Selesai**, di-merge ke `master`. Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
 | Fase 1 — Fondasi | **Selesai** dan **sudah di-merge** ke `master` (fast-forward `0b87342`, 2026-10-04; cabang `fase-1-fondasi` dihapus). Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang beserta perbaikannya sudah selesai. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
 | Fase 2 — Master Data | **Eksekusi dan gerbang fase selesai** di cabang `fase-2-master-data`. Semua 16 tugas lulus review. Final review seluruh cabang beserta satu gelombang perbaikan (F1–F5) selesai. `migrate:fresh --seed` dijalankan dengan izin pemilik dan jumlah datanya persis sesuai target. Uji manual Step 19 dijalankan lewat Playwright (laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-05`); dua cacat temuannya (M1 `&nbsp;` editor, M2 panah galeri) sudah diperbaiki di `929c13a`. Hasil akhir: 1845 tes lulus (8479 asersi), Pint PASS, `npm run build` OK, 31 route admin. **Sudah di-merge** ke `master` (fast-forward `51134af`, 2026-10-05; cabang `fase-2-master-data` dihapus; suite pada hasil merge 1845 lulus). Rencana, catatan eksekusi, dan keputusan X1–X14 ada di bagian akhir `docs/superpowers/plans/2026-10-04-fase-2-master-data.md`. |
-| Cabang git | `master` (fase 0 + fase 1 + fase 2). Cabang kerja **`fase-3-jadwal-dokter`** dibuat dari `master` (`af4fd02`) dan baru berisi commit CHECKPOINT ini. Repo tanpa remote. |
+| Cabang git | `master` (fase 0 + fase 1 + fase 2). Cabang kerja **`fase-3-jadwal-dokter`** dibuat dari `master` (`af4fd02`) dan berisi commit CHECKPOINT serta rencana fase 3. Repo tanpa remote. |
 | Keputusan tertunda pemilik | Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
-| Fase 3 — Penjadwalan (Jadwal Dokter) | **Rencana sedang disusun, dijeda 2026-10-05** atas permintaan pemilik. Rinciannya di §3a. |
+| Fase 3 — Penjadwalan (Jadwal Dokter) | **Rencana selesai disusun** (`docs/superpowers/plans/2026-10-05-fase-3-penjadwalan.md`), **menunggu persetujuan pemilik**. Rinciannya di §3a. |
 
-### 3a. Status penyusunan rencana fase 3
+### 3a. Status rencana fase 3
 
-Semua bahan ada di `.superpowers/plan-fase-3/` (git-ignored; **jangan** jalankan `git clean -fdx`):
+Rencana **selesai disusun** dan **menunggu persetujuan pemilik**: `docs/superpowers/plans/2026-10-05-fase-3-penjadwalan.md` (26.319 baris, 16 task, 139 langkah). Isinya:
+- header (Goal, Architecture, Spec);
+- Global Constraints dan Review Focus;
+- keputusan F3-R1–F3-R30 dan keputusan penyusunan F3-P1–F3-P15;
+- keterbatasan yang diketahui, nama baru, dan peta berkas;
+- Task 1–16.
 
-| Berkas | Isi | Status |
-|---|---|---|
-| `digest-data.md`, `digest-http.md`, `digest-tests-carry.md`, `digest-kode.md` | Kutipan verbatim spesifikasi dan kode yang ada | Selesai |
-| `kerangka.md` | Kontrak koordinator: keputusan F3-R1–F3-R30, nama baru, peta berkas, Global Constraints, Review Focus, kontrak T1–T16 | Selesai |
-| `tasks-T1-T4.md` | Skema, model, spike konkurensi, generator sesi | Selesai (6876 baris) |
-| `tasks-T5-T8.md` | `DoctorAvailabilityQuery`, `ScheduleChangeService` (templat, pengecualian, sesi manual, status dokter) | Selesai (5947 baris) |
-| `tasks-T9-T12.md` | Policy dan Form Request, admin #35 (Templat, Pengecualian, Sesi) | Selesai (6638 baris) |
-| `tasks-T13-T16.md` | Halaman publik #6/#7/#8, seeder, matriks akses dan gerbang | **Belum.** Penulis dihentikan saat jeda; kirim ulang dengan `prompt-penulis-D.md` |
-| `catatan-koordinator.md` | Ringkasan hasil penulis, butir yang perlu keputusan, titik lanjut | Mutakhir |
+Cara penyusunan:
+- Empat penulis (Sonnet 5.5) menulis Task 1–4, 5–8, 9–12, dan 13–16.
+- Catatan semua penulis diputuskan koordinator.
+- Dua pemeriksa konsistensi selesai dengan 3 + 6 perbaikan. Salah satunya bug nyata: pesan galat filter publik tidak sampai ke komponen form.
+- Task 16 merekonsiliasi blueprint lewat 79 Edit dokumen dan baris 17 §4 D-59–D-103.
 
-Langkah lanjut, berurutan:
-1. Kirim ulang penulis D (T13–T16).
-2. Putuskan butir "Catatan penulis A/B/C" ke `ruling-konsistensi.md`.
-3. Jalankan dua pemeriksa konsistensi, lalu perbaiki task.
-4. Rakit `docs/superpowers/plans/2026-10-05-fase-3-penjadwalan.md`, commit, dan minta persetujuan pemilik.
-5. Eksekusi dengan subagent-driven-development (Sonnet 5.5).
+Bahan penyusunan ada di `.superpowers/plan-fase-3/` (git-ignored; **jangan** jalankan `git clean -fdx`):
+
+| Berkas | Isi |
+|---|---|
+| `digest-*.md`, `kerangka.md` | Kutipan spesifikasi/kode dan kontrak koordinator |
+| `tasks-T1-T4.md`, `tasks-T5-T8.md`, `tasks-T9-T12.md`, `tasks-T13-T16.md` | Sumber Task 1–16 beserta "Catatan penulis" A–D |
+| `ruling-konsistensi.md` | Keputusan koordinator atas catatan penulis dan butir terbuka pemeriksa (§1–§6) |
+| `pemeriksaan-1.md`, `pemeriksaan-2.md` | Laporan dua pemeriksa konsistensi |
+| `header-tambahan.md`, `nama-tambahan.md`, `struktur.md`, `rakit.sh` | Bagian header dan skrip perakit. Bila sumber task diubah, rakit ulang dengan `bash .superpowers/plan-fase-3/rakit.sh`. |
+| `catatan-koordinator.md` | Riwayat penyusunan dan titik lanjut |
+
+Langkah lanjut:
+1. Pemilik meninjau dan menyetujui rencana.
+2. Eksekusi dengan subagent-driven-development (Sonnet 5.5), Task 1 sampai Task 16.
+3. Gerbang Task 16:
+   - `migrate:fresh --seed` dan `sessions:generate` pada DB pengembangan, dengan izin pemilik;
+   - uji manual Playwright;
+   - final review seluruh cabang.
 
 Yang sudah ada di aplikasi:
 - Fase 1: enum, akun & peran (Spatie), audit log, media + sanitasi HTML, pengaturan situs, tema & komponen Blade, layout publik/pasien/auth/admin, login/logout staf, ganti password wajib, header keamanan, `StaffAccountService`, `app:create-super-admin`, `media:prune`, seeder demo staf.
@@ -83,6 +96,7 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
   - Model `Page` untuk judul #4 (F2-R10).
   - Kolom rich text baru wajib masuk `MediaService::EDITOR_REFERENCE_COLUMNS` (D-55, 4a).
   - `map-embed` (4b).
+  - Gambar ASCII 07 (W-02 beranda, W-03, W-04) dan butir beranda baris 417 masih memuat `[ Lihat Jadwal ]`. Rapikan sesuai F3-R25 (tanpa tombol Lihat Jadwal pada kartu dokter) saat menyentuh W-02 di 4a.
 - **Minor fase 2 yang ditunda:**
   - Suite ±150 s (seed demo per tes).
   - `errorBag` per media galeri.
@@ -136,3 +150,8 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
    - Penyusunan rencana fase 3 dimulai di cabang `fase-3-jadwal-dokter`.
    - Empat digest spesifikasi/kode dan kerangka kontrak (F3-R1–F3-R30) selesai.
    - Penulis T1–T12 selesai, sedangkan penulis T13–T16 dihentikan karena pemilik meminta jeda ("di stop dulu lanjut nanti").
+7. **2026-10-05 (lanjutan 2):**
+   - Penulis T13–T16 dikirim ulang dan selesai.
+   - Catatan penulis A–D diputuskan (`ruling-konsistensi.md`, F3-P1–F3-P15).
+   - Pemeriksa konsistensi 1 (T1–T12) dan 2 (T13–T16) selesai. Pemeriksa 2 sempat dihentikan pemilik, lalu dikirim ulang atas permintaan "lanjutkan".
+   - Rencana fase 3 dirakit dan di-commit, lalu diajukan untuk persetujuan pemilik.
