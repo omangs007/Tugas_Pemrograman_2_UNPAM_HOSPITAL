@@ -111,6 +111,13 @@ return [
             ['label' => 'Poliklinik', 'route' => 'admin.clinics.index', 'permission' => 'clinics.manage', 'active' => ['admin.clinics.*']],
             ['label' => 'Spesialisasi', 'route' => 'admin.specialties.index', 'permission' => 'clinics.manage', 'active' => ['admin.specialties.*']],
         ],
+        // Halaman #35 (F3-R19). Tab ke route yang belum ada (Sesi Terdampak sampai fase 7) otomatis tersembunyi.
+        'schedules' => [
+            ['label' => 'Templat Mingguan', 'route' => 'admin.schedules.index', 'permission' => 'schedules.view', 'active' => ['admin.schedules.*']],
+            ['label' => 'Sesi per Tanggal', 'route' => 'admin.sessions.index', 'permission' => 'schedules.view', 'active' => ['admin.sessions.index', 'admin.sessions.create', 'admin.sessions.store', 'admin.sessions.edit', 'admin.sessions.update', 'admin.sessions.status', 'admin.sessions.destroy']],
+            ['label' => 'Pengecualian', 'route' => 'admin.exceptions.index', 'permission' => 'schedules.view', 'active' => ['admin.exceptions.*']],
+            ['label' => 'Sesi Terdampak', 'route' => 'admin.sessions.review', 'permission' => 'sessions.review', 'active' => ['admin.sessions.review', 'admin.sessions.resolve']],
+        ],
     ],
 
 ];

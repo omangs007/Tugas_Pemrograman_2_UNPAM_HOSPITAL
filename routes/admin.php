@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ClinicController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DoctorController;
+use App\Http\Controllers\Admin\DoctorScheduleController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\SpecialtyController;
 use App\Http\Controllers\Auth\AdminLoginController;
@@ -75,6 +76,25 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
             ->names('specialties')
             ->parameters(['spesialisasi' => 'specialty'])
             ->except(['show']);
+    });
+
+    // Jadwal praktik (halaman #35, F3-R19/R20, 11 §3.4). Urutan pendaftaran di berkas MENGIKAT:
+    //   1. rute sesi `jadwal/sesi*` (T12), 2. rute pengecualian `jadwal/pengecualian*` (T11), 3. resource `jadwal` (T10).
+    // Segmen statis didaftarkan sebelum resource berparameter; di tiap modul kelola lebih dulu, baru lihat.
+    // Tidak ada rute `show`, dan tidak ada rute apa pun di bawah `admin/dokter*`.
+    // [FASE-3 T12] Rute sesi per tanggal didaftarkan di sini.
+    // [FASE-3 T11] Rute pengecualian didaftarkan di sini.
+    Route::middleware('permission:schedules.manage')->group(function (): void {
+        Route::resource('jadwal', DoctorScheduleController::class)
+            ->names('schedules')
+            ->parameters(['jadwal' => 'schedule'])
+            ->except(['index', 'show']);
+    });
+    Route::middleware('permission:schedules.view')->group(function (): void {
+        Route::resource('jadwal', DoctorScheduleController::class)
+            ->names('schedules')
+            ->parameters(['jadwal' => 'schedule'])
+            ->only(['index']);
     });
 
     // J. Media (11 §2.3 J, F2-R3). JSON; izin akhir ditentukan MediaPolicy menurut pemilik media.
