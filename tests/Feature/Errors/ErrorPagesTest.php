@@ -36,13 +36,15 @@ class ErrorPagesTest extends TestCase
             ->assertSee('Halaman tidak ditemukan');
     }
 
-    public function test_404_links_to_the_doctor_directory(): void
+    public function test_404_links_to_the_doctor_directory_and_the_weekly_schedule(): void
     {
-        // Route doctors.index ada sejak fase 3 (#6); tautan jadwal menyusul bersama #8.
+        // Route doctors.index dan schedules.index ada sejak fase 3 (#6, #8).
         $this->get('/tidak-ada')
             ->assertNotFound()
             ->assertSee('Cari Dokter')
-            ->assertSee('href="'.route('doctors.index').'"', false);
+            ->assertSee('href="'.route('doctors.index').'"', false)
+            ->assertSee('Jadwal Dokter')
+            ->assertSee('href="'.route('schedules.index').'"', false);
     }
 
     public function test_unhandled_exception_with_debug_off_renders_generic_500_without_internal_message(): void

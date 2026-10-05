@@ -154,25 +154,24 @@ class PublicClinicDetailTest extends TestCase
             ->assertSee('Belum ada dokter terjadwal');
     }
 
-    public function test_registration_and_schedule_links_are_hidden_while_their_routes_do_not_exist(): void
+    public function test_registration_link_is_hidden_while_its_route_does_not_exist_but_the_schedule_link_is_shown(): void
     {
-        if (Route::has('patient.appointments.create') || Route::has('schedules.index')) {
-            $this->markTestSkipped('Route fase berikutnya sudah ada: tautan diuji di tes fase tersebut.');
+        if (Route::has('patient.appointments.create')) {
+            $this->markTestSkipped('Route patient.appointments.create sudah ada (fase 6): tautan diuji di tes fase 6.');
         }
 
         $clinic = $this->createClinic(['is_bookable' => true]);
 
         $this->get($this->url($clinic))
             ->assertOk()
-            ->assertDontSee('?poli=', false)
             ->assertDontSee('Daftar Kunjungan')
-            ->assertDontSee('Jadwal Dokter');
+            ->assertSee('href="'.route('schedules.index', ['poli' => $clinic->slug]).'"', false)
+            ->assertSee('Jadwal Dokter');
     }
 
     public function test_registration_and_schedule_links_carry_the_clinic_slug_when_routes_exist(): void
     {
         $this->fakeRoute('patient.appointments.create', '/pasien/pendaftaran/baru');
-        $this->fakeRoute('schedules.index', '/jadwal-dokter');
         $bookable = $this->createClinic(['is_bookable' => true]);
         $support = $this->createClinic(['type' => ClinicType::Penunjang, 'is_bookable' => false]);
 
@@ -212,16 +211,10 @@ class PublicClinicDetailTest extends TestCase
             ->assertDontSee('Poli Lain Tiga');
     }
 
-    public function test_doctor_cards_link_to_the_doctor_page_only_when_the_route_exists(): void
+    public function test_doctor_cards_link_to_the_doctor_page(): void
     {
         $clinic = $this->createClinic();
         $doctor = $this->createDoctor([], $clinic);
-
-        if (! Route::has('doctors.show')) {
-            $this->get($this->url($clinic))->assertOk()->assertDontSee('/dokter/'.$doctor->slug, false);
-        }
-
-        $this->fakeRoute('doctors.show', '/dokter/{doctor:slug}');
 
         $this->get($this->url($clinic))->assertOk()->assertSee('href="'.url('/dokter/'.$doctor->slug).'"', false);
     }

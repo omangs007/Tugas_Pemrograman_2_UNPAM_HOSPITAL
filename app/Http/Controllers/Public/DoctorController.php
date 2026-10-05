@@ -9,6 +9,7 @@ use App\Enums\ClinicType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\DoctorIndexRequest;
 use App\Models\Clinic;
+use App\Models\Doctor;
 use App\Models\Specialty;
 use App\Services\Scheduling\AvailabilityFilter;
 use App\Services\Scheduling\DoctorAvailabilityQuery;
@@ -18,6 +19,7 @@ use App\Services\Settings\SettingsService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\MessageBag;
+use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
 use Illuminate\View\View;
 
@@ -101,6 +103,43 @@ class DoctorController extends Controller
             'clinicOptions' => ['' => 'Semua poliklinik'] + $clinics->pluck('name', 'slug')->all(),
             'windowDays' => max(1, $settings->bookingRules()->windowDays),
             'today' => CarbonImmutable::today(),
+        ]);
+    }
+
+    public function show(
+        Doctor $doctor,
+        PracticeSessionGenerator $generator,
+        DoctorAvailabilityQuery $query,
+    ): View {
+        // Tanpa Policy: dokter nonaktif, arsip, atau di poliklinik nonaktif = 404 untuk semua orang, termasuk staf (A-42).
+        abort_unless(Doctor::query()->publiclyVisible()->whereKey($doctor->getKey())->exists(), 404);
+
+        $generator->ensureDailyHorizon();
+
+        $doctor->load([
+            'clinic',
+            'specialties' => fn ($specialties) => $specialties->where('specialties.is_active', true),
+            'media' => fn ($media) => $media->where('collection', 'photo'),
+        ]);
+
+        // Jadwal 14 hari (hari ini sampai hari ini + 13) dari sumber yang sama dengan #8 dan wizard (JDW-12).
+        $today = CarbonImmutable::today();
+        $sessions = $query->sessions(new AvailabilityFilter(
+            doctorId: $doctor->id,
+            from: $today,
+            to: $today->addDays(13),
+        ));
+
+        $specialty = $doctor->primary_specialty;
+        $title = filled($doctor->meta_title)
+            ? (string) $doctor->meta_title
+            : $doctor->display_name.($specialty !== null ? ' — '.$specialty->name : '');
+
+        return view('public.doctors.show', [
+            'doctor' => $doctor,
+            'sessions' => $sessions,
+            'title' => $title,
+            'metaDescription' => Str::limit((string) ($doctor->meta_description ?: $doctor->short_bio), 160, ''),
         ]);
     }
 

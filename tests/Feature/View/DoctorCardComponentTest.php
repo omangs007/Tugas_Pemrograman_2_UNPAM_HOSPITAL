@@ -6,7 +6,6 @@ use App\Models\Doctor;
 use App\Services\Media\MediaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\ImageFixtures;
 use Tests\Support\InteractsWithMasterData;
@@ -54,20 +53,14 @@ class DoctorCardComponentTest extends TestCase
         $this->assertStringNotContainsString('Rani Oktaviani,', $html);
     }
 
-    public function test_link_to_the_doctor_page_appears_only_when_the_route_exists(): void
+    public function test_the_name_links_to_the_doctor_page_with_a_stretched_link(): void
     {
         $doctor = $this->createDoctor();
 
-        if (Route::has('doctors.show')) {
-            $this->markTestSkipped('Route doctors.show sudah ada (fase 3): tautan diuji di tes fase 3.');
-        }
+        $html = $this->render($doctor);
 
-        $this->assertStringNotContainsString('<a ', $this->render($doctor));
-
-        Route::middleware('web')->get('/dokter/{doctor:slug}', fn () => 'x')->name('doctors.show');
-        Route::getRoutes()->refreshNameLookups();
-
-        $this->assertStringContainsString('href="'.url('/dokter/'.$doctor->slug).'"', $this->render($doctor));
+        $this->assertStringContainsString('href="'.url('/dokter/'.$doctor->slug).'"', $html);
+        $this->assertStringContainsString('class="stretched-link text-decoration-none"', $html);
     }
 
     public function test_heading_level_is_configurable_and_clamped(): void
