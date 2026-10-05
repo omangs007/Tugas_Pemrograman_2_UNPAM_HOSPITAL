@@ -10,6 +10,7 @@ use PDO;
 use PDOException;
 use Tests\Support\RawPdoConnection;
 use Tests\TestCase;
+use Throwable;
 
 /**
  * KON-01 versi spike fase 3 (F3-R6): dua koneksi PDO mentah ke database uji membuktikan perilaku penguncian
@@ -38,29 +39,23 @@ class ConcurrencySpikeTest extends TestCase
 
     private ?PDO $b = null;
 
-    /** @var list<int> */
-    private array $sessionIds = [];
+    /** Urutan hapus aman FK untuk baris yang dibuat tes ini (anak lebih dulu). */
+    private const CLEANUP_TABLES = ['appointments', 'practice_sessions', 'patient_profiles', 'doctors', 'clinics', 'audit_logs'];
 
-    /** @var list<int> */
-    private array $patientIds = [];
-
-    /** @var list<int> */
-    private array $doctorIds = [];
-
-    /** @var list<int> */
-    private array $clinicIds = [];
+    /** @var array<string, int> id tertinggi tiap tabel sebelum tes dimulai */
+    private array $baselines = [];
 
     private int $codeSequence = 0;
-
-    private int $auditBaseline = 0;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->auditBaseline = (int) DB::table('audit_logs')->max('id');
-
         $this->assertSame(0, DB::transactionLevel(), 'Tes konkurensi tidak boleh berjalan di dalam transaksi.');
+
+        foreach (self::CLEANUP_TABLES as $table) {
+            $this->baselines[$table] = (int) DB::table($table)->max('id');
+        }
 
         $this->a = RawPdoConnection::open(1);
         $this->b = RawPdoConnection::open(1);
@@ -68,38 +63,30 @@ class ConcurrencySpikeTest extends TestCase
 
     protected function tearDown(): void
     {
-        try {
-            foreach ([$this->a, $this->b] as $pdo) {
+        foreach ([$this->a, $this->b] as $pdo) {
+            try {
                 if ($pdo !== null && $pdo->inTransaction()) {
                     $pdo->rollBack();
                 }
+            } catch (Throwable) {
+                // Koneksi mungkin sudah mati; kunci dilepas server saat sesi ditutup.
             }
-
-            $this->a = null;
-            $this->b = null;
-
-            if ($this->sessionIds !== []) {
-                DB::table('appointments')->whereIn('practice_session_id', $this->sessionIds)->delete();
-                DB::table('practice_sessions')->whereIn('id', $this->sessionIds)->delete();
-            }
-
-            if ($this->patientIds !== []) {
-                DB::table('patient_profiles')->whereIn('id', $this->patientIds)->delete();
-            }
-
-            if ($this->doctorIds !== []) {
-                DB::table('doctors')->whereIn('id', $this->doctorIds)->delete();
-            }
-
-            if ($this->clinicIds !== []) {
-                DB::table('clinics')->whereIn('id', $this->clinicIds)->delete();
-            }
-
-            // Pencatat audit (mis. clinic.created) menulis baris ter-commit; buang yang dibuat tes ini.
-            DB::table('audit_logs')->where('id', '>', $this->auditBaseline)->delete();
-        } finally {
-            parent::tearDown();
         }
+
+        $this->a = null;
+        $this->b = null;
+
+        // Setiap tabel dibersihkan mandiri: kegagalan satu tidak boleh melewatkan yang lain. Baris yang dibuat
+        // factory (klinik, dokter, audit) ter-commit walau pembuatan sesi gagal di tengah, jadi dasarnya id, bukan daftar.
+        foreach (self::CLEANUP_TABLES as $table) {
+            try {
+                DB::table($table)->where('id', '>', $this->baselines[$table] ?? PHP_INT_MAX)->delete();
+            } catch (Throwable) {
+                // Dilanjutkan; tes kebersihan di awal tes berikutnya akan melaporkan sisa data.
+            }
+        }
+
+        parent::tearDown();
     }
 
     // --- Pembantu data (koneksi aplikasi, autocommit) ---
@@ -111,19 +98,12 @@ class ConcurrencySpikeTest extends TestCase
             'session_date' => today()->addDay()->toDateString(),
         ]);
 
-        $this->sessionIds[] = $session->id;
-        $this->doctorIds[] = $session->doctor_id;
-        $this->clinicIds[] = $session->clinic_id;
-
         return $session;
     }
 
     private function makePatient(): PatientProfile
     {
-        $patient = PatientProfile::factory()->create();
-        $this->patientIds[] = $patient->id;
-
-        return $patient;
+        return PatientProfile::factory()->create();
     }
 
     // --- Pembantu SQL mentah ---
@@ -489,7 +469,7 @@ class ConcurrencySpikeTest extends TestCase
 
     public function test_the_database_is_clean_at_the_start_of_each_test(): void
     {
-        foreach (['appointments', 'practice_sessions', 'patient_profiles', 'audit_logs'] as $table) {
+        foreach (self::CLEANUP_TABLES as $table) {
             $this->assertSame(0, DB::table($table)->count(), "Tabel {$table} harus kosong: tes sebelumnya wajib membersihkan di tearDown().");
         }
     }
