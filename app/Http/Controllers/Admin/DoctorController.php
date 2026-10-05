@@ -97,6 +97,8 @@ class DoctorController extends Controller
             default => 'Dokter dinonaktifkan.',
         };
 
+        $message = $this->withScheduleReport($message, $service);
+
         return back(fallback: route('admin.doctors.show', $doctor))->with('success', $message);
     }
 
@@ -110,7 +112,8 @@ class DoctorController extends Controller
 
         $service->archive($doctor, $request->reason(), Actor::staff($request->user()));
 
-        return back(fallback: route('admin.doctors.show', $doctor))->with('success', 'Dokter diarsipkan.');
+        return back(fallback: route('admin.doctors.show', $doctor))
+            ->with('success', $this->withScheduleReport('Dokter diarsipkan.', $service));
     }
 
     public function photo(UploadDoctorPhotoRequest $request, Doctor $doctor, DoctorService $service): RedirectResponse
@@ -120,6 +123,16 @@ class DoctorController extends Controller
         $service->replacePhoto($doctor, $request->photoFile(), $request->altText(), Actor::staff($request->user()));
 
         return redirect()->route('admin.doctors.show', $doctor)->with('success', 'Foto dokter berhasil diperbarui.');
+    }
+
+    /**
+     * Menambahkan ringkasan dampak jadwal (ScheduleChangeReport::message()) ke pesan flash bila tidak kosong.
+     */
+    private function withScheduleReport(string $message, DoctorService $service): string
+    {
+        $summary = $service->lastReport()?->message() ?? '';
+
+        return $summary === '' ? $message : $message.' '.$summary;
     }
 
     /**

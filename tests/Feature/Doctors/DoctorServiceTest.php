@@ -133,7 +133,7 @@ class DoctorServiceTest extends TestCase
         $class = new ReflectionClass(DoctorService::class);
 
         $this->assertTrue($class->isFinal());
-        $this->assertSame(['audit', 'media'], array_map(fn ($parameter) => $parameter->getName(), $class->getConstructor()->getParameters()));
+        $this->assertSame(['audit', 'media', 'schedules'], array_map(fn ($parameter) => $parameter->getName(), $class->getConstructor()->getParameters()));
     }
 
     // ------------------------------------------------------------------ create

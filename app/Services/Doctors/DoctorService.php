@@ -7,10 +7,13 @@ namespace App\Services\Doctors;
 use App\Enums\DoctorStatus;
 use App\Models\Appointment;
 use App\Models\Doctor;
+use App\Models\DoctorSchedule;
 use App\Models\Media;
 use App\Models\Specialty;
 use App\Services\Audit\AuditLogger;
 use App\Services\Media\MediaService;
+use App\Services\Scheduling\ScheduleChangeReport;
+use App\Services\Scheduling\ScheduleChangeService;
 use App\Support\Actor;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -35,10 +38,24 @@ final class DoctorService
     /** Kolom nullable: string kosong disimpan sebagai NULL. */
     private const NULLABLE_ATTRIBUTES = ['title_prefix', 'title_suffix', 'short_bio', 'bio', 'meta_title', 'meta_description'];
 
+    /** Laporan dampak jadwal dari changeStatus()/archive() terakhir pada instance ini; null bila tidak ada. */
+    private ?ScheduleChangeReport $lastReport = null;
+
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly MediaService $media,
+        private readonly ScheduleChangeService $schedules,
     ) {}
+
+    /**
+     * Dampak jadwal dari pemanggilan changeStatus() atau archive() terakhir (F3-R16): laporan hanya ada bila dokter
+     * aktif baru saja dinonaktifkan atau diarsipkan; null untuk pengaktifan, pemulihan, dan perubahan tanpa efek.
+     * Controller memakainya untuk menambahkan ringkasan ke flash. Diatur ulang di awal setiap pemanggilan.
+     */
+    public function lastReport(): ?ScheduleChangeReport
+    {
+        return $this->lastReport;
+    }
 
     /**
      * @param  array<string, mixed>  $data
@@ -184,7 +201,8 @@ final class DoctorService
 
     /**
      * Aktifkan/nonaktifkan dokter, atau pulihkan dokter arsip menjadi nonaktif (F2-R7).
-     * Pengaruh ke sesi/appointment (00 F.4) baru ada di fase 3.
+     * Menonaktifkan dokter aktif memanggil ScheduleChangeService::applyDoctorInactive() dalam transaksi yang sama
+     * (00 F.4, F3-R16): sesi mendatang dibatalkan atau menjadi needs_review. Ringkasannya ada di lastReport().
      */
     public function changeStatus(Doctor $doctor, DoctorStatus $status, ?string $reason, Actor $actor): Doctor
     {
@@ -193,6 +211,7 @@ final class DoctorService
         }
 
         $reason = $this->nullableTrim($reason);
+        $this->lastReport = null;
 
         return DB::transaction(function () use ($doctor, $status, $reason, $actor): Doctor {
             $this->lock($doctor);
@@ -219,6 +238,15 @@ final class DoctorService
             $doctor->status = $status;
             $doctor->save();
 
+            if ($current === DoctorStatus::Active && $status === DoctorStatus::Inactive) {
+                $report = $this->schedules->applyDoctorInactive($doctor, $actor);
+                $this->lastReport = $report;
+
+                if ($report->cancelled + $report->needsReview > 0) {
+                    $new['impact'] = ['cancelled' => $report->cancelled, 'needs_review' => $report->needsReview];
+                }
+            }
+
             if ($reason !== null) {
                 $new['reason'] = $reason;
             }
@@ -237,11 +265,13 @@ final class DoctorService
 
     /**
      * Arsipkan dokter (BR-03/BR-06). Ditolak bila masih ada pendaftaran aktif pada sesi mendatang (00 F.4);
-     * aturan ini berlaku juga untuk Super Admin karena dijaga di sini, bukan di Policy.
+     * aturan ini berlaku juga untuk Super Admin karena dijaga di sini, bukan di Policy. Sesi mendatang dibatalkan lewat
+     * applyDoctorInactive() dan seluruh templat dokter dinonaktifkan (BR-06); ringkasannya ada di lastReport().
      */
     public function archive(Doctor $doctor, ?string $reason, Actor $actor): Doctor
     {
         $reason = $this->nullableTrim($reason);
+        $this->lastReport = null;
 
         return DB::transaction(function () use ($doctor, $reason, $actor): Doctor {
             $this->lock($doctor);
@@ -262,7 +292,22 @@ final class DoctorService
             $doctor->archived_at = now();
             $doctor->save();
 
+            $report = $this->schedules->applyDoctorInactive($doctor, $actor);
+            $deactivated = DoctorSchedule::query()
+                ->where('doctor_id', $doctor->getKey())
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
+            $this->lastReport = $report;
+
             $new = ['status' => DoctorStatus::Archived->value, 'archived_at' => $doctor->archived_at];
+
+            if ($report->cancelled + $report->needsReview + $deactivated > 0) {
+                $new['impact'] = [
+                    'cancelled' => $report->cancelled,
+                    'needs_review' => $report->needsReview,
+                    'schedules_deactivated' => $deactivated,
+                ];
+            }
 
             if ($reason !== null) {
                 $new['reason'] = $reason;
