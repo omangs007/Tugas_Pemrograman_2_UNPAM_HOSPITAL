@@ -164,7 +164,7 @@ class DemoSeederInvariantsTest extends TestCase
     {
         $this->seedDemo();
 
-        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder'] as $seeder) {
+        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder'] as $seeder) {
             $this->artisan('db:seed', ['--class' => "Database\\Seeders\\{$seeder}", '--no-interaction' => true])->assertExitCode(0);
         }
 

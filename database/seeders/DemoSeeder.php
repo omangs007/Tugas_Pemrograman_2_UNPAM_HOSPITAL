@@ -29,6 +29,8 @@ class DemoSeeder extends Seeder
             SpecialtySeeder::class,
             ClinicSeeder::class,
             DoctorSeeder::class,
+            DoctorScheduleSeeder::class,
+            ScheduleExceptionSeeder::class,
         ]);
 
         $password = (string) config('app.demo_password');
