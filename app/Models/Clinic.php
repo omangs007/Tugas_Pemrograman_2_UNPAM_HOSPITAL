@@ -150,13 +150,17 @@ class Clinic extends Model
     }
 
     /**
-     * Alasan penghapusan ditolak (F2-R18), atau null bila boleh dihapus. Fase 3 menambah jadwal,
-     * sesi, dan appointment pada pemeriksaan ini.
+     * Alasan penghapusan ditolak (F2-R18, BR-17), atau null bila boleh dihapus: ditolak bila masih dirujuk
+     * dokter, atau templat jadwal, sesi, atau appointment (FK RESTRICT menjadi pengaman kedua).
      */
     public function deletionBlockedReason(): ?string
     {
         if ($this->doctors()->exists()) {
             return 'Poliklinik ini masih dirujuk oleh data dokter sehingga tidak dapat dihapus. Nonaktifkan saja.';
+        }
+
+        if ($this->schedules()->exists() || $this->sessions()->exists() || $this->appointments()->exists()) {
+            return 'Poliklinik ini masih dipakai oleh jadwal atau data pendaftaran sehingga tidak dapat dihapus. Nonaktifkan saja.';
         }
 
         return null;

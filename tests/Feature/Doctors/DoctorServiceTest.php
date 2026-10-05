@@ -4,9 +4,11 @@ namespace Tests\Feature\Doctors;
 
 use App\Enums\ActorType;
 use App\Enums\DoctorStatus;
+use App\Models\Appointment;
 use App\Models\AuditLog;
 use App\Models\Doctor;
 use App\Models\Media;
+use App\Models\PracticeSession;
 use App\Models\User;
 use App\Services\Doctors\DoctorService;
 use App\Support\Actor;
@@ -814,7 +816,7 @@ class DoctorServiceTest extends TestCase
 
     // ------------------------------------------------------------------ titik sambung fase 3 (F2-R8)
 
-    public function test_future_appointment_seam_is_protected_and_always_zero_in_phase_two(): void
+    public function test_future_appointment_seam_is_protected_and_counts_real_appointments(): void
     {
         $doctor = $this->makeDoctor();
         $method = new ReflectionMethod(DoctorService::class, 'futureActiveAppointmentsCount');
@@ -822,6 +824,17 @@ class DoctorServiceTest extends TestCase
         $this->assertTrue($method->isProtected());
         $this->assertSame(0, $method->invoke($this->service, $doctor));
         $this->assertNull($this->service->archiveBlockedReason($doctor));
+
+        $session = PracticeSession::factory()->manual()->create([
+            'doctor_id' => $doctor->id,
+            'clinic_id' => $doctor->clinic_id,
+            'session_date' => today()->addDays(2)->toDateString(),
+        ]);
+        Appointment::factory()->create(['practice_session_id' => $session->id]);
+        Appointment::factory()->create(['practice_session_id' => $session->id, 'queue_number' => 2]);
+
+        $this->assertSame(2, $method->invoke($this->service, $doctor));
+        $this->assertStringContainsString('2 pendaftaran aktif', (string) $this->service->archiveBlockedReason($doctor));
     }
 
     public function test_archive_refusal_message_matches_the_specification(): void

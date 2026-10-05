@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Doctors;
 
 use App\Enums\DoctorStatus;
+use App\Models\Appointment;
 use App\Models\Doctor;
 use App\Models\Media;
 use App\Models\Specialty;
@@ -284,12 +285,16 @@ final class DoctorService
     }
 
     /**
-     * Titik sambung fase 3 (F2-R8): jumlah appointment aktif pada sesi mendatang. Fase 2 belum memiliki
-     * tabel appointment sehingga selalu 0; fase 3 cukup mengganti isi method ini.
+     * Jumlah appointment aktif dokter pada sesi yang belum berakhir (F2-R8, F3-R15). Definisi "aktif
+     * mendatang" hanya ada di Appointment::scopeUpcomingActive(). Tetap protected agar tes dapat
+     * menimpanya lewat subkelas (DoctorService bersifat final, sehingga lewat ArchiveDoctorRequest).
      */
     protected function futureActiveAppointmentsCount(Doctor $doctor): int
     {
-        return 0;
+        return Appointment::query()
+            ->where('appointments.doctor_id', $doctor->getKey())
+            ->upcomingActive()
+            ->count();
     }
 
     private static function blockedMessage(int $count): string

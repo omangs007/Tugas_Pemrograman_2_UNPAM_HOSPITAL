@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\ClinicType;
+use App\Models\Appointment;
 use App\Models\Clinic;
 use App\Rules\ImageRules;
 use Closure;
@@ -177,12 +178,12 @@ class ClinicRequest extends FormRequest
     }
 
     /**
-     * Titik sambung fase 3 (BR-13, I-31): setelah tabel appointments ada, method ini mengembalikan
-     * true bila poliklinik sudah memiliki appointment sehingga `code` tidak boleh berubah.
+     * BR-13, I-31: true bila poliklinik sudah memiliki appointment (kode dipakai pada nomor antrean)
+     * sehingga `code` tidak boleh berubah. Tes menimpanya lewat subkelas bila perlu.
      */
     protected function clinicHasAppointments(Clinic $clinic): bool
     {
-        return false;
+        return Appointment::query()->where('clinic_id', $clinic->getKey())->exists();
     }
 
     /**
