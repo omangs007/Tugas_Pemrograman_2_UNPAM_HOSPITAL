@@ -1,5 +1,5 @@
 @php
-    $currentSort = (string) request()->query('urut', '');
+    $currentSort = is_string(request()->query('urut')) ? request()->query('urut') : '';
     $sortUrl = fn (string $key): string => request()->fullUrlWithQuery(['urut' => $key, 'kembali' => null, 'page' => null]);
 @endphp
 <x-layouts.admin title="Dokter">

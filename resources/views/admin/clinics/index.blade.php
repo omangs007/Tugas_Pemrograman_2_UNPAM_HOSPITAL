@@ -1,6 +1,6 @@
 @php
-    $currentSort = (string) request()->query('urut', '');
-    $statusNow = (string) request()->query('status', '');
+    $currentSort = is_string(request()->query('urut')) ? request()->query('urut') : '';
+    $statusNow = is_string(request()->query('status')) ? request()->query('status') : '';
     $sortUrl = fn (string $key): string => request()->fullUrlWithQuery(['urut' => $key, 'kembali' => null, 'page' => null]);
     $breadcrumbItems = [
         ['label' => 'Poliklinik dan Spesialisasi', 'url' => route('admin.clinics.index')],

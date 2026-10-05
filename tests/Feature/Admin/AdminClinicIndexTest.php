@@ -160,4 +160,11 @@ class AdminClinicIndexTest extends TestCase
             ->assertOk()
             ->assertSee('Belum ada poliklinik');
     }
+
+    public function test_array_valued_query_params_do_not_cause_a_server_error(): void
+    {
+        $this->actingAs($this->createStaff('super-admin'))
+            ->get(route('admin.clinics.index', ['urut' => ['x'], 'status' => ['x'], 'cari' => ['x']]))
+            ->assertOk();
+    }
 }

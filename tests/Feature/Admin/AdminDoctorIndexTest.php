@@ -249,4 +249,11 @@ class AdminDoctorIndexTest extends TestCase
             ->assertOk()
             ->assertSee('Belum ada dokter');
     }
+
+    public function test_array_valued_query_params_do_not_cause_a_server_error(): void
+    {
+        $this->actingAs($this->createStaff('super-admin'))
+            ->get(route('admin.doctors.index', ['urut' => ['x'], 'status' => ['x'], 'poli' => ['x'], 'spesialisasi' => ['x'], 'cari' => ['x']]))
+            ->assertOk();
+    }
 }
