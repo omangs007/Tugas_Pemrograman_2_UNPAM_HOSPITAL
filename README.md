@@ -79,7 +79,7 @@ Akun yang dibuat wajib mengganti password pada login pertama dan tercatat di aud
 
 ## Fase 2 — Master Data (spesialisasi, poliklinik, dokter)
 
-Yang tersedia: pengelolaan **Dokter** (tambah, ubah, foto, aktif/nonaktif, arsip, pemulihan dari arsip) di <http://unpam-hospital.test/admin/dokter>; **Poliklinik dan Spesialisasi** (CRUD, cover, galeri, editor rich text dengan unggah gambar) di `/admin/poliklinik` dan `/admin/spesialisasi`; halaman publik **Layanan Kami** di `/layanan` dan **Detail Layanan** di `/layanan/{slug}`. Halaman publik dokter dan jadwal menyusul di fase 3.
+Yang tersedia: pengelolaan **Dokter** (tambah, ubah, foto, aktif/nonaktif, arsip, pemulihan dari arsip) di <http://unpam-hospital.test/admin/dokter>; **Poliklinik dan Spesialisasi** (CRUD, cover, galeri, editor rich text dengan unggah gambar) di `/admin/poliklinik` dan `/admin/spesialisasi`; halaman publik **Layanan Kami** di `/layanan` dan **Detail Layanan** di `/layanan/{slug}`. Halaman publik dokter dan jadwal tersedia sejak fase 3 (lihat bagian "Fase 3").
 
 ### Hak akses
 
@@ -106,4 +106,55 @@ Selain data fase 1, hasilnya: 13 spesialisasi, 17 layanan (13 poliklinik + 4 pen
 & $PHP artisan media:prune --dry-run     # setelah seeding: 0 baris dan 0 berkas yatim
 & $PHP artisan test                      # seluruh suite
 npm run build                            # editor Quill ikut dibundel (tanpa CDN)
+```
+
+## Fase 3 — Penjadwalan (templat, pengecualian, sesi, dan jadwal publik)
+
+Yang tersedia:
+- **Jadwal Praktik** di <http://unpam-hospital.test/admin/jadwal> dengan tiga tab: **Templat Mingguan** (`/admin/jadwal`), **Sesi per Tanggal** (`/admin/jadwal/sesi`), dan **Pengecualian** (cuti dan libur, `/admin/jadwal/pengecualian`). Tab **Sesi Terdampak** muncul otomatis setelah fasenya (fase 7).
+- Halaman publik **Cari Dokter** (`/dokter`), **Detail Dokter** (`/dokter/{slug}`), dan **Jadwal Dokter** (`/jadwal-dokter`), semuanya memakai satu sumber jadwal (`DoctorAvailabilityQuery`).
+- Perintah `sessions:generate` dan jadwal harian pukul 00.05, serta skema booking (`patient_profiles`, `appointments`, `appointment_status_histories`) yang baru berupa tabel, model, dan factory. Pendaftaran kunjungan sungguhan (wizard dan `BookingService`) menyusul di fase 6.
+
+### Hak akses
+
+| Peran | Lihat jadwal | Kelola jadwal (tambah, ubah, hapus) | Sesi Terdampak |
+|---|:-:|:-:|:-:|
+| Super Admin | ya | ya | ya (fase 7) |
+| Admin Konten | ya | ya | tidak |
+| Petugas Pendaftaran | ya | tidak | ya (fase 7) |
+
+Admin Konten hanya melihat jumlah terisi dan kuota per sesi ("Terisi"), tidak pernah nama atau data pasien. Halaman publik #6, #7, dan #8 terbuka untuk semua orang; dokter nonaktif, arsip, atau di poliklinik nonaktif menjawab 404 di URL detailnya, juga untuk staf yang login.
+
+### Pembangkitan sesi
+
+Sesi dibangkitkan dari templat mingguan untuk hari ini sampai hari ini + `booking.window_days` (30 hari) lewat tiga pemicu: setiap simpan templat atau pengecualian, sekali per hari saat halaman #6, #7, atau #8 dibuka, dan perintah manual:
+
+```powershell
+& $PHP artisan sessions:generate            # jendela bawaan (booking.window_days)
+& $PHP artisan sessions:generate --days=45  # 1-120 hari
+& $PHP artisan schedule:list                # sessions:generate dijadwalkan harian pukul 00.05
+```
+
+Windows Task Scheduler (blueprint 16 §11.1) bersifat opsional; tanpa itu, halaman publik tetap membangkitkan sesi sekali per hari.
+
+### Aturan yang berlaku untuk semua peran, termasuk Super Admin
+
+Sesi yang sudah berakhir tidak dapat diubah, ditutup, dibatalkan, atau dihapus. Kuota sesi tidak boleh di bawah jumlah terisi. Templat atau sesi yang sudah punya pendaftaran tidak dapat dihapus (nonaktifkan, tutup, atau batalkan). Dokter arsip tidak dapat diberi jadwal, dan dokter dengan pendaftaran aktif pada sesi mendatang tidak dapat diarsipkan.
+
+### Data demo
+
+```powershell
+& $PHP artisan migrate:fresh --seed   # LOKAL SAJA: menghapus semua tabel dan isi database unpam_hospital
+```
+
+Selain data fase 1–2: 52 templat jadwal (51 aktif, 1 nonaktif milik dokter nonaktif), sesi untuk hari ini sampai hari ini + 30 (tanpa sesi lampau; sekitar 230 sesi), cuti 7 hari dr. Dimas, satu hari libur rumah sakit, satu sesi "Ditutup sementara (contoh)" dr. Citra, dan satu sesi tambahan dr. Teguh berkuota 2. Seluruh tanggal relatif terhadap hari seeding. Appointment demo menyusul di fase 6.
+
+### Pemeriksaan cepat (fase 3)
+
+```powershell
+& $PHP artisan route:list --path=admin   # 50 route admin (31 fase 1-2 + 19 fase 3)
+& $PHP artisan route:list --except-path=admin --name=doctors     # doctors.index dan doctors.show (publik)
+& $PHP artisan route:list --except-path=admin --name=schedules   # schedules.index (publik)
+& $PHP artisan test                      # seluruh suite
+npm run build                            # gaya grid jadwal ikut dibundel
 ```
