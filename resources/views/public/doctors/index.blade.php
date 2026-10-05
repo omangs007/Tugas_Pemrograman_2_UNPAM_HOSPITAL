@@ -1,6 +1,8 @@
 @php
     $activeCount = count($filters);
     $hasFilters = $activeCount > 0;
+    // Galat inline (filter diabaikan) harus terlihat di layar kecil: panel filter ikut terbuka.
+    $expanded = $hasFilters || $errors->any();
 @endphp
 <x-layouts.public title="Cari Dokter" meta-description="Cari dokter UNPAM HOSPITAL berdasarkan nama, spesialisasi, poliklinik, dan tanggal." :noindex="$doctors->isEmpty()">
     <x-slot:breadcrumb>
@@ -14,10 +16,10 @@
     <x-page-header title="Cari Dokter" subtitle="Cari berdasarkan nama, spesialisasi, poliklinik, atau tanggal praktik" />
 
     <form method="GET" action="{{ route('doctors.index') }}" role="search" aria-label="Cari dokter" class="card card-body bg-light border-0 mb-4" id="form-cari-dokter">
-        <button class="btn btn-outline-primary d-md-none w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filter-dokter" aria-expanded="{{ $hasFilters ? 'true' : 'false' }}" aria-controls="filter-dokter">
+        <button class="btn btn-outline-primary d-md-none w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filter-dokter" aria-expanded="{{ $expanded ? 'true' : 'false' }}" aria-controls="filter-dokter">
             <i class="bi bi-funnel" aria-hidden="true"></i> Filter ({{ $activeCount }} aktif)
         </button>
-        <div id="filter-dokter" @class(['collapse', 'd-md-block', 'show' => $hasFilters, 'mt-3 mt-md-0' => true])>
+        <div id="filter-dokter" @class(['collapse', 'd-md-block', 'show' => $expanded, 'mt-3 mt-md-0' => true])>
             <div class="row g-3 align-items-start">
                 <div class="col-12 col-md-6 col-xl-3">
                     <x-form.input name="q" label="Nama dokter" :value="$filters['q'] ?? null" maxlength="100" autocomplete="off" placeholder="Nama dokter atau spesialisasi" />

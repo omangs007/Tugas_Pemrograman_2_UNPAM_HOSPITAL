@@ -343,6 +343,24 @@ class PublicDoctorIndexTest extends TestCase
         $this->get(route('doctors.index', ['tanggal' => '2026-11-05']))->assertOk()->assertSee('Ayu Larasati')->assertSee('Tanggal praktik maksimal 30 hari ke depan.');
     }
 
+    public function test_the_filter_panel_is_expanded_when_an_inline_error_is_shown_and_collapsed_otherwise(): void
+    {
+        $this->createDoctor(['name' => 'Rani Oktaviani', 'title_prefix' => 'dr.', 'title_suffix' => null]);
+        $collapsed = '/<div id="filter-dokter" class="collapse d-md-block mt-3 mt-md-0">/';
+        $expanded = '/<div id="filter-dokter" class="collapse d-md-block show mt-3 mt-md-0">/';
+
+        $none = $this->get(route('doctors.index'))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression($collapsed, $none);
+        $this->assertStringContainsString('aria-expanded="false"', $none);
+
+        foreach ([['tanggal' => 'abc'], ['spesialisasi' => 'tidak-ada']] as $query) {
+            $html = $this->get(route('doctors.index', $query))->assertOk()->getContent();
+
+            $this->assertMatchesRegularExpression($expanded, $html);
+            $this->assertStringContainsString('aria-expanded="true"', $html);
+        }
+    }
+
     public function test_unknown_specialty_and_clinic_slugs_are_ignored_with_an_inline_message(): void
     {
         $this->createDoctor(['name' => 'Rani Oktaviani', 'title_prefix' => 'dr.', 'title_suffix' => null]);
