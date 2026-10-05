@@ -24,7 +24,8 @@ use InvalidArgumentException;
 
 /**
  * Satu-satunya jalur tulis templat, pengecualian, dan sesi setelah disimpan (00 F.4, 11 §6.6). Setiap sesi
- * diproses dalam transaksinya sendiri dengan lockForUpdate(); audit eksplisit (model jadwal tidak diobservasi
+ * diproses dalam savepoint (transaksi bersarang di dalam transaksi pemanggil) dengan lockForUpdate(), dan jumlah
+ * appointment-nya dibaca dengan pembacaan terkunci agar tidak memakai snapshot lama; audit eksplisit (model jadwal tidak diobservasi
  * AuditObserver) dan tanpa data pasien. Aturan mutlak (sesi lampau, kuota, hapus templat) berlaku untuk semua peran
  * karena dijaga di sini, bukan di Policy.
  */
@@ -461,7 +462,7 @@ final class ScheduleChangeService
                 $values['quota'] = $quota;
             }
 
-            $held = $timesChanged && $session->appointments()->active()->count() > 0;
+            $held = $timesChanged && $this->activeAppointmentCount($session) > 0;
 
             if ($timesChanged && ! $held) {
                 $old['start_time'] = $this->hhmm($session->start_time);
@@ -534,7 +535,7 @@ final class ScheduleChangeService
                     throw ValidationException::withMessages(['reason' => 'Alasan pembatalan sesi wajib diisi.']);
                 }
 
-                if ($session->appointments()->active()->count() > 0) {
+                if ($this->activeAppointmentCount($session) > 0) {
                     $session->forceFill(['is_manually_modified' => true])->save();
                     $this->setPendingChange($session, ['source' => PracticeSession::SOURCE_MANUAL_CANCEL, 'reason' => $reason], $actor);
                 } else {
@@ -638,7 +639,7 @@ final class ScheduleChangeService
                         return;
                     }
 
-                    if ($session->appointments()->active()->count() === 0) {
+                    if ($this->activeAppointmentCount($session) === 0) {
                         $session->forceFill([
                             'status' => SessionStatus::Cancelled,
                             'status_reason' => self::REASON_DOCTOR_INACTIVE,
@@ -849,7 +850,7 @@ final class ScheduleChangeService
      */
     private function blockForException(PracticeSession $session, ScheduleException $exception, Actor $actor, array &$counts): void
     {
-        if ($session->appointments()->active()->count() === 0) {
+        if ($this->activeAppointmentCount($session) === 0) {
             $session->forceFill([
                 'status' => SessionStatus::Cancelled,
                 'schedule_exception_id' => $exception->getKey(),
@@ -933,7 +934,7 @@ final class ScheduleChangeService
      */
     private function reopenSession(PracticeSession $session, Actor $actor, array &$counts): void
     {
-        $active = $session->appointments()->active()->count();
+        $active = $this->activeAppointmentCount($session);
         $doctor = Doctor::query()->whereKey($session->doctor_id)->first(['id', 'status']);
         $schedule = $session->doctor_schedule_id === null ? null : DoctorSchedule::query()->find($session->doctor_schedule_id);
 
@@ -1024,8 +1025,8 @@ final class ScheduleChangeService
      */
     private function propagateTemplate(PracticeSession $session, DoctorSchedule $schedule, Actor $actor, array &$counts): void
     {
-        $active = $session->appointments()->active()->count();
-        $any = $active > 0 ? $active : $session->appointments()->count();
+        $active = $this->activeAppointmentCount($session);
+        $any = $active > 0 ? $active : $this->appointmentCount($session);
         $matches = $this->matchesTemplate($session, $schedule);
 
         if ($any === 0) {
@@ -1225,6 +1226,21 @@ final class ScheduleChangeService
     {
         return $this->hhmm($session->start_time) === $this->hhmm($schedule->start_time)
             && $this->hhmm($session->end_time) === $this->hhmm($schedule->end_time);
+    }
+
+    /**
+     * Hitung appointment aktif sesi yang sudah dikunci dengan pembacaan terkunci (FOR UPDATE), agar yang terbaca baris
+     * terkomit terbaru dan bukan snapshot REPEATABLE READ transaksi pemanggil.
+     */
+    private function activeAppointmentCount(PracticeSession $session): int
+    {
+        return $session->appointments()->active()->lockForUpdate()->count();
+    }
+
+    /** Seperti activeAppointmentCount(), tetapi seluruh appointment sesi (termasuk riwayat batal). */
+    private function appointmentCount(PracticeSession $session): int
+    {
+        return $session->appointments()->lockForUpdate()->count();
     }
 
     private function lockById(int $id): ?PracticeSession
