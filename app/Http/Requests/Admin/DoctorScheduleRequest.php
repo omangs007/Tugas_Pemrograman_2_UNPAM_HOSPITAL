@@ -53,6 +53,16 @@ class DoctorScheduleRequest extends FormRequest
 
         $validFrom = ['required', 'date_format:Y-m-d'];
 
+        // Poliklinik yang sudah dipakai templat tetap boleh dipertahankan walau kemudian nonaktif atau tidak dibuka
+        // untuk pendaftaran; aturan penuh hanya untuk tambah dan untuk ganti poliklinik.
+        $clinicId = $this->input('clinic_id');
+        $keepsCurrentClinic = $schedule !== null
+            && is_numeric($clinicId)
+            && (int) $clinicId === (int) $schedule->clinic_id;
+        $clinicExists = $keepsCurrentClinic
+            ? Rule::exists('clinics', 'id')
+            : Rule::exists('clinics', 'id')->where('is_active', true)->where('is_bookable', true);
+
         if ($schedule === null) {
             $validFrom[] = 'after_or_equal:today';
         }
@@ -68,7 +78,7 @@ class DoctorScheduleRequest extends FormRequest
                 'bail',
                 'required',
                 'integer',
-                Rule::exists('clinics', 'id')->where('is_active', true)->where('is_bookable', true),
+                $clinicExists,
             ],
             'day_of_week' => ['bail', 'required', 'integer', 'between:1,7'],
             'start_time' => [

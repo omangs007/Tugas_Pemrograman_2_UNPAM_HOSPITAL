@@ -184,6 +184,26 @@ class DoctorScheduleRequestTest extends TestCase
         $this->assertContains($message, $this->errorsFor(['clinic_id' => (string) $support->id])['clinic_id'] ?? []);
     }
 
+    public function test_template_whose_clinic_became_inactive_can_still_be_updated_with_the_same_clinic(): void
+    {
+        $schedule = $this->existing();
+        $this->clinic->forceFill(['is_active' => false, 'is_bookable' => false])->save();
+
+        $this->assertSame([], $this->errorsFor(['quota' => '25'], $schedule));
+        $this->assertSame([], $this->errorsFor(['is_active' => '0'], $schedule));
+    }
+
+    public function test_changing_to_another_inactive_clinic_is_still_rejected_on_update(): void
+    {
+        $schedule = $this->existing();
+        $inactive = $this->createClinic(['is_active' => false]);
+
+        $this->assertContains(
+            'Poliklinik yang dipilih tidak tersedia atau tidak dibuka untuk pendaftaran.',
+            $this->errorsFor(['clinic_id' => (string) $inactive->id], $schedule)['clinic_id'] ?? [],
+        );
+    }
+
     public function test_archived_doctor_cannot_be_given_a_schedule_but_inactive_doctor_can(): void
     {
         $archived = $this->createDoctor(['status' => 'archived', 'archived_at' => now()->subDay()], $this->clinic);
