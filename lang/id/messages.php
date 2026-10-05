@@ -19,6 +19,9 @@ return [
         'clinic' => 'Poliklinik',
         'doctor' => 'Dokter',
         'media' => 'Gambar',
+        'schedule' => 'Templat jadwal',
+        'exception' => 'Pengecualian jadwal',
+        'session' => 'Sesi praktik',
     ],
 
     // Pesan aturan validasi kustom (12 §3.1); :attribute diganti nama bidang oleh validator.
