@@ -118,6 +118,21 @@ class Clinic extends Model
         return $this->hasMany(Doctor::class);
     }
 
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(DoctorSchedule::class);
+    }
+
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(PracticeSession::class);
+    }
+
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

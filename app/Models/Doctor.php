@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Doctor extends Model
 {
@@ -119,6 +120,28 @@ class Doctor extends Model
     public function specialties(): BelongsToMany
     {
         return $this->belongsToMany(Specialty::class, 'doctor_specialties')->withPivot('is_primary');
+    }
+
+    /** Templat jadwal mingguan dokter (lapis 1). */
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(DoctorSchedule::class);
+    }
+
+    /** Pengecualian khusus dokter ini (cuti). Pengecualian global (`doctor_id` NULL) tidak termasuk. */
+    public function exceptions(): HasMany
+    {
+        return $this->hasMany(ScheduleException::class);
+    }
+
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(PracticeSession::class);
+    }
+
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
     }
 
     public function scopeActive(Builder $query): Builder
