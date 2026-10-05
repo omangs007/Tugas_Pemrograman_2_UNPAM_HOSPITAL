@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\Scheduling;
 
+use App\Enums\DoctorStatus;
 use App\Enums\SessionStatus;
 use App\Models\Doctor;
 use App\Models\DoctorSchedule;
 use App\Models\PracticeSession;
+use App\Models\ScheduleException;
 use App\Services\Audit\AuditLogger;
 use App\Services\Settings\SettingsService;
 use App\Support\Actor;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -29,6 +33,9 @@ final class ScheduleChangeService
 
     /** Alasan sesi yang dibatalkan karena templat berubah (status_reason). */
     public const REASON_TEMPLATE_CHANGED = 'Jadwal berubah';
+
+    /** Alasan sesi yang dibatalkan karena dokter dinonaktifkan atau diarsipkan (status_reason). */
+    public const REASON_DOCTOR_INACTIVE = 'Dokter tidak aktif';
 
     public function __construct(
         private readonly PracticeSessionGenerator $generator,
@@ -153,7 +160,386 @@ final class ScheduleChangeService
         });
     }
 
+    /**
+     * Pengecualian sudah tersimpan (baru, atau diubah dengan `$previous` = ['start_date', 'end_date', 'doctor_id']
+     * sebelum diubah). Sesi yang belum berakhir dalam rentang dan lingkup dokter diproses tanpa melihat
+     * `is_manually_modified` (BR-27): tanpa appointment aktif menjadi `cancelled`, dengan appointment aktif menjadi
+     * `needs_review` sumber `exception` lewat setPendingChange() (juga untuk sesi yang sudah `needs_review`, F3-R11).
+     * Sesi yang terlepas dari rentang atau lingkup baru dibuka kembali (penyempitan/perpindahan). Sesi yang belum
+     * ada dibangkitkan langsung `cancelled` oleh generator.
+     *
+     * @param  array<string, mixed>|null  $previous
+     */
+    public function applyException(ScheduleException $exception, ?array $previous, Actor $actor): ScheduleChangeReport
+    {
+        $this->assertExceptionAllowed($exception, $previous);
+
+        return DB::transaction(function () use ($exception, $previous, $actor): ScheduleChangeReport {
+            $counts = $this->counters();
+
+            if ($previous !== null) {
+                foreach ($this->detachedSessionIds($exception) as $id) {
+                    DB::transaction(function () use ($id, $exception, $actor, &$counts): void {
+                        $session = $this->lockById((int) $id);
+
+                        if (
+                            $session === null
+                            || $session->isEnded()
+                            || (int) $session->schedule_exception_id !== (int) $exception->getKey()
+                            || $this->isCoveredBy($session, $exception)
+                        ) {
+                            return;
+                        }
+
+                        $this->releaseFromException($session, $exception, $actor, $counts);
+                    });
+                }
+            }
+
+            foreach ($this->coveredSessionIds($exception) as $id) {
+                DB::transaction(function () use ($id, $exception, $actor, &$counts): void {
+                    $session = $this->lockById((int) $id);
+
+                    if ($session === null || ! $this->isTarget($session, $exception)) {
+                        return;
+                    }
+
+                    $this->blockForException($session, $exception, $actor, $counts);
+                });
+            }
+
+            $today = CarbonImmutable::today();
+            $this->generator->ensureRange($today, $today->addDays($this->settings->bookingRules()->windowDays));
+
+            $report = $this->toReport($counts);
+            $new = $this->exceptionValues($exception) + ['impact' => $this->impact($report)];
+
+            if ($previous === null) {
+                $this->audit->log('exception.created', $exception, null, $new, $this->describeException($exception, 'ditambahkan'), $actor);
+
+                return $report;
+            }
+
+            $old = [
+                'start_date' => $this->dateString($previous['start_date'] ?? null),
+                'end_date' => $this->dateString($previous['end_date'] ?? null),
+                'doctor_id' => ($previous['doctor_id'] ?? null) === null ? null : (int) $previous['doctor_id'],
+            ];
+
+            $this->audit->log('exception.updated', $exception, $old, $new, $this->describeException($exception, 'diubah'), $actor);
+
+            return $report;
+        });
+    }
+
+    /**
+     * Cabut pengecualian; dipanggil SEBELUM barisnya dihapus (pemanggil menghapus sesudahnya dalam transaksi yang
+     * sama). Hanya sesi bertaut yang belum berakhir: `cancelled` dibuka kembali, `needs_review` sumber `exception`
+     * kembali `open` (appointment tetap), dan bila tanggalnya masih tercakup pengecualian lain, sesi dipindahkan ke
+     * pengecualian itu (F3-R10: khusus dokter lebih dulu, lalu id terkecil).
+     */
+    public function removeException(ScheduleException $exception, Actor $actor): ScheduleChangeReport
+    {
+        return DB::transaction(function () use ($exception, $actor): ScheduleChangeReport {
+            $counts = $this->counters();
+
+            $ids = PracticeSession::query()
+                ->where('schedule_exception_id', $exception->getKey())
+                ->notEnded()
+                ->orderBy('id')
+                ->pluck('id');
+
+            foreach ($ids as $id) {
+                DB::transaction(function () use ($id, $exception, $actor, &$counts): void {
+                    $session = $this->lockById((int) $id);
+
+                    if ($session === null || $session->isEnded() || (int) $session->schedule_exception_id !== (int) $exception->getKey()) {
+                        return;
+                    }
+
+                    $this->releaseFromException($session, $exception, $actor, $counts);
+                });
+            }
+
+            $report = $this->toReport($counts);
+
+            $this->audit->log(
+                'exception.deleted',
+                $exception,
+                $this->exceptionValues($exception),
+                ['impact' => $this->impact($report)],
+                $this->describeException($exception, 'dihapus'),
+                $actor,
+            );
+
+            return $report;
+        });
+    }
+
     // ---- pembantu privat ----
+
+    /**
+     * Pagar bagi pemanggil non-HTTP (kombinasi jenis vs dokter E.2, urutan tanggal, dan F3-R21: `start_date` lampau
+     * hanya boleh bila pengecualian lama dan tanggalnya tidak berubah).
+     *
+     * @param  array<string, mixed>|null  $previous
+     */
+    private function assertExceptionAllowed(ScheduleException $exception, ?array $previous): void
+    {
+        $errors = [];
+
+        if ($exception->type->requiresDoctor() && $exception->doctor_id === null) {
+            $errors['doctor_id'] = 'Pilih dokter untuk cuti dokter.';
+        }
+
+        if ($exception->type->forbidsDoctor() && $exception->doctor_id !== null) {
+            $errors['doctor_id'] = 'Libur rumah sakit atau libur nasional berlaku untuk semua dokter. Kosongkan pilihan dokter.';
+        }
+
+        $start = (string) $this->dateString($exception->start_date);
+        $end = (string) $this->dateString($exception->end_date);
+
+        if ($end < $start) {
+            $errors['end_date'] = 'Tanggal selesai tidak boleh sebelum tanggal mulai.';
+        }
+
+        $startChanged = $previous === null || $this->dateString($previous['start_date'] ?? null) !== $start;
+
+        if ($startChanged && $start < CarbonImmutable::today()->format('Y-m-d')) {
+            $errors['start_date'] = 'Tanggal mulai tidak boleh di masa lalu.';
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * Sesi yang belum berakhir, berstatus open/closed/needs_review, dalam rentang dan lingkup dokter pengecualian.
+     *
+     * @return Collection<int, int>
+     */
+    private function coveredSessionIds(ScheduleException $exception): Collection
+    {
+        return PracticeSession::query()
+            ->whereBetween('session_date', [$this->dateString($exception->start_date), $this->dateString($exception->end_date)])
+            ->whereIn('status', [SessionStatus::Open->value, SessionStatus::Closed->value, SessionStatus::NeedsReview->value])
+            ->when($exception->doctor_id !== null, fn (Builder $query) => $query->where('doctor_id', $exception->doctor_id))
+            ->notEnded()
+            ->orderBy('id')
+            ->pluck('id');
+    }
+
+    /**
+     * Sesi bertaut ke pengecualian ini yang kini berada di luar rentang atau lingkup dokternya.
+     *
+     * @return Collection<int, int>
+     */
+    private function detachedSessionIds(ScheduleException $exception): Collection
+    {
+        return PracticeSession::query()
+            ->where('schedule_exception_id', $exception->getKey())
+            ->notEnded()
+            ->where(function (Builder $outside) use ($exception): void {
+                $outside->where('session_date', '<', $this->dateString($exception->start_date))
+                    ->orWhere('session_date', '>', $this->dateString($exception->end_date));
+
+                if ($exception->doctor_id !== null) {
+                    $outside->orWhere('doctor_id', '!=', $exception->doctor_id);
+                }
+            })
+            ->orderBy('id')
+            ->pluck('id');
+    }
+
+    private function isCoveredBy(PracticeSession $session, ScheduleException $exception): bool
+    {
+        $day = $session->session_date->format('Y-m-d');
+
+        return $day >= (string) $this->dateString($exception->start_date)
+            && $day <= (string) $this->dateString($exception->end_date)
+            && ($exception->doctor_id === null || (int) $session->doctor_id === (int) $exception->doctor_id);
+    }
+
+    private function isTarget(PracticeSession $session, ScheduleException $exception): bool
+    {
+        return $this->isCoveredBy($session, $exception)
+            && ! $session->isEnded()
+            && in_array($session->status, [SessionStatus::Open, SessionStatus::Closed, SessionStatus::NeedsReview], true);
+    }
+
+    /**
+     * @param  array<string, int>  $counts
+     */
+    private function blockForException(PracticeSession $session, ScheduleException $exception, Actor $actor, array &$counts): void
+    {
+        if ($session->appointments()->active()->count() === 0) {
+            $session->forceFill([
+                'status' => SessionStatus::Cancelled,
+                'schedule_exception_id' => $exception->getKey(),
+                'status_reason' => $exception->reason,
+                'pending_change' => null,
+            ])->save();
+            $counts['cancelled']++;
+
+            return;
+        }
+
+        $pending = $session->status === SessionStatus::NeedsReview ? $session->pending_change : null;
+
+        if (
+            is_array($pending)
+            && ($pending['source'] ?? null) === PracticeSession::SOURCE_EXCEPTION
+            && (int) ($pending['exception_id'] ?? 0) === (int) $exception->getKey()
+        ) {
+            return;
+        }
+
+        $this->setPendingChange($session, [
+            'source' => PracticeSession::SOURCE_EXCEPTION,
+            'exception_id' => (int) $exception->getKey(),
+        ], $actor);
+        $counts['needsReview']++;
+    }
+
+    /**
+     * Lepaskan sesi dari pengecualian: pindah ke pengecualian lain yang masih mencakup tanggalnya (F3-R10), atau
+     * buka kembali. Sesi `needs_review` bersumber lain hanya dilepas tautannya.
+     *
+     * @param  array<string, int>  $counts
+     */
+    private function releaseFromException(PracticeSession $session, ScheduleException $exception, Actor $actor, array &$counts): void
+    {
+        $date = $session->session_date;
+        $others = ScheduleException::query()
+            ->whereKeyNot($exception->getKey())
+            ->covering($date)
+            ->forDoctor((int) $session->doctor_id)
+            ->get();
+        $other = ScheduleException::pickFor($others, (int) $session->doctor_id, $date);
+
+        if ($session->status === SessionStatus::Cancelled) {
+            if ($other !== null) {
+                $session->forceFill(['schedule_exception_id' => $other->getKey(), 'status_reason' => $other->reason])->save();
+
+                return;
+            }
+
+            $this->reopenSession($session, $actor, $counts);
+
+            return;
+        }
+
+        if ($session->status === SessionStatus::NeedsReview && ($session->pending_change['source'] ?? null) === PracticeSession::SOURCE_EXCEPTION) {
+            if ($other !== null) {
+                $this->setPendingChange($session, [
+                    'source' => PracticeSession::SOURCE_EXCEPTION,
+                    'exception_id' => (int) $other->getKey(),
+                ], $actor);
+
+                return;
+            }
+
+            $this->reopenSession($session, $actor, $counts);
+
+            return;
+        }
+
+        $session->forceFill(['schedule_exception_id' => null])->save();
+    }
+
+    /**
+     * Evaluasi ulang sesi yang lepas dari pengecualian (BR-28): dokter non-aktif atau templat yang sudah tidak
+     * berlaku menahan sesi (batal, atau needs_review bila ada appointment aktif); jam templat yang berubah selama
+     * pengecualian berlaku ditunda ke tinjauan; selain itu sesi dibuka kembali.
+     *
+     * @param  array<string, int>  $counts
+     */
+    private function reopenSession(PracticeSession $session, Actor $actor, array &$counts): void
+    {
+        $active = $session->appointments()->active()->count();
+        $doctor = Doctor::query()->whereKey($session->doctor_id)->first(['id', 'status']);
+        $schedule = $session->doctor_schedule_id === null ? null : DoctorSchedule::query()->find($session->doctor_schedule_id);
+
+        if ($doctor === null || $doctor->status !== DoctorStatus::Active) {
+            $this->holdAfterRelease($session, $active, [
+                'source' => PracticeSession::SOURCE_DOCTOR_INACTIVE,
+                'doctor_id' => (int) $session->doctor_id,
+            ], self::REASON_DOCTOR_INACTIVE, $actor, $counts);
+
+            return;
+        }
+
+        if ($schedule !== null && ! $this->matchesTemplate($session, $schedule)) {
+            $this->holdAfterRelease($session, $active, [
+                'source' => PracticeSession::SOURCE_TEMPLATE_REMOVED,
+                'schedule_id' => (int) $schedule->getKey(),
+            ], self::REASON_TEMPLATE_CHANGED, $actor, $counts);
+
+            return;
+        }
+
+        $session->forceFill([
+            'status' => SessionStatus::Open,
+            'status_reason' => null,
+            'schedule_exception_id' => null,
+            'pending_change' => null,
+        ])->save();
+
+        if ($schedule !== null && $active > 0 && ! $this->sameTimes($session, $schedule)) {
+            $this->setPendingChange($session, [
+                'source' => PracticeSession::SOURCE_TEMPLATE_TIME,
+                'schedule_id' => (int) $schedule->getKey(),
+                'new_start_time' => $this->hhmm($schedule->start_time),
+                'new_end_time' => $this->hhmm($schedule->end_time),
+            ], $actor);
+            $counts['needsReview']++;
+
+            return;
+        }
+
+        $counts['reopened']++;
+    }
+
+    /**
+     * @param  array<string, mixed>  $pending
+     * @param  array<string, int>  $counts
+     */
+    private function holdAfterRelease(PracticeSession $session, int $active, array $pending, string $reason, Actor $actor, array &$counts): void
+    {
+        $session->forceFill(['schedule_exception_id' => null])->save();
+
+        if ($active > 0) {
+            $this->setPendingChange($session, $pending, $actor);
+            $counts['needsReview']++;
+
+            return;
+        }
+
+        $session->forceFill(['status' => SessionStatus::Cancelled, 'status_reason' => $reason, 'pending_change' => null])->save();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function exceptionValues(ScheduleException $exception): array
+    {
+        return [
+            'type' => $exception->type->value,
+            'doctor_id' => $exception->doctor_id === null ? null : (int) $exception->doctor_id,
+            'start_date' => $this->dateString($exception->start_date),
+            'end_date' => $this->dateString($exception->end_date),
+            'reason' => (string) $exception->reason,
+        ];
+    }
+
+    private function describeException(ScheduleException $exception, string $verb): string
+    {
+        $range = CarbonImmutable::parse((string) $this->dateString($exception->start_date))->format('d/m/Y')
+            .'–'.CarbonImmutable::parse((string) $this->dateString($exception->end_date))->format('d/m/Y');
+
+        return "Pengecualian jadwal \"{$exception->reason}\" ({$range}) {$verb}.";
+    }
 
     /**
      * Terapkan keputusan F.4 pada satu sesi yang sudah dikunci (tanpa menyentuh sesi manual atau lampau).
