@@ -9,23 +9,29 @@ use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\InteractsWithMasterData;
 use Tests\Support\InteractsWithMedia;
+use Tests\Support\InteractsWithSchedules;
 use Tests\Support\InteractsWithStaff;
 use Tests\TestCase;
 
 /**
- * 15 §3.1 baris 4/5 dan §3.3 baris 31, 31b, 32, 33, 33b, 34 × lima aktor (AKS-01 sampai AKS-05),
- * ditambah matriks mutasi non-GET (15 §3 catatan) untuk modul master data dan media.
+ * 15 §3.1 baris 4 sampai 8 dan §3.3 baris 31, 31b, 32, 33, 33b, 34, 35, 35b, 35d × lima aktor (AKS-01 sampai AKS-05),
+ * ditambah matriks mutasi non-GET (15 §3 catatan) untuk modul master data, media, dan jadwal.
  * Hasil: 200 = tampil, 403 = ditolak, L = redirect ke admin.login, D = redirect dasbor sesuai tipe akun,
  * OK = lolos otorisasi (200/201/204/302/422, bukan 403/login), G = tamu (redirect login atau 401 JSON).
+ * Baris 35c (`admin.sessions.review`, Sesi Terdampak) menyusul di fase 7 bersama route-nya.
  */
 class AdminPageMatrixTest extends TestCase
 {
     use InteractsWithMasterData;
     use InteractsWithMedia;
+    use InteractsWithSchedules;
     use InteractsWithStaff;
     use RefreshDatabase;
 
     private const ACTORS = ['guest', 'patient', 'content-admin', 'registration-officer', 'super-admin'];
+
+    /** Hasil mutasi untuk route berizin kelola: Tamu G, Pasien 403, Admin Konten OK, Petugas 403, Super Admin OK. */
+    private const MANAGE = ['G', '403', 'OK', '403', 'OK'];
 
     /** @return array<string, array{string, ?string, string, string}> */
     public static function matrix(): array
@@ -45,6 +51,15 @@ class AdminPageMatrixTest extends TestCase
             '34 Spesialisasi (daftar)' => ['admin.specialties.index', null, ['L', '403', '200', '403', '200']],
             '34 Spesialisasi (tambah)' => ['admin.specialties.create', null, ['L', '403', '200', '403', '200']],
             '34 Spesialisasi (ubah)' => ['admin.specialties.edit', 'specialty', ['L', '403', '200', '403', '200']],
+            '35 Jadwal (templat, daftar)' => ['admin.schedules.index', null, ['L', '403', '200', '200', '200']],
+            '35 Jadwal (sesi, daftar)' => ['admin.sessions.index', null, ['L', '403', '200', '200', '200']],
+            '35 Jadwal (pengecualian, daftar)' => ['admin.exceptions.index', null, ['L', '403', '200', '200', '200']],
+            '35b Jadwal (templat, tambah)' => ['admin.schedules.create', null, ['L', '403', '200', '403', '200']],
+            '35b Jadwal (templat, ubah)' => ['admin.schedules.edit', 'schedule', ['L', '403', '200', '403', '200']],
+            '35b Jadwal (sesi, tambah)' => ['admin.sessions.create', null, ['L', '403', '200', '403', '200']],
+            '35b Jadwal (sesi, ubah)' => ['admin.sessions.edit', 'session', ['L', '403', '200', '403', '200']],
+            '35b Jadwal (pengecualian, tambah)' => ['admin.exceptions.create', null, ['L', '403', '200', '403', '200']],
+            '35b Jadwal (pengecualian, ubah)' => ['admin.exceptions.edit', 'exception', ['L', '403', '200', '403', '200']],
         ];
 
         $cases = [];
@@ -63,7 +78,15 @@ class AdminPageMatrixTest extends TestCase
     {
         $cases = [];
 
-        foreach (['4 Daftar layanan' => ['clinics.index', null], '5 Detail layanan' => ['clinics.show', 'public-clinic']] as $label => [$routeName, $kind]) {
+        $rows = [
+            '4 Daftar layanan' => ['clinics.index', null],
+            '5 Detail layanan' => ['clinics.show', 'public-clinic'],
+            '6 Daftar dokter' => ['doctors.index', null],
+            '7 Detail dokter' => ['doctors.show', 'public-doctor'],
+            '8 Jadwal dokter' => ['schedules.index', null],
+        ];
+
+        foreach ($rows as $label => [$routeName, $kind]) {
             foreach (self::ACTORS as $actor) {
                 $cases["{$label} / {$actor}"] = [$routeName, $kind, $actor];
             }
@@ -75,28 +98,38 @@ class AdminPageMatrixTest extends TestCase
     /** @return array<string, array{string, string, ?string, string, string}> */
     public static function mutations(): array
     {
-        // [metode, route, jenis parameter]; hasil: Tamu G, Pasien 403, Admin Konten OK, Petugas 403, Super Admin OK.
+        // Hasil ditentukan per baris: [metode, route, jenis parameter, hasil menurut urutan ACTORS].
         $rows = [
-            'POST dokter baru' => ['post', 'admin.doctors.store', null],
-            'PUT ubah dokter' => ['put', 'admin.doctors.update', 'doctor'],
-            'PATCH status dokter' => ['patch', 'admin.doctors.status', 'doctor'],
-            'PATCH arsip dokter' => ['patch', 'admin.doctors.archive', 'doctor'],
-            'POST foto dokter' => ['post', 'admin.doctors.photo', 'doctor'],
-            'POST spesialisasi baru' => ['post', 'admin.specialties.store', null],
-            'PUT ubah spesialisasi' => ['put', 'admin.specialties.update', 'specialty'],
-            'DELETE spesialisasi' => ['delete', 'admin.specialties.destroy', 'specialty'],
-            'POST poliklinik baru' => ['post', 'admin.clinics.store', null],
-            'PUT ubah poliklinik' => ['put', 'admin.clinics.update', 'clinic'],
-            'DELETE poliklinik' => ['delete', 'admin.clinics.destroy', 'clinic'],
-            'POST unggah gambar editor' => ['post', 'admin.media.editor-upload', null],
-            'POST urutkan media' => ['post', 'admin.media.reorder', null],
-            'PATCH ubah media dokter' => ['patch', 'admin.media.update', 'doctor-media'],
-            'DELETE media dokter' => ['delete', 'admin.media.destroy', 'doctor-media'],
+            'POST dokter baru' => ['post', 'admin.doctors.store', null, self::MANAGE],
+            'PUT ubah dokter' => ['put', 'admin.doctors.update', 'doctor', self::MANAGE],
+            'PATCH status dokter' => ['patch', 'admin.doctors.status', 'doctor', self::MANAGE],
+            'PATCH arsip dokter' => ['patch', 'admin.doctors.archive', 'doctor', self::MANAGE],
+            'POST foto dokter' => ['post', 'admin.doctors.photo', 'doctor', self::MANAGE],
+            'POST spesialisasi baru' => ['post', 'admin.specialties.store', null, self::MANAGE],
+            'PUT ubah spesialisasi' => ['put', 'admin.specialties.update', 'specialty', self::MANAGE],
+            'DELETE spesialisasi' => ['delete', 'admin.specialties.destroy', 'specialty', self::MANAGE],
+            'POST poliklinik baru' => ['post', 'admin.clinics.store', null, self::MANAGE],
+            'PUT ubah poliklinik' => ['put', 'admin.clinics.update', 'clinic', self::MANAGE],
+            'DELETE poliklinik' => ['delete', 'admin.clinics.destroy', 'clinic', self::MANAGE],
+            'POST unggah gambar editor' => ['post', 'admin.media.editor-upload', null, self::MANAGE],
+            'POST urutkan media' => ['post', 'admin.media.reorder', null, self::MANAGE],
+            'PATCH ubah media dokter' => ['patch', 'admin.media.update', 'doctor-media', self::MANAGE],
+            'DELETE media dokter' => ['delete', 'admin.media.destroy', 'doctor-media', self::MANAGE],
+            'POST templat jadwal baru' => ['post', 'admin.schedules.store', null, self::MANAGE],
+            'PUT ubah templat jadwal' => ['put', 'admin.schedules.update', 'schedule', self::MANAGE],
+            'DELETE templat jadwal' => ['delete', 'admin.schedules.destroy', 'schedule', self::MANAGE],
+            'POST pengecualian baru' => ['post', 'admin.exceptions.store', null, self::MANAGE],
+            'PUT ubah pengecualian' => ['put', 'admin.exceptions.update', 'exception', self::MANAGE],
+            'DELETE pengecualian' => ['delete', 'admin.exceptions.destroy', 'exception', self::MANAGE],
+            'POST sesi tambahan manual' => ['post', 'admin.sessions.store', null, self::MANAGE],
+            'PUT ubah sesi' => ['put', 'admin.sessions.update', 'session', self::MANAGE],
+            'PATCH status sesi' => ['patch', 'admin.sessions.status', 'session', self::MANAGE],
+            'DELETE sesi (35d)' => ['delete', 'admin.sessions.destroy', 'session', self::MANAGE],
         ];
-        $expected = ['G', '403', 'OK', '403', 'OK'];
+
         $cases = [];
 
-        foreach ($rows as $label => [$method, $routeName, $kind]) {
+        foreach ($rows as $label => [$method, $routeName, $kind, $expected]) {
             foreach (self::ACTORS as $index => $actor) {
                 $cases["{$label} / {$actor}"] = [$method, $routeName, $kind, $actor, $expected[$index]];
             }
@@ -162,6 +195,16 @@ class AdminPageMatrixTest extends TestCase
         $this->actingAs($patient)->post('/admin/dokter')->assertForbidden();
     }
 
+    public function test_patient_is_forbidden_from_admin_schedule_urls(): void
+    {
+        $patient = User::factory()->patient()->create();
+
+        $this->actingAs($patient)->get('/admin/jadwal')->assertForbidden();
+        $this->actingAs($patient)->get('/admin/jadwal/sesi')->assertForbidden();
+        $this->actingAs($patient)->get('/admin/jadwal/pengecualian')->assertForbidden();
+        $this->actingAs($patient)->post('/admin/jadwal')->assertForbidden();
+    }
+
     private function assertGuestRejected(int $status, string $location): void
     {
         $this->assertContains($status, [302, 401], "Tamu harus dialihkan ke login atau menerima 401, bukan {$status}.");
@@ -186,7 +229,11 @@ class AdminPageMatrixTest extends TestCase
             'clinic' => ['clinic' => $this->createClinic()->id],
             'specialty' => ['specialty' => $this->createSpecialty()->id],
             'public-clinic' => ['clinic' => $this->createClinic()->slug],
+            'public-doctor' => ['doctor' => $this->createDoctor()->slug],
             'doctor-media' => ['media' => $this->doctorPhotoRow()->id],
+            'schedule' => ['schedule' => $this->createSchedule()->id],
+            'session' => ['session' => $this->createSession()->id],
+            'exception' => ['exception' => $this->createException()->id],
         };
     }
 
