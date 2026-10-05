@@ -224,7 +224,7 @@ ID fitur mengikuti [02 — Ruang lingkup](02-ruang-lingkup.md) (`F-PUB`, `F-AUTH
 **Keluaran.**
 - Halaman: **#35 Jadwal, kuota, libur** (templat `admin.schedules.*`, sesi `admin.sessions.*`, pengecualian `admin.exceptions.*`; layar tinjau sesi terdampak menyusul di fase 7), publik **#6 Daftar dokter** (filter `q`, `spesialisasi`, `poli`, `tanggal`), **#7 Detail dokter**, **#8 Jadwal dokter**.
 - Fitur: F-ADM-05, F-ADM-06, F-ADM-07, F-SYS-01, F-SYS-02, F-SYS-06 (propagasi), F-PUB-05, F-PUB-06, F-PUB-07.
-- Skema: `doctor_schedules`, `schedule_exceptions`, `practice_sessions` (CHECK + UNIQUE), **dan** `patient_profiles`, `appointments` (kolom `active_flag` generated + tiga UNIQUE), `appointment_status_histories` (skema + factory saja; belum ada UI).
+- Skema: `doctor_schedules`, `schedule_exceptions`, `practice_sessions` (CHECK + UNIQUE), **dan** `patient_profiles`, `insurance_partners` (skema saja karena `appointments.insurance_partner_id` wajib FK `RESTRICT`; model, factory, seeder, dan admin-nya tetap di fase 4, F3-R3), `appointments` (kolom `active_flag` generated + tiga UNIQUE), `appointment_status_histories` (skema, model, dan factory saja; belum ada UI, `BookingService`, atau `AppointmentStatusService`, F3-R4).
 - Perintah `sessions:generate {--days=}`; `DoctorScheduleSeeder`, `ScheduleExceptionSeeder`; komponen `schedule-table`, `availability-badge`, `doctor-card`, `module-tabs` (tab Templat/Sesi/Pengecualian/Sesi terdampak).
 
 **Dependensi.** Fase 2.
@@ -242,8 +242,9 @@ ID fitur mengikuti [02 — Ruang lingkup](02-ruang-lingkup.md) (`F-PUB`, `F-AUTH
 10. Hook perubahan status dokter pada `ScheduleChangeService`: dokter dinonaktifkan → sesi mendatang `cancelled` atau `needs_review` sumber `doctor_inactive`; arsip hanya bila tidak ada appointment aktif mendatang.
 
 **Kriteria keluar.**
-- `JDW-01`–`JDW-10` (templat, generator idempoten, cuti/libur tidak dapat dipesan menurut `DoctorAvailabilityQuery`, sesi lampau, tumpang tindih templat ditolak, kuota tidak turun di bawah `booked_count`, perubahan templat dengan appointment aktif → `needs_review`, hapus pengecualian membuka kembali sesi); `JDW-12` (publik dan wizard memakai query yang sama — tes kontrak pada `DoctorAvailabilityQuery`), `JDW-13` (sesi tambahan manual), `JDW-14` (Admin Konten hanya melihat jumlah booking).
-- `KON-01` versi spike lulus pada skema final.
+- `JDW-01`–`JDW-10` (templat, generator idempoten, cuti/libur tidak dapat dipesan menurut `DoctorAvailabilityQuery`, sesi lampau, tumpang tindih templat ditolak, kuota tidak turun di bawah `booked_count`, perubahan templat dengan appointment aktif → `needs_review`, hapus pengecualian membuka kembali sesi); `JDW-12` (publik dan wizard memakai query yang sama — tes kontrak pada `DoctorAvailabilityQuery`; di fase 3 dua konsumennya adalah `doctors.show` dan `schedules.index`, dibuktikan di `PublicScheduleTest`), `JDW-13` (sesi tambahan manual), `JDW-14` (Admin Konten hanya melihat jumlah booking).
+- `KON-01` versi spike lulus pada skema final (`ConcurrencySpikeTest`: dua koneksi PDO mentah, F3-R6).
+- Bagian `book()`, wizard, dan form walk-in dari `JDW-03`, `JDW-04`, `JDW-05`, `JDW-12`, `JDW-13`, `CRD-02`, `CRD-05`, dan `KON-01a`–`d` diuji di fase 6/7; di fase 3 kasus-kasus itu diuji lewat `DoctorAvailabilityQuery` (`availability`, `is_bookable_online`, `is_bookable_counter`, `remaining`), status sesi, dan halaman #6/#7/#8 (F3-R5). `JDW-11` (resolusi) milik fase 7.
 - `AKS` untuk #6–#8 dan #35 lulus; `CRD-05` (jadwal baru muncul di jadwal publik), `CRD-13` (aturan `destroy` per tabel), `JDW-15` (edit manual sesi), `JDW-16` (dokter dinonaktifkan/diarsipkan), `JDW-17` (prioritas `pending_change`), `JDW-18` (kombinasi jenis pengecualian vs dokter, termasuk CHECK DB), `JDW-19` (hapus templat/sesi manual), `VAL-07`.
 
 **Risiko dan mitigasi.**
@@ -267,7 +268,7 @@ Fase ini sebaiknya dibagi menjadi **dua rencana implementasi**: **4a** (halaman 
 - Halaman publik: **#1 Beranda**, **#2 Profil**, **#3 Visi & misi**, **#9 Daftar fasilitas**, **#10 Detail fasilitas**, **#11 Ringkasan kamar**, **#12–#15 Kamar BPJS Kelas 1/2/3 dan VIP**, **#16 Info BPJS & asuransi**, **#17 Panduan pendaftaran**, **#18 Daftar artikel**, **#19 Detail artikel**, **#20 Galeri** (+ detail album), **#21 FAQ**, **#22 Kontak & lokasi**, kebijakan privasi.
 - Halaman admin: **#36 Fasilitas, kategori kamar, kapasitas**, **#39 Konten** (halaman, banner, artikel, kategori artikel, galeri, FAQ, mitra asuransi), kotak pesan kontak.
 - Fitur: F-PUB-01, F-PUB-02, F-PUB-03, F-PUB-08 sampai F-PUB-18, F-ADM-09 sampai F-ADM-11, F-ADM-18 sampai F-ADM-24; komponen `map-embed`.
-- Skema: `pages`, `article_categories`, `articles`, `banners`, `galleries`, `faqs`, `insurance_partners`, `facilities`, `room_categories`, `contact_messages`; `PageSeeder` (semua lingkungan), `ContentSeeder`, `FacilitySeeder`, `RoomCategorySeeder`, `ContactMessageSeeder`.
+- Skema: `pages`, `article_categories`, `articles`, `banners`, `galleries`, `faqs`, `facilities`, `room_categories`, `contact_messages`; `PageSeeder` (semua lingkungan), `ContentSeeder`, `FacilitySeeder`, `RoomCategorySeeder`, `ContactMessageSeeder`.
 
 **Dependensi.** Fase 1 (media, sanitizer, komponen), Fase 2 (halaman layanan, kartu dokter di beranda), Fase 3 (kolom pencarian jadwal di beranda).
 

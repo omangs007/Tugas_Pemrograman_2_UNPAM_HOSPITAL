@@ -118,7 +118,7 @@ Satu `<h1>` per halaman; tingkat judul tidak dilompati.
 |---|---|
 | `x-layouts.public`, `x-layouts.patient`, `x-layouts.admin`, `x-layouts.auth` | Kerangka halaman (W-01, W-13) |
 | `x-breadcrumb`, `x-page-header` | Jejak halaman dan blok judul (h1 + subjudul) |
-| `x-doctor-card` | Kartu dokter: foto, nama + gelar, spesialisasi, poliklinik, tombol “Lihat Jadwal” (W-02, W-03, W-06) |
+| `x-doctor-card` | Kartu dokter: foto, nama + gelar (tautan ke detail dokter), spesialisasi, poliklinik, dan bila `nextSession` ada: `x-availability-badge` + "Jadwal terdekat" + tombol Daftar (hanya bila route pendaftaran ada dan sesi dapat dipesan online). Tanpa tombol "Lihat Jadwal" terpisah karena tautan bersarang dilarang (W-02, W-03, W-06; F3-R25) |
 | `x-schedule-table`, `x-availability-badge` | Tabel/grid jadwal dari `DoctorAvailabilityQuery` dan label status sesi (W-04, W-05, W-11) |
 | `x-status-badge` | Badge status teks + ikon + warna (bagian 7 di bawah) |
 | `x-empty-state`, `x-flash-alert`, `x-loading-button` | Kondisi kosong, pesan berhasil/gagal, tombol dengan status loading |
@@ -528,16 +528,16 @@ Kondisi kosong:
 
 **Elemen**
 
-1. Breadcrumb dan `x-page-header` (judul dan subjudul dari `pages` key `doctors-index`).
+1. Breadcrumb dan `x-page-header` (fase 3: judul statis "Cari Dokter" dan subjudul "Cari berdasarkan nama, spesialisasi, poliklinik, atau tanggal praktik" sampai model `Page` ada di fase 4a, F3-R18).
 2. Formulir filter (GET): **nama dokter** (`q`), **spesialisasi** (`spesialisasi`; pilihan dari `specialties` aktif), **poliklinik** (`poli`; dari `clinics` aktif berjenis poliklinik), **tanggal praktik** (`tanggal`); tombol **Cari Dokter** dan **Reset filter**. Nilai parameter mengikuti 00 I.5: `spesialisasi` dan `poli` berupa slug (`specialties.slug`, `clinics.slug`), `tanggal` berupa `YYYY-MM-DD`; parameter tidak valid diabaikan.
 3. Teks hasil “Menampilkan N dari M dokter” (`aria-live="polite"`).
-4. Grid `x-doctor-card`: foto (`x-image`, rasio 4:5), nama + gelar (`{title_prefix} {name}, {title_suffix}`), spesialisasi (badge; primer lebih dulu), poliklinik, tombol **Lihat Jadwal** → `doctors.show#jadwal`. Bila `tanggal` terisi, kartu menampilkan `x-availability-badge` untuk sesi dokter pada tanggal itu.
+4. Grid `x-doctor-card`: foto (`x-image`, rasio 4:5), nama + gelar (`{title_prefix} {name}, {title_suffix}`), spesialisasi (badge; primer lebih dulu), poliklinik; nama dokter adalah tautan `stretched-link` ke `doctors.show` dan kartu **tidak** memiliki tombol "Lihat Jadwal" terpisah (tautan bersarang dilarang, F3-R25). Kartu menampilkan `x-availability-badge` dan "Jadwal terdekat: {Hari, j F Y} · {HH.MM–HH.MM}": bila `tanggal` terisi untuk sesi dokter pada tanggal itu (termasuk Cuti/Libur), selain itu untuk sesi terdekat yang bukan pembatalan; tombol **Daftar** hanya bila route pendaftaran ada (fase 6) dan sesi dapat dipesan online.
 5. Pagination Bootstrap 5 (12 kartu per halaman) **[ASUMSI]**.
 
 **Perilaku interaksi**
 
 - Semua filter bersifat GET sehingga URL dapat dibagikan; menekan **Cari Dokter** memuat ulang daftar dari halaman 1; **Reset filter** menuju `doctors.index` tanpa parameter.
-- Dengan `tanggal`: daftar hanya memuat dokter yang memiliki sesi non-batal pada tanggal itu (sumber `DoctorAvailabilityQuery`); tanggal di luar jendela `booking.window_days` memunculkan pesan validasi inline dan daftar tidak difilter tanggal.
+- Dengan `tanggal`: daftar hanya memuat dokter yang memiliki sesi pada tanggal itu, termasuk sesi Cuti/Libur yang tampil berlabel agar pengunjung tahu alasannya (sumber `DoctorAvailabilityQuery`); tanggal berformat salah atau di luar jendela (hari ini sampai hari ini + `booking.window_days`, kedua ujung termasuk) memunculkan pesan validasi inline dan daftar tidak difilter tanggal.
 - Hanya dokter berstatus `active` yang tampil.
 
 **Kondisi**
@@ -560,9 +560,9 @@ Kondisi kosong:
 
 **Aksesibilitas**
 
-- Urutan fokus: breadcrumb → filter (nama → spesialisasi → poliklinik → tanggal → Cari → Reset) → kartu (tombol “Lihat Jadwal” per kartu) → pagination.
-- Nama tombol “Lihat Jadwal” dilengkapi `aria-label="Lihat jadwal dr. Raka Wirawan, Sp.U"` agar unik; foto `alt="Foto dr. Raka Wirawan, Sp.U"` (atau `alt` kustom dari admin); pagination `<nav aria-label="Navigasi halaman">` dengan `aria-current="page"`.
-- Kontras: teks gelap pada kartu putih; badge spesialisasi teks putih pada `$secondary-accent` (±5,0:1); tombol “Lihat Jadwal” putih pada `$primary`.
+- Urutan fokus: breadcrumb → filter (nama → spesialisasi → poliklinik → tanggal → Cari → Reset) → kartu (tautan nama dokter, lalu tombol Daftar bila ada) → pagination.
+- Kartu tidak memiliki tombol “Lihat Jadwal” terpisah (nama dokter adalah satu-satunya tautan ke detail); tombol Daftar (bila ada) dilengkapi `aria-label="Daftar ke dr. Raka Wirawan, Sp.U, {hari, tanggal, jam}"` agar unik; foto `alt="Foto dr. Raka Wirawan, Sp.U"` (atau `alt` kustom dari admin); pagination `<nav aria-label="Navigasi halaman">` dengan `aria-current="page"`.
+- Kontras: teks gelap pada kartu putih; badge spesialisasi teks putih pada `$secondary-accent` (±5,0:1); tombol Daftar putih pada `$primary`.
 
 ---
 
@@ -762,9 +762,9 @@ Kondisi kosong:
 
 **Elemen**
 
-1. `x-page-header` (`pages` key `schedules-index`).
+1. `x-page-header` (fase 3: judul statis "Jadwal Dokter" dan subjudul "Jadwal praktik per minggu" sampai model `Page` ada di fase 4a, F3-R18).
 2. Filter: navigasi minggu (tombol minggu sebelumnya/berikutnya + label rentang tanggal), poliklinik, dokter, tombol **Terapkan** dan **Reset**. `minggu` berisi tanggal mana pun dalam minggu (`YYYY-MM-DD`) yang dinormalisasi ke Senin; `poli` dan `dokter` berisi slug (00 I.5).
-3. **Grid mingguan** (`x-schedule-table`): baris = dokter (nama + spesialisasi), kolom = Senin–Minggu dengan tanggal; sel = jam praktik + `x-availability-badge` ringkas (“Sisa 5”, “Penuh”, “Cuti”, “Libur”, “Ditutup”); sel kosong bertanda “-”. Satu sel menampilkan satu label `Availability` menurut prioritas 00 F.3: `past` → `leave`/`holiday`/`cancelled` → `under_review` → `closed` → `full` → `booking_closed` → `available`.
+3. **Grid mingguan** (`x-schedule-table`): baris = dokter (nama + spesialisasi), kolom = Senin–Minggu dengan tanggal; sel = jam praktik + `x-availability-badge` ringkas (“Sisa 5”, “Penuh”, “Cuti”, “Libur”, “Ditutup”); sel kosong bertanda “-”. Satu sel menampilkan satu label `Availability` menurut prioritas 00 F.3: `past` → `leave`/`holiday`/`cancelled` → `under_review` → `closed` → `full` → `booking_closed` → `available`. Grid dan daftar bertumpuk berasal dari koleksi `SessionAvailability` yang sama (F3-R24): grid (partial `public/schedules/_week-grid`) tampil di layar ≥ md, sedangkan di layar < md daftar bertumpuk per hari memakai `x-schedule-table` per tanggal; hari lampau pada minggu berjalan tampil "Sudah lewat" (`includePast`).
 4. **Legenda status** (teks + warna + ikon) selalu terlihat di bawah grid.
 5. Tampilan mobile: judul hari (“Senin, 5 Okt 2026”) diikuti kartu per dokter yang praktik pada hari itu.
 
@@ -2262,9 +2262,9 @@ Galat dan sukses:
 | +-------------------+--------------+----------------+--------------+---------------+ |
 | | Cuti dokter       | dr. Raka W.  | 7 Okt 2026     | Cuti tahunan | [Ubah][Hapus] | |
 | +-------------------+--------------+----------------+--------------+---------------+ |
-| | Libur rumah sakit | Seluruh RS   | 20 Okt 2026    | Hari libur   | [Ubah][Hapus] | |
+| | Libur rumah sakit | Semua dokter | 20 Okt 2026    | Hari libur   | [Ubah][Hapus] | |
 | +-------------------+--------------+----------------+--------------+---------------+ |
-| Form pengecualian: Jenis, Dokter (atau Seluruh RS), Mulai, Selesai, Alasan.          |
+| Form pengecualian: Jenis, Dokter (atau Semua dokter), Mulai, Selesai, Alasan.        |
 | Tanggal mulai tidak boleh di masa lalu; rentang dihitung per hari penuh.             |
 +--------------------------------------------------------------------------------------+
 ```
@@ -2276,7 +2276,7 @@ Galat dan sukses:
 3. **Peringatan** (kuning) “N sesi perlu ditindaklanjuti petugas pendaftaran”: tampil bila ada sesi `needs_review` (atau setelah simpan yang menimbulkannya); dengan `sessions.review` disertai tautan **Buka Sesi Terdampak**, tanpa izin itu hanya teks (00 bagian G).
 4. Tabel templat: dokter + poliklinik, hari, jam mulai–selesai, kuota, berlaku dari–sampai, status aktif (`x-status-badge`), aksi **Ubah** (aktif/nonaktifkan dari halaman ubah atau menu baris).
 5. Form templat: dokter, poliklinik (bawaan = poliklinik utama dokter), hari praktik (Senin–Minggu), jam mulai/selesai, kuota (1–200), berlaku dari, berlaku sampai (opsional), catatan, status aktif (`x-form.checkbox` varian *switch*).
-6. Tab Sesi: tanggal, dokter, jam, **terisi/kuota (hanya jumlah)**, status sesi + alasan, aksi **Ubah** (jam, kuota, tutup/buka/batalkan; tanpa hapus) dan **Tambah Sesi** manual (`doctor_schedule_id` NULL).
+6. Tab Sesi: tanggal, dokter, jam, **terisi/kuota (hanya jumlah)**, status sesi + alasan, aksi **Ubah** (jam, kuota, tutup/buka/batalkan) dan **Hapus** hanya untuk sesi tambahan manual tanpa appointment sama sekali (`admin.sessions.destroy`, 00 I.4, F3-R20) dan **Tambah Sesi** manual (`doctor_schedule_id` NULL).
 7. Tab Pengecualian: jenis (Cuti dokter, Libur rumah sakit, Libur nasional, Lainnya), dokter (wajib untuk Cuti dokter; harus kosong untuk Libur rumah sakit dan Libur nasional = seluruh RS; opsional untuk Lainnya), tanggal mulai–selesai, alasan; **Ubah**, **Hapus** (mencabut pengecualian lewat `ScheduleChangeService::removeException`).
 
 **Perilaku interaksi**
@@ -2295,7 +2295,7 @@ Galat dan sukses:
 - Dokter dinonaktifkan (dari W-15/W-16): sesi mendatang tanpa appointment aktif → `cancelled`; dengan appointment aktif → `needs_review` sumber `doctor_inactive`.
 - Validasi templat: jam selesai > jam mulai; templat aktif seorang dokter pada hari yang sama tidak boleh beririsan jam pada rentang berlaku yang beririsan; kuota 1–200.
 - Pengecualian: granularitas satu hari penuh **[ASUMSI]**; tanggal mulai tidak boleh di masa lalu; sesi dalam rentang tanpa appointment aktif → `cancelled`, dengan appointment aktif → `needs_review`; menghapus/mempersempit membuka kembali sesi yang dibatalkan olehnya dan belum lewat. Hapus memakai `x-confirm-modal`.
-- Tab Sesi: edit manual menyetel `is_manually_modified = true`; kuota tidak boleh di bawah `booked_count`; sesi tidak memiliki aksi hapus (ditutup atau dibatalkan). Templat dihapus hanya bila tidak pernah menghasilkan sesi ber-appointment, selain itu dinonaktifkan.
+- Tab Sesi: edit manual menyetel `is_manually_modified = true`; kuota tidak boleh di bawah `booked_count`; tombol Hapus sesi hanya untuk sesi tambahan manual tanpa appointment sama sekali (`admin.sessions.destroy`); sesi lain ditutup atau dibatalkan, dan sesi hasil templat atau sesi ber-appointment menampilkan saran "Tutup/Batalkan" (F3-R20). Templat dihapus hanya bila tidak pernah menghasilkan sesi ber-appointment, selain itu dinonaktifkan.
 - Admin Konten tidak melihat nama pasien; hanya jumlah booking per sesi.
 
 **Kondisi**

@@ -414,7 +414,7 @@ Total **37 tabel** wajib (00 bagian E) + `migrations` (tabel internal Laravel, d
 - **Index & unique:** `PRIMARY (id)`; `doctor_schedules_doctor_id_day_of_week_is_active_index (doctor_id, day_of_week, is_active)`; `doctor_schedules_is_active_valid_from_valid_until_index (is_active, valid_from, valid_until)` (dipakai generator); `doctor_schedules_clinic_id_foreign (clinic_id)`; FK `created_by`, `updated_by`. **Tidak ada** UNIQUE untuk mencegah irisan jam: MariaDB 10.4 tidak punya *exclusion constraint*; larangan irisan (templat aktif seorang dokter pada hari yang sama dengan rentang berlaku yang beririsan) dijaga validasi aplikasi di dalam transaksi yang mengunci baris `doctors`.
 - **CHECK constraint:** `chk_schedules_time (end_time > start_time)`; `chk_schedules_day (day_of_week BETWEEN 1 AND 7)`; `chk_schedules_quota (quota BETWEEN 1 AND 200)`; `chk_schedules_validity (valid_until IS NULL OR valid_until >= valid_from)`.
 - **Cast Eloquent:** `day_of_week` → `integer`; `quota` → `integer`; `valid_from` → `date`; `valid_until` → `date`; `is_active` → `boolean`. (`start_time`/`end_time` dibaca sebagai string `HH:MM:SS`.)
-- **Aturan hapus & arsip (00 C):** hapus diizinkan **hanya bila tidak ada satu pun sesi miliknya yang ber-appointment** (termasuk riwayat batal); sesi-sesi tanpa appointment milik templat itu (lampau maupun mendatang) dihapus lebih dulu oleh service dalam transaksi yang sama, sebab menghapus templat saja akan memutus `doctor_schedule_id` (menjadi `NULL`) sehingga sesi lama tampak sebagai sesi manual yatim yang tidak ikut propagasi. Bila ada sesi ber-appointment, tombol hapus diganti "Nonaktifkan" (`is_active = false`) dengan pesan alasan, dan nonaktif memicu `ScheduleChangeService` (F.4). Mengganti `clinic_id` ditolak bila ada sesi mendatang dengan appointment aktif (F.4). Templat dokter berstatus `archived` tidak dapat dibuat.
+- **Aturan hapus & arsip (00 C):** hapus diizinkan **hanya bila tidak ada satu pun sesi miliknya yang ber-appointment** (termasuk riwayat batal); sesi-sesi tanpa appointment milik templat itu (lampau maupun mendatang; pengecualian sadar atas aturan "sesi lampau tidak diubah", yang hanya berlaku untuk operasi per sesi, JDW-19a) dihapus lebih dulu oleh service dalam transaksi yang sama, sebab menghapus templat saja akan memutus `doctor_schedule_id` (menjadi `NULL`) sehingga sesi lama tampak sebagai sesi manual yatim yang tidak ikut propagasi. Bila ada sesi ber-appointment, tombol hapus diganti "Nonaktifkan" (`is_active = false`) dengan pesan alasan, dan nonaktif memicu `ScheduleChangeService` (F.4). Mengganti `clinic_id` ditolak bila ada sesi mendatang dengan appointment aktif (F.4). Templat dokter berstatus `archived` tidak dapat dibuat.
 
 ### 3.6 `schedule_exceptions`
 
@@ -1052,7 +1052,7 @@ Laravel menjalankan migration menurut urutan nama berkas. Urutan di bawah dibuat
 | 4 | `2026_10_02_000010_add_account_fields_to_users_table.php` | `users` + `phone`, `account_type`, `is_active`, `must_change_password`, `last_login_at` | 1 |
 | 5 | `2026_10_02_000020_create_permission_tables.php` | `permissions`, `roles`, `model_has_permissions`, `model_has_roles`, `role_has_permissions` (Spatie; hasil `vendor:publish` lalu **diganti nama** agar urut) | 1 |
 | 6 | `2026_10_02_000030_create_notifications_table.php` | `notifications` (dari `php artisan make:notifications-table` apa adanya; `uuid('id')` menjadi `CHAR(36)` di MariaDB 10.4) | 1 |
-| 7 | `2026_10_02_000100_create_patient_profiles_table.php` | `patient_profiles` | `users` |
+| 7 | `2026_10_02_000100_create_patient_profiles_table.php` | `patient_profiles` (dibuat di fase 3; pada database yang sudah memigrasikan fase 1–2 Laravel menjalankannya sebagai migration tertunda, sedangkan `migrate:fresh` mengikuti urutan nama; F3-R2) | `users` |
 | 8 | `2026_10_02_000200_create_specialties_table.php` | `specialties` | — |
 | 9 | `2026_10_02_000300_create_clinics_table.php` | `clinics` | `specialties` |
 | 10 | `2026_10_02_000400_create_doctors_table.php` | `doctors` | `clinics` |
@@ -1060,7 +1060,7 @@ Laravel menjalankan migration menurut urutan nama berkas. Urutan di bawah dibuat
 | 12 | `2026_10_02_000600_create_doctor_schedules_table.php` | `doctor_schedules` (+ 4 CHECK) | `doctors`, `clinics`, `users` |
 | 13 | `2026_10_02_000700_create_schedule_exceptions_table.php` | `schedule_exceptions` (+ 2 CHECK) | `doctors`, `users` |
 | 14 | `2026_10_02_000800_create_practice_sessions_table.php` | `practice_sessions` (+ 4 CHECK) | `doctors`, `clinics`, `doctor_schedules`, `schedule_exceptions`, `users` |
-| 15 | `2026_10_02_000900_create_insurance_partners_table.php` | `insurance_partners` (dibuat sebelum `appointments` karena dirujuk FK, walau bertema konten) | — |
+| 15 | `2026_10_02_000900_create_insurance_partners_table.php` | `insurance_partners` (dibuat sebelum `appointments` karena dirujuk FK, walau bertema konten; dibuat di fase 3 dengan skema ini apa adanya, sedangkan model, factory, seeder, dan admin-nya di fase 4, F3-R3) | — |
 | 16 | `2026_10_02_001000_create_appointments_table.php` | `appointments` (+ generated column, UNIQUE komposit, CHECK) | `patient_profiles`, `practice_sessions`, `doctors`, `clinics`, `insurance_partners`, `users` |
 | 17 | `2026_10_02_001100_create_appointment_status_histories_table.php` | `appointment_status_histories` | `appointments`, `users` |
 | 18 | `2026_10_02_001200_create_room_categories_table.php` | `room_categories` (+ 1 CHECK) | `users` |
@@ -1627,7 +1627,7 @@ Angka mengikuti rencana seeder di [13-data-contoh.md](13-data-contoh.md) bagian 
 | `doctor_specialties` | 20 (18 primer + 2 sekunder, 13 §6) | sebagian dokter dua spesialisasi |
 | `doctor_schedules` | 52 | 51 aktif + 1 nonaktif |
 | `schedule_exceptions` | 3 | 2 dari seeder jadwal + 1 dari seeder appointment |
-| `practice_sessions` | ±300 | 14 hari lampau + 30 hari ke depan, + 1 sesi tambahan manual |
+| `practice_sessions` | ±230–260 | hari ini s.d. hari ini + 30 saja (F3-R7: generator tidak membuat sesi lampau); 51 templat aktif × tanggalnya (230 pada seeding hari Senin), + 1 sesi tambahan manual, + 3 sesi cadangan bila hari seeding Minggu; sesi lampau untuk appointment `completed`/`no_show` dibuat seeder appointment di fase 6/7 |
 | `insurance_partners` | 4 | fiktif, berlabel "Contoh" |
 | `appointments` | 29 | contoh semua status |
 | `appointment_status_histories` | 64 | tabel acuan 13 §10.3/§11.2 (29 appointment, ±2,2 baris per appointment) |

@@ -54,7 +54,7 @@ flowchart TD
 | 4.2 | `SpecialtySeeder` | demo | `specialties` | 13 |
 | 4.3 | `ClinicSeeder` | demo | `clinics`, `media` | 13 poliklinik + 4 penunjang |
 | 4.4 | `DoctorSeeder` | demo | `doctors`, `doctor_specialties`, `media` | 18 dokter (16 aktif, 1 nonaktif, 1 arsip) |
-| 4.5 | `DoctorScheduleSeeder` | demo | `doctor_schedules`, `practice_sessions` | 52 templat (51 aktif + 1 nonaktif); ±300 sesi (14 hari lampau + 30 hari ke depan) |
+| 4.5 | `DoctorScheduleSeeder` | demo | `doctor_schedules`, `practice_sessions` | 52 templat (51 aktif + 1 nonaktif); sesi hanya untuk hari ini s.d. hari ini + 30 (F3-R7: tanpa sesi lampau; sesi lampau dibuat seeder appointment di fase 6/7) |
 | 4.6 | `ScheduleExceptionSeeder` | demo | `schedule_exceptions`, `practice_sessions` | 2 pengecualian + 1 sesi `closed` + 1 sesi tambahan manual kuota kecil |
 | 4.7 | `RoomCategorySeeder` | demo | `room_categories`, `media` | 4 |
 | 4.8 | `FacilitySeeder` | demo | `facilities`, `media` | 10 |
@@ -233,7 +233,7 @@ Nama adalah gabungan fiktif nama Indonesia umum; kemiripan dengan orang sungguha
 | 16 dr. Ayu (GG) | Sen 09:00–12:00 · 15 | Rab 13:00–16:00 · 15 | Jum 09:00–12:00 · 15 | Sab 09:00–12:00 · 15 |
 | 17 dr. Eko (BDH, nonaktif) | Sel 13:00–16:00 · 12 — **`is_active = false`** | — | — | — |
 
-Total: **51 templat aktif + 1 templat nonaktif**. `PracticeSessionGenerator` tidak membangkitkan sesi dari templat nonaktif maupun untuk dokter `inactive`/`archived`. Setiap hari Senin–Sabtu ada sesi dari beberapa poliklinik (poliklinik Umum buka Senin–Sabtu). Setelah templat disimpan, seeder memanggil `PracticeSessionGenerator::ensureRange(today, today + booking.window_days)` untuk sesi ke depan dan `ensureRange(today − 14, today − 1)` untuk sesi lampau (**[ASUMSI]** `ensureRange` menerima rentang bebas, termasuk masa lampau; hanya `ensureDailyHorizon()` yang terikat pada jendela booking). Sesi lampau dibutuhkan agar appointment berstatus `completed`/`no_show` dapat dibuat lewat service.
+Total: **51 templat aktif + 1 templat nonaktif**. `PracticeSessionGenerator` tidak membangkitkan sesi dari templat nonaktif maupun untuk dokter `inactive`/`archived`. Setiap hari Senin–Sabtu ada sesi dari beberapa poliklinik (poliklinik Umum buka Senin–Sabtu). Setelah templat disimpan, seeder memanggil `PracticeSessionGenerator::ensureRange(today, today + booking.window_days)` untuk sesi ke depan saja: `ensureRange` diklem ke hari ini (BR-22, 00 F.2) dan tidak pernah membuat sesi lampau (F3-R7). Sesi lampau yang dibutuhkan appointment `completed`/`no_show` dibuat seeder appointment di fase 6/7 lewat factory atau insert seeder, bukan lewat generator. Di fase 3 seeder memanggil `ensureRange` sekali untuk seluruh templat (bukan per templat), dan `created_by`/`updated_by` templat diisi akun Admin Konten Demo lewat `forceFill`.
 
 ### 7.2 Pengecualian jadwal — `ScheduleExceptionSeeder`
 
@@ -251,8 +251,8 @@ Rentang #1 dan #2 sengaja tidak beririsan agar kolom `schedule_exception_id` per
 | Sesi | Cara membuat | Tujuan uji |
 |---|---|---|
 | **Sesi `closed`** | Sesi dr. Citra (KK) pertama dengan `session_date >= today + 3` lewat `ScheduleChangeService::setSessionStatus($sesi, SessionStatus::Closed, Actor::system(), …)`: `status = closed`, `status_reason = "Ditutup sementara (contoh)"`, `is_manually_modified = true` | Badge `Availability::closed`; tidak dapat dipesan |
-| **Sesi tambahan manual** | lewat `ScheduleChangeService::createManualSession([...], Actor::system())` dengan `doctor_schedule_id = NULL`: dr. Teguh (UMM), `session_date = today + 2`, 08:00–10:00, `quota = 2`, `is_manually_modified = true`, `status_reason = "Sesi tambahan (contoh)"` | Dipakai appointment A28–A29 sehingga menjadi **penuh** (`Availability::full`) |
-| **Cadangan hari ini** | Bila pada hari seeding ada < 3 sesi `open` (mis. Minggu), buat sesi manual hari ini: dr. Rani 08:00–11:00 (kuota 20), dr. Sekar 13:00–16:00 (kuota 20), dr. Laras 16:00–19:00 (kuota 20) | Menjamin skenario "hari ini" di §10 selalu punya sesi |
+| **Sesi tambahan manual** | lewat `ScheduleChangeService::createManualSession([...], Actor::system())` dengan `doctor_schedule_id = NULL`: dr. Teguh (UMM), `session_date` = tanggal pertama pada atau setelah `today + 2` yang hari ISO-nya **bukan** hari templat dr. Teguh (Senin, Kamis, Jumat, Sabtu), sehingga tidak bentrok dengan sesi hasil templat (K-5, F3-R28), 08:00–10:00, `quota = 2`, `is_manually_modified = true`, `status_reason = "Sesi tambahan (contoh)"` | Dipakai appointment A28–A29 sehingga menjadi **penuh** (`Availability::full`) |
+| **Cadangan hari ini** | Bila pada hari seeding ada < 3 sesi `open` yang belum berakhir (mis. Minggu), buat sesi manual hari ini (yang sudah berakhir pada jam seeding atau bentrok dilewati): dr. Rani 08:00–11:00 (kuota 20), dr. Sekar 13:00–16:00 (kuota 20), dr. Laras 16:00–19:00 (kuota 20) | Menjamin skenario "hari ini" di §10 selalu punya sesi |
 
 ---
 
