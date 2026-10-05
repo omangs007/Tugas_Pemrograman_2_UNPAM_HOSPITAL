@@ -26317,3 +26317,94 @@ Server lokal hidup (`http://unpam-hospital.test`), data demo baru. Catat hasil p
 6. **Aksesibilitas.** Audit Lighthouse aksesibilitas ≥ 90 untuk `/dokter`, `/dokter/{slug}`, dan `/jadwal-dokter` (bagian A11-05); urutan fokus keyboard: skip link → filter → kartu/tabel → paginasi atau legenda; tidak ada informasi yang hanya dibedakan warna.
 
 Hasil dan temuan dicatat koordinator; tidak ada commit pada langkah ini.
+
+---
+
+## Catatan Eksekusi (2026-10-05)
+
+Dieksekusi dengan `superpowers:subagent-driven-development`. Semua peran memakai subagent **Sonnet 5.5** (preferensi pemilik): implementer, reviewer per tugas, re-reviewer, final reviewer, dan implementer gelombang perbaikan final. Eksekusi berlangsung 2026-10-05 dalam dua sesi. Sesi pertama dijeda atas permintaan pemilik (ganti jaringan) tepat saat gelombang perbaikan final dimulai. Pekerjaan F1 yang setengah jadi disimpan di `git stash`, lalu dilanjutkan di sesi berikutnya tanpa kehilangan pekerjaan.
+
+Cabang `fase-3-jadwal-dokter` dibuat dari `master` (`af4fd02`). Isinya dua commit penyusunan rencana (`df790d7`, `5f9af09`) dan 29 commit kerja (`083ff72`..`606cfbe`), ditambah commit CHECKPOINT `f838eb7` dan commit catatan ini.
+
+**Hasil akhir:**
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `artisan test` | **2933 tes lulus (14113 asersi)** setelah gelombang perbaikan final; sebelumnya 2925 di `4f79823` |
+| `pint --test` | PASS |
+| `npm run build` | Sukses |
+| `route:list --path=admin` | 50 route (31 fase 1–2 + 19 baru di `admin/jadwal`) |
+| `migrate:fresh --seed` (DB pengembangan, Step 13) | OK setelah izin pemilik ("Ya, jalankan"). Hitungan: 52 templat (51 aktif), 2 pengecualian, 231 sesi untuk hari ini s.d. +30, 0 sesi lampau, 11 batal, 1 ditutup, 1 sesi tambahan, 18 dokter. `sessions:generate` → 0 sesi baru; `--days=45` → 110 sesi baru. `media:prune` membersihkan 68 berkas yatim dari isi DB lama, sehingga `--dry-run` kini 0/0. |
+| Smoke publik | `/dokter` 200, `/jadwal-dokter` 200, `/dokter/eko-susanto` (nonaktif) 404. |
+| MANUAL (Step 14) | Dijalankan koordinator lewat Playwright; laporan bergambar ada di `Documents\UNPAM-Uji-Manual-2026-10-05-fase-3\index.html`. Kelompok 1–6 sesuai: publik desktop dan 360 px, Admin Konten, Petugas, Super Admin, 404 untuk staf, serta 0 galat JS, 0 pelanggaran CSP, dan 0 atribut event inline. Lighthouse aksesibilitas awalnya 97/96/97 dengan dua temuan kontras: M1 tautan navbar publik dan M2 tombol Reset `btn-outline-secondary` di #6/#8. Setelah perbaikan (`606cfbe`), skornya **100/100/100**. Audit yang masih gagal hanya HTTPS, yang wajar untuk server lokal. |
+
+**Putaran perbaikan per tugas** (masing-masing satu putaran, semuanya lulus re-review):
+
+| Tugas | Perbaikan |
+|---|---|
+| Task 3 | `tearDown` spike konkurensi tahan galat; baseline id enam tabel |
+| Task 11 | Guard `is_string` untuk parameter query larik (500) di view pengecualian dan templat T10; dokter arsip yang sedang dipakai tetap muncul di opsi edit pengecualian |
+| Task 13 | Panel filter mobile terbuka bila ada galat inline (VAL-07) |
+
+**Final review** (seluruh cabang, `5f9af09..4f79823`): verdict **With fixes**. Tidak ada temuan Critical. Tiga temuan Important ditutup dalam satu gelombang perbaikan, bersama catatan README dan dua temuan uji manual. Re-review terbatas menyatakan keenamnya ADDRESSED tanpa kerusakan baru:
+
+| Butir | Perbaikan | Commit |
+|---|---|---|
+| F1 | Hitungan appointment per sesi di `ScheduleChangeService` memakai pembacaan terkunci (`activeAppointmentCount()`/`appointmentCount()` dengan `lockForUpdate()`). Tanpa ini, savepoint bersarang membaca snapshot REPEATABLE READ yang basi. Tes `ScheduleChangeLockedCountTest` memastikan setiap `count(*)` pada `appointments` berakhir `for update`. | `49f966a` |
+| F2 | `DoctorScheduleRequest`: saat ubah dengan `clinic_id` yang sama, poliklinik cukup ada (tanpa syarat aktif/bisa didaftar). Dengan begitu templat tetap bisa diubah atau dinonaktifkan setelah poliklinik lamanya dinonaktifkan. | `917485a` |
+| F3 | View admin fase 2 (`clinics`, `doctors`, `specialties` index) tidak lagi 500 pada parameter query larik. | `4a44d99` |
+| F6 | README: cron atau Task Scheduler wajib menjalankan `schedule:run` tiap menit. Pemicu cadangan di #6/#7/#8 tetap ada. | `606cfbe` |
+| M1 | Tautan navbar publik pada ≥ lg kini `rgba(255,255,255,.9)` (7,25:1), sedangkan hover dan aktif `#fff` (8,56:1). Tautan aktif ditandai tebal dan bergaris bawah 2 px. Pada < lg, tautan menu offcanvas yang berlatar putih memakai warna teks (15,43:1), karena dengan warna bawaan `navbar-dark` tautan itu nyaris tak terlihat. | `606cfbe` |
+| M2 | Tombol Reset di #6/#8 diganti ke `btn-outline-primary` (7,95:1 di atas panel #F3F7FB). | `606cfbe` |
+
+### Keputusan (rulings) selama eksekusi
+
+| ID | Keputusan | Biaya bila keliru |
+|---|---|---|
+| E1 | Tanpa git worktree; bekerja di checkout utama pada cabang `fase-3-jadwal-dokter` (pola fase 0–2). | Cabang aktif checkout utama berpindah selama eksekusi. |
+| E2 | Semua subagent, termasuk final review, memakai Sonnet 5.5 (preferensi pemilik). | Final review sedikit kurang tajam; dimitigasi review per tugas dan uji manual. |
+| E3 | Scan pra-eksekusi tidak menemukan konflik terbuka, karena semua temuan penyusunan sudah diputuskan di F3-P1–F3-P15. Eksekusi mengikuti teks rencana. | Perbaikan per tugas lewat fix loop. |
+| E4 | Trailer commit subagent boleh mengikuti atribusi harness subagent (`Co-Authored-By: Claude Sonnet 5.5`), walau Global Constraints menulis Opus 5.5, karena atribusi harness mencerminkan model penulis sebenarnya. | Hanya teks trailer, tanpa dampak kode. |
+| E5 | Perbaikan I1 Task 11 (`(string) request()->query(...)` → guard `is_string`) juga mencakup view templat Task 10. Cacatnya sama dan berada di fase yang sama. | Perubahan kecil di view yang sudah lolos review. |
+| E6 | Pola yang sama di view fase 2 tidak diperbaiki di Task 11, melainkan diteruskan ke final review. Butir ini kemudian ditutup sebagai F3. | Tidak ada; sudah ditutup. |
+| E7 | `(string) request()->query('status', '')` di brief Task 12 diganti guard `is_string`, ditambah tes 200 untuk parameter larik di daftar sesi. | Menyimpang kecil dari teks brief. |
+| E8 | Task 14: tes pemicu harian memakai jam eksplisit 09.00–12.00, karena default factory 08.00 tidak konsisten dengan brief. Deviasi diterima. | Tidak ada. |
+| E9 | Task 16 dipecah: Step 13 (`migrate:fresh --seed`, `sessions:generate`) dan Step 14 (Playwright) dikerjakan koordinator, langkah lainnya oleh implementer. Step 13 dijalankan setelah izin pemilik. | Pemilik harus login ulang (sesi lama tidak valid). |
+| E10 | Frasa "= seluruh RS" di 07 baris 2280 dibiarkan. Frasa itu menjelaskan makna lingkup libur, bukan label kolom atau filter (keputusan C14 hanya untuk label). | Satu frasa dokumen. |
+| E11 | Gelombang perbaikan final memuat F1 sekarang, walau reviewer mengizinkan penundaan ke fase 6, karena kodenya masih segar dan cakupannya kecil. Gelombang itu juga memuat F2, F3, F6, M1, dan M2. Butir minor final lainnya ditunda (lihat bawaan). | Cakupan perbaikan sedikit lebih besar dari minimum. |
+| E12 | Setelah jeda, pekerjaan dilanjutkan dari WIP F1 di stash (`git stash apply`), bukan dimulai dari awal. Agen memeriksanya ulang dan mempertahankannya. Stash di-drop setelah F1 ter-commit. | Agen perlu merombak sebagian F1. |
+| E13 | Perluasan M1 oleh agen perbaikan diterima, karena re-review menilainya tepat: warna tautan offcanvas < lg dan penanda aktif tebal dengan garis bawah. | Tampilan menu mobile sedikit berbeda dari fase 1/2. |
+
+### Bawaan (carry) untuk rencana fase berikutnya
+
+**Fase 6 (Booking):**
+- F1 sudah masuk (`49f966a`). Penulis booking wajib mengunci sesi lebih dulu dengan urutan kunci yang sama dengan `ScheduleChangeService`.
+- `assertClinicChangeAllowed` dan cek arsip dokter (`futureActiveAppointmentsCount`) berupa *check-then-act*; uji ulang di bawah kunci booking.
+- `createManualSession` membaca poliklinik tanpa kunci.
+- Siklus referensi `Doctor → availabilities → session → doctor` dari `DoctorAvailabilityQuery::doctors()`: jangan diserialisasi apa adanya.
+- Tes konkurensi tanpa transaksi wajib ikut membersihkan `audit_logs` (pola baseline id di `ConcurrencySpikeTest`).
+
+**Fase 7 (Sesi Terdampak):**
+- Saat *resolve*, cek ulang status dokter, karena sumber `doctor_inactive` bisa tergantikan `exception`.
+- Perbarui `Phase3RoutePermissionTest` (19 → 20 route) dan angka `route admin: 50`.
+- Ganti tes tautan banner yang ter-skip dengan tes positif.
+
+**Minor final review yang ditunda (tidak memblokir):**
+- Reaktivasi dokter tanpa petunjuk tentang sesi yang sudah dibatalkan, dan tanpa `ensureRange`.
+- `status_reason` basi saat jenis atau alasan pengecualian diubah.
+- Penanda pembangkitan harian mengabaikan `window_days` baru.
+- Sesi `closed` yang diblokir pengecualian kembali `open` saat pengecualian dicabut.
+- #6 dengan `tanggal` = hari ini menampilkan "Sudah lewat" untuk sesi yang jamnya lewat.
+
+**Minor per tugas yang ditunda** (sebagian besar celah tes kecil atau kosmetik). Yang paling layak dikerjakan saat menyentuh area terkait:
+- Modal hapus templat dan pengecualian dijaga `@can('create')`, sedangkan tombolnya `@can('delete')`.
+- `og:description` kosong bila `meta_description` dan `short_bio` kosong.
+- Legenda #7 tidak tampil saat jadwal kosong.
+- Sesi tambahan dr. Teguh di seeder tidak atomik.
+- Format "HH.MM" terduplikasi (`DoctorSchedule::displayTime` vs `PracticeSession::timeRange`).
+- Sisa teks 07 W-03 (`[ Lihat Jadwal ]`, "Dokter tidak ditemukan") dan 00 J.6 `NoOverlapping*`.
+- README "sekitar 230 sesi" vs 09 "±230–260".
+- Tes F1 hanya mengasersi teks SQL `for update`, tanpa simulasi penulis konkuren.
+
+**Catatan uji manual:**
+- DB pengembangan memuat sedikit data dari uji manual: templat dr. Bagas Senin 10.00–13.00 kuota 15. Untuk data demo murni, jalankan `migrate:fresh --seed`.

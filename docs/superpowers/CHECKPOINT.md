@@ -1,6 +1,6 @@
 # Checkpoint — UNPAM HOSPITAL
 
-**Terakhir diperbarui:** 2026-10-05 (eksekusi fase 3 dijeda sebelum gelombang perbaikan final) · **Tag git:** `checkpoint/2026-10-05-fase-3-eksekusi` (sebelumnya `checkpoint/2026-10-05-fase-3-rencana`, `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
+**Terakhir diperbarui:** 2026-10-05 (fase 3 selesai beserta gelombang perbaikan final; menunggu persetujuan merge pemilik) · **Tag git:** `checkpoint/2026-10-05-fase-3-selesai` (sebelumnya `checkpoint/2026-10-05-fase-3-eksekusi`, `checkpoint/2026-10-05-fase-3-rencana`, `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
 
 Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah sebelum bekerja.
 
@@ -12,42 +12,27 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Fase 0 — Lingkungan & skeleton | **Selesai**, di-merge ke `master`. Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
 | Fase 1 — Fondasi | **Selesai** dan **sudah di-merge** ke `master` (fast-forward `0b87342`, 2026-10-04; cabang `fase-1-fondasi` dihapus). Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang beserta perbaikannya sudah selesai. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
 | Fase 2 — Master Data | **Eksekusi dan gerbang fase selesai** di cabang `fase-2-master-data`. Semua 16 tugas lulus review. Final review seluruh cabang beserta satu gelombang perbaikan (F1–F5) selesai. `migrate:fresh --seed` dijalankan dengan izin pemilik dan jumlah datanya persis sesuai target. Uji manual Step 19 dijalankan lewat Playwright (laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-05`); dua cacat temuannya (M1 `&nbsp;` editor, M2 panah galeri) sudah diperbaiki di `929c13a`. Hasil akhir: 1845 tes lulus (8479 asersi), Pint PASS, `npm run build` OK, 31 route admin. **Sudah di-merge** ke `master` (fast-forward `51134af`, 2026-10-05; cabang `fase-2-master-data` dihapus; suite pada hasil merge 1845 lulus). Rencana, catatan eksekusi, dan keputusan X1–X14 ada di bagian akhir `docs/superpowers/plans/2026-10-04-fase-2-master-data.md`. |
-| Cabang git | `master` (fase 0 + fase 1 + fase 2). Cabang kerja **`fase-3-jadwal-dokter`** dibuat dari `master` (`af4fd02`) dan berisi rencana serta seluruh eksekusi fase 3 (Task 1–16, HEAD kode `4f79823`). **Ada `git stash@{0}`** berisi perbaikan F1 setengah jadi; lihat §3a. Repo tanpa remote. |
+| Cabang git | `master` (fase 0 + fase 1 + fase 2). Cabang kerja **`fase-3-jadwal-dokter`** dibuat dari `master` (`af4fd02`) dan berisi rencana serta seluruh eksekusi fase 3 (Task 1–16 dan gelombang perbaikan final, HEAD kode `606cfbe`). Stash F1 sudah di-drop setelah ter-commit, jadi tidak ada stash tersisa. **Belum di-merge**; merge ke `master` menunggu persetujuan pemilik. Repo tanpa remote. |
 | Keputusan tertunda pemilik | Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
-| Fase 3 — Penjadwalan (Jadwal Dokter) | Rencana disetujui pemilik. **Task 1–16 selesai** lewat subagent-driven-development (Sonnet 5.5), semuanya lolos review. Putaran perbaikan terjadi di Task 3, 11 (juga view Task 10), dan 13. Hasil: 2925 tes lulus, Pint PASS, `npm run build` OK, 50 route admin (19 baru). Final review seluruh cabang: **With fixes** (3 Important, tanpa Critical). `migrate:fresh --seed` sudah dijalankan dengan izin pemilik dan uji manual Playwright sudah selesai. **Dijeda** saat gelombang perbaikan final baru dimulai (pemilik ganti jaringan). Rinciannya di §3a. |
+| Fase 3 — Penjadwalan (Jadwal Dokter) | Rencana disetujui pemilik. **Task 1–16 selesai** lewat subagent-driven-development (Sonnet 5.5), semuanya lolos review. Putaran perbaikan terjadi di Task 3, 11 (juga view Task 10), dan 13. Final review seluruh cabang: **With fixes** (3 Important, tanpa Critical). Satu gelombang perbaikan final (F1–F3, F6, M1, M2; `49f966a`..`606cfbe`) lolos re-review terbatas. `migrate:fresh --seed` sudah dijalankan dengan izin pemilik, dan uji manual Playwright selesai dengan Lighthouse aksesibilitas 100/100/100 setelah perbaikan. **Gerbang fase terpenuhi:** 2933 tes lulus (14113 asersi), Pint PASS, `npm run build` OK, 50 route admin (19 baru). **Menunggu persetujuan merge pemilik.** Rencana, catatan eksekusi, dan keputusan E1–E13: bagian akhir `docs/superpowers/plans/2026-10-05-fase-3-penjadwalan.md`. Rinciannya di §3a. |
 
-### 3a. Status eksekusi fase 3 (dijeda 2026-10-05)
+### 3a. Status eksekusi fase 3 (selesai 2026-10-05, menunggu merge)
 
-- **Rencana:** `docs/superpowers/plans/2026-10-05-fase-3-penjadwalan.md` (disetujui pemilik).
-- **Ledger SDD:** `.superpowers/sdd/2026-10-05-fase-3-penjadwalan/progress.md` (git-ignored). Isinya status setiap task, semua `Ruling:`, semua `minor (deferred)`, hasil gerbang, dan butir final review. Di folder yang sama ada brief/report per task, `global-constraints.md`, `implementer-instructions.md`, `reviewer-instructions.md`, dan `re-review-instructions.md`. Bahan penyusunan rencana tetap di `.superpowers/plan-fase-3/`. **Jangan** jalankan `git clean -fdx`.
+- **Rencana:** `docs/superpowers/plans/2026-10-05-fase-3-penjadwalan.md` (disetujui pemilik). Bagian akhirnya berisi "Catatan Eksekusi": hasil gerbang, putaran perbaikan, final review, keputusan E1–E13, dan bawaan untuk fase 6/7.
 - **Task 1–16:** selesai (commit `083ff72`..`4f79823`), masing-masing lolos review.
-- **Gerbang Task 16 Step 13 (dengan izin pemilik):**
-  - `migrate:fresh --seed` OK.
-  - Data: 52 templat (51 aktif), 2 pengecualian, 231 sesi untuk hari ini s.d. +30, 0 sesi lampau, 11 batal, 1 ditutup, 1 sesi tambahan.
-  - `sessions:generate` → 0 sesi baru; `--days=45` → 110 sesi baru.
-  - `media:prune`: 68 berkas yatim dari isi DB lama dibersihkan, sehingga 0/0.
-  - DB pengembangan kini juga berisi sedikit data dari uji manual: templat dr. Bagas Senin 10.00–13.00 kuota 15.
-- **Uji manual Playwright (Step 14):**
-  - Kelompok 1–6 sesuai.
-  - Lighthouse aksesibilitas 97/96/97.
-  - Dua temuan kontras: M1 tautan navbar publik "Layanan", M2 tombol Reset `btn-outline-secondary` di #6/#8.
-  - Laporan bergambar: `Documents\UNPAM-Uji-Manual-2026-10-05-fase-3\index.html`. Bagian 8 masih perlu hasil Lighthouse ulang setelah perbaikan.
-- **Final review (With fixes):**
-  - F1: hitungan appointment aktif dibaca dari snapshot basi di savepoint bersarang (perlu baca terkunci).
-  - F2: ubah atau nonaktifkan templat gagal bila poliklinik kini nonaktif.
-  - F3: view admin fase 2 (`clinics`, `doctors`, `specialties` index) menjawab 500 pada parameter larik.
-  - Ditambah F6 (catatan cron `schedule:run` di README), M1, dan M2.
-  - Brief lengkapnya: `.superpowers/sdd/2026-10-05-fase-3-penjadwalan/final-fix-brief.md`.
-- **Saat jeda:** agen perbaikan baru mulai F1. Perubahannya yang setengah jadi disimpan di `git stash@{0}` ("wip final-fix F1 fase 3 …"): `ScheduleChangeService.php` +24/−8 dan tes baru `ScheduleChangeLockedCountTest.php`. Working tree bersih.
+- **Gelombang perbaikan final:** `49f966a` (F1 baca terkunci), `917485a` (F2 edit templat dengan poliklinik nonaktif), `4a44d99` (F3 view admin fase 2), `606cfbe` (F6 README cron, M1 kontras navbar, M2 tombol Reset). Re-review terbatas: semuanya ADDRESSED, tanpa kerusakan baru.
+- **Gerbang (diverifikasi koordinator di `606cfbe`):** 2933 tes lulus (14113 asersi, ±6 menit), Pint PASS, `npm run build` OK, 50 route admin.
+- **DB pengembangan** (di-seed ulang dengan izin pemilik): 52 templat, 231 sesi untuk hari ini s.d. +30, ditambah sedikit data uji manual (templat dr. Bagas Senin 10.00–13.00 kuota 15).
+- **Uji manual Playwright:** kelompok 1–6 sesuai. Lighthouse aksesibilitas awalnya 97/96/97, lalu **100/100/100** setelah M1/M2 diperbaiki. Laporan bergambar lengkap (bagian 1–8): `Documents\UNPAM-Uji-Manual-2026-10-05-fase-3\index.html`.
 
 Langkah lanjut:
-1. Kirim ulang **satu** agen perbaikan final (Sonnet 5.5) dengan `final-fix-brief.md`. Boleh `git stash pop` dulu agar agen melanjutkan F1, atau `git stash drop` untuk mulai bersih.
-2. Jalankan re-review terbatas atas diff perbaikan, lalu Lighthouse ulang untuk M1/M2 dan lengkapi bagian 8 laporan uji manual.
-3. Tulis "Catatan Eksekusi" di akhir rencana fase 3, perbarui CHECKPOINT, lalu jalankan `superpowers:finishing-a-development-branch`. Merge ke `master` perlu persetujuan pemilik.
+1. Pemilik memilih opsi penyelesaian cabang (`superpowers:finishing-a-development-branch`). Merge ke `master` perlu persetujuan pemilik.
+2. Setelah merge: hapus workspace SDD `.superpowers/sdd/2026-10-05-fase-3-penjadwalan/` dan bahan `.superpowers/plan-fase-3/`, lalu mulai rencana fase 4 dengan `superpowers:writing-plans`.
 
 Yang sudah ada di aplikasi:
 - Fase 1: enum, akun & peran (Spatie), audit log, media + sanitasi HTML, pengaturan situs, tema & komponen Blade, layout publik/pasien/auth/admin, login/logout staf, ganti password wajib, header keamanan, `StaffAccountService`, `app:create-super-admin`, `media:prune`, seeder demo staf.
 - Fase 2: master data spesialisasi, poliklinik/layanan penunjang, dan dokter (CRUD admin, filter, tab, status/arsip dokter lewat `DoctorService`); editor rich text Quill dengan unggah gambar (`admin.media.*`, `MediaPolicy`, `syncEditorImages`); halaman publik `/layanan` (#4) dan `/layanan/{slug}` (#5); seeder demo 13 spesialisasi, 17 layanan, 18 dokter, 32 gambar contoh; poles login/ganti password/footer admin.
+- Fase 3 (cabang `fase-3-jadwal-dokter`, belum di-merge): skema jadwal dan booking; templat jadwal praktik, pengecualian (cuti dokter dan libur RS), dan sesi per tanggal di `admin/jadwal` (19 route); `PracticeSessionGenerator` + `sessions:generate` terjadwal; `ScheduleChangeService` sebagai satu-satunya jalur tulis (propagasi dengan kunci, audit); `DoctorAvailabilityQuery`; halaman publik `/dokter` (#6), `/dokter/{slug}` (#7), dan `/jadwal-dokter` (#8); seeder demo jadwal.
 
 ## 2. Lingkungan (mesin pemilik)
 
@@ -66,14 +51,14 @@ $env:Path = "$XAMPP\php;$env:Path"; Set-Location "D:\Project Web RS"
 
 git status; git branch --show-current          # harus bersih, di fase-3-jadwal-dokter
 & $PHP scripts\check-env.php                    # "status": "OK"
-& $PHP artisan test                             # 2925 passed (±4 menit)
+& $PHP artisan test                             # 2933 passed (±6 menit)
 & $PHP vendor\bin\pint --test                   # PASS
 & $PHP artisan route:list --path=admin          # 50 route (19 di admin/jadwal)
 & $PHP artisan media:prune --dry-run            # 0 baris, 0 berkas yatim
 curl.exe -s -o NUL -w '%{http_code}' http://unpam-hospital.test/layanan       # 200
 ```
 
-Bila semua hijau, lanjutkan penyusunan rencana fase 3 dari §3a dengan `superpowers:writing-plans`. Setelah pemilik menyetujui rencananya, eksekusi dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
+Bila semua hijau, lanjutkan dari "Langkah lanjut" §3a: selesaikan cabang fase 3, lalu susun rencana fase 4 dengan `superpowers:writing-plans`. Setelah pemilik menyetujui rencananya, eksekusi dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
 
 ## 4. Bawaan (carry) untuk fase berikutnya
 
@@ -101,7 +86,7 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
 - **Fase 6:**
   - Handler `BookingException`.
   - `SettingsService::bookingRules()` sudah ada (fase 3); tambahkan `assertBookable`.
-  - Prasyarat dari final review fase 3: hitungan appointment di `ScheduleChangeService` harus berupa baca terkunci (F1, dikerjakan di gelombang perbaikan final fase 3; pastikan sudah masuk). `assertClinicChangeAllowed` dan cek arsip dokter (`futureActiveAppointmentsCount`) berupa *check-then-act*; uji ulang di bawah kunci booking.
+  - Prasyarat dari final review fase 3: hitungan appointment di `ScheduleChangeService` sudah berupa baca terkunci (F1, `49f966a`). Penulis booking wajib mengunci sesi lebih dulu dengan urutan kunci yang sama. `assertClinicChangeAllowed` dan cek arsip dokter (`futureActiveAppointmentsCount`) berupa *check-then-act*; uji ulang di bawah kunci booking.
   - Tes konkurensi tanpa transaksi wajib ikut membersihkan `audit_logs` (pola baseline id di `ConcurrencySpikeTest`).
   - Siklus referensi `Doctor → availabilities → session → doctor` dari `DoctorAvailabilityQuery::doctors()` membuat `toArray`/`json_encode` berulang tanpa henti; jangan diserialisasi apa adanya.
 - **Fase 7:**
@@ -160,3 +145,7 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
    - Final review seluruh cabang: With fixes.
    - `migrate:fresh --seed` dijalankan dengan izin pemilik, lalu uji manual Playwright dan Lighthouse (laporan di `Documents\UNPAM-Uji-Manual-2026-10-05-fase-3`).
    - Dijeda atas permintaan pemilik (ganti jaringan) saat gelombang perbaikan final baru mulai. Perubahan setengah jadi disimpan di `git stash@{0}`.
+9. **2026-10-05 (lanjutan 4):**
+   - Dilanjutkan atas permintaan pemilik ("lanjutkan"). WIP F1 diterapkan dari stash, lalu satu agen perbaikan final menuntaskan F1–F3, F6, M1, dan M2 (`49f966a`..`606cfbe`).
+   - Re-review terbatas: semua ADDRESSED. Lighthouse ulang 100/100/100, dan bagian 8 laporan uji manual dilengkapi.
+   - Gerbang diverifikasi koordinator: 2933 tes lulus, Pint PASS, 50 route admin. Catatan Eksekusi rencana fase 3 (E1–E13) ditulis. Cabang menunggu persetujuan merge pemilik.
