@@ -6,6 +6,7 @@ namespace App\Services\Scheduling;
 
 use App\Enums\DoctorStatus;
 use App\Enums\SessionStatus;
+use App\Models\Clinic;
 use App\Models\Doctor;
 use App\Models\DoctorSchedule;
 use App\Models\PracticeSession;
@@ -36,6 +37,9 @@ final class ScheduleChangeService
 
     /** Alasan sesi yang dibatalkan karena dokter dinonaktifkan atau diarsipkan (status_reason). */
     public const REASON_DOCTOR_INACTIVE = 'Dokter tidak aktif';
+
+    /** Pesan baku V-24/BR-33 untuk sesi yang sudah berakhir (kunci validasi: session). */
+    public const MESSAGE_SESSION_PAST = 'Sesi yang sudah lewat tidak dapat diubah.';
 
     public function __construct(
         private readonly PracticeSessionGenerator $generator,
@@ -276,7 +280,479 @@ final class ScheduleChangeService
         });
     }
 
+    /**
+     * Sesi tambahan manual (`doctor_schedule_id` NULL; F3-R26, V-24, BR-29): dokter harus `active`, poliklinik aktif
+     * dan dibuka untuk pendaftaran, tanggal hari ini … 365 hari ke depan dan belum berakhir, tidak dalam rentang
+     * pengecualian, dan jamnya tidak beririsan dengan sesi non-batal dokter itu pada tanggal yang sama. Baris
+     * dokter dikunci selama pemeriksaan irisan.
+     *
+     * @param  array<string, mixed>  $attributes  doctor_id, clinic_id, session_date, start_time, end_time, quota
+     */
+    public function createManualSession(array $attributes, Actor $actor): PracticeSession
+    {
+        return DB::transaction(function () use ($attributes, $actor): PracticeSession {
+            $errors = [];
+            $today = CarbonImmutable::today();
+
+            $doctorId = (int) ($attributes['doctor_id'] ?? 0);
+            $doctor = Doctor::query()->whereKey($doctorId)->lockForUpdate()->first(['id', 'status']);
+
+            if ($doctor === null || $doctor->status !== DoctorStatus::Active) {
+                $errors['doctor_id'] = 'Dokter yang dipilih tidak tersedia.';
+            }
+
+            $clinicId = (int) ($attributes['clinic_id'] ?? 0);
+            $clinic = Clinic::query()->whereKey($clinicId)->first(['id', 'is_active', 'is_bookable']);
+
+            if ($clinic === null || ! $clinic->is_active || ! $clinic->is_bookable) {
+                $errors['clinic_id'] = 'Poliklinik yang dipilih tidak tersedia atau tidak dibuka untuk pendaftaran.';
+            }
+
+            $start = $this->timeOrNull($attributes['start_time'] ?? null);
+            $end = $this->timeOrNull($attributes['end_time'] ?? null);
+
+            if ($start === null) {
+                $errors['start_time'] = 'Format jam mulai tidak valid. Gunakan format JJ:MM.';
+            }
+
+            if ($end === null) {
+                $errors['end_time'] = 'Format jam selesai tidak valid. Gunakan format JJ:MM.';
+            } elseif ($start !== null && $end <= $start) {
+                $errors['end_time'] = 'Jam selesai harus setelah jam mulai.';
+            }
+
+            $quota = (int) ($attributes['quota'] ?? 0);
+
+            if ($quota < 1 || $quota > 200) {
+                $errors['quota'] = 'Kuota minimal 1 dan maksimal 200.';
+            }
+
+            $date = $this->dateString($attributes['session_date'] ?? null);
+
+            if ($date === null) {
+                $errors['session_date'] = 'Tanggal sesi wajib diisi.';
+            } elseif (
+                $date < $today->format('Y-m-d')
+                || ($date === $today->format('Y-m-d') && $end !== null && $end.':00' <= CarbonImmutable::now()->format('H:i:s'))
+            ) {
+                $errors['session_date'] = 'Tanggal sesi tidak boleh di masa lalu.';
+            } elseif ($date > $today->addDays(365)->format('Y-m-d')) {
+                $errors['session_date'] = 'Tanggal sesi maksimal 365 hari ke depan.';
+            }
+
+            if ($errors === []) {
+                $day = CarbonImmutable::parse($date);
+                $covering = ScheduleException::query()->covering($day)->forDoctor($doctorId)->get();
+                $picked = ScheduleException::pickFor($covering, $doctorId, $day);
+
+                if ($picked !== null) {
+                    $errors['session_date'] = "Tanggal ini berada dalam pengecualian jadwal ({$picked->reason}). Hapus atau ubah pengecualian terlebih dahulu.";
+                } elseif ($this->overlappingSessionExists($doctorId, $date, $start, $end, null)) {
+                    $errors['start_time'] = 'Jam sesi bertabrakan dengan sesi lain milik dokter ini pada tanggal tersebut.';
+                }
+            }
+
+            if ($errors !== []) {
+                throw ValidationException::withMessages($errors);
+            }
+
+            $session = new PracticeSession;
+            $session->fill([
+                'doctor_id' => $doctorId,
+                'clinic_id' => $clinicId,
+                'doctor_schedule_id' => null,
+                'session_date' => $date,
+                'start_time' => $start.':00',
+                'end_time' => $end.':00',
+                'quota' => $quota,
+                'status' => SessionStatus::Open,
+                'is_manually_modified' => true,
+            ]);
+            $session->save();
+            $session->refresh();
+
+            $this->audit->log(
+                'session.created',
+                $session,
+                null,
+                $this->sessionValues($session),
+                "Sesi tambahan {$this->describeSession($session)} dibuat.",
+                $actor,
+            );
+
+            return $session;
+        });
+    }
+
+    /**
+     * Ubah satu sesi (BR-30/BR-35, F3-R27): kuota langsung (1–200 dan tidak di bawah `booked_count`); jam langsung
+     * bila tidak ada appointment aktif, selain itu sesi menjadi `needs_review` sumber `manual_time` dan jam lama
+     * tetap berlaku sampai resolusi. Selalu menyetel `is_manually_modified = true`. Sesi lampau ditolak.
+     *
+     * @param  array<string, mixed>  $attributes  quota, start_time, end_time (yang tidak dikirim tidak diubah)
+     */
+    public function updateSession(PracticeSession $session, array $attributes, Actor $actor): PracticeSession
+    {
+        return DB::transaction(function () use ($session, $attributes, $actor): PracticeSession {
+            $this->lockFresh($session);
+            $this->assertNotEnded($session);
+
+            $errors = [];
+            $quota = (int) $session->quota;
+            $start = $this->hhmm($session->start_time);
+            $end = $this->hhmm($session->end_time);
+
+            if (array_key_exists('quota', $attributes)) {
+                $quota = (int) $attributes['quota'];
+
+                if ($quota < 1 || $quota > 200) {
+                    $errors['quota'] = 'Kuota minimal 1 dan maksimal 200.';
+                } elseif ($quota < (int) $session->booked_count) {
+                    $errors['quota'] = "Kuota tidak boleh kurang dari jumlah pendaftaran yang sudah ada ({$session->booked_count}).";
+                }
+            }
+
+            if (array_key_exists('start_time', $attributes)) {
+                $value = $this->timeOrNull($attributes['start_time']);
+
+                if ($value === null) {
+                    $errors['start_time'] = 'Format jam mulai tidak valid. Gunakan format JJ:MM.';
+                } else {
+                    $start = $value;
+                }
+            }
+
+            if (array_key_exists('end_time', $attributes)) {
+                $value = $this->timeOrNull($attributes['end_time']);
+
+                if ($value === null) {
+                    $errors['end_time'] = 'Format jam selesai tidak valid. Gunakan format JJ:MM.';
+                } else {
+                    $end = $value;
+                }
+            }
+
+            if (! isset($errors['start_time']) && ! isset($errors['end_time']) && $end <= $start) {
+                $errors['end_time'] = 'Jam selesai harus setelah jam mulai.';
+            }
+
+            $timesChanged = $start !== $this->hhmm($session->start_time) || $end !== $this->hhmm($session->end_time);
+
+            if (
+                $errors === []
+                && $timesChanged
+                && $session->status !== SessionStatus::Cancelled
+                && $this->overlappingSessionExists((int) $session->doctor_id, $session->session_date->format('Y-m-d'), $start, $end, (int) $session->getKey())
+            ) {
+                $errors['start_time'] = 'Jam sesi bertabrakan dengan sesi lain milik dokter ini pada tanggal tersebut.';
+            }
+
+            if ($errors !== []) {
+                throw ValidationException::withMessages($errors);
+            }
+
+            $old = [];
+            $new = [];
+            $values = ['is_manually_modified' => true];
+
+            if ($quota !== (int) $session->quota) {
+                $old['quota'] = (int) $session->quota;
+                $new['quota'] = $quota;
+                $values['quota'] = $quota;
+            }
+
+            $held = $timesChanged && $session->appointments()->active()->count() > 0;
+
+            if ($timesChanged && ! $held) {
+                $old['start_time'] = $this->hhmm($session->start_time);
+                $old['end_time'] = $this->hhmm($session->end_time);
+                $new['start_time'] = $start;
+                $new['end_time'] = $end;
+                $values['start_time'] = $start.':00';
+                $values['end_time'] = $end.':00';
+            }
+
+            $oldStatus = $session->status;
+            $session->forceFill($values)->save();
+
+            if ($held) {
+                $this->setPendingChange($session, [
+                    'source' => PracticeSession::SOURCE_MANUAL_TIME,
+                    'new_start_time' => $start,
+                    'new_end_time' => $end,
+                ], $actor);
+
+                $old['status'] = $oldStatus->value;
+                $new['status'] = $session->status->value;
+                $new['pending_change'] = $session->pending_change;
+            }
+
+            if ($new !== []) {
+                $this->audit->log('session.updated', $session, $old, $new, "Sesi {$this->describeSession($session)} diubah.", $actor);
+            }
+
+            return $session;
+        });
+    }
+
+    /**
+     * Buka/tutup/batalkan satu sesi (BR-35, BR-177, F3-R27). `open ↔ closed` langsung (appointment lama tetap berlaku).
+     * Pembatalan wajib beralasan: langsung `cancelled` bila tidak ada appointment aktif, selain itu `needs_review`
+     * sumber `manual_cancel`. Membuka kembali sesi `cancelled` ditolak bila masih tercakup pengecualian atau dokter
+     * belum `active`. Sesi `needs_review` hanya diselesaikan lewat layar Sesi terdampak (fase 7). Selalu menyetel
+     * `is_manually_modified = true`.
+     */
+    public function setSessionStatus(PracticeSession $session, SessionStatus $to, Actor $actor, ?string $reason = null): PracticeSession
+    {
+        if ($to === SessionStatus::NeedsReview) {
+            throw new InvalidArgumentException('Status needs_review hanya ditetapkan oleh sistem.');
+        }
+
+        return DB::transaction(function () use ($session, $to, $actor, $reason): PracticeSession {
+            $this->lockFresh($session);
+            $this->assertNotEnded($session);
+
+            $from = $session->status;
+            $reason = $this->nullableTrim($reason);
+
+            if ($from === SessionStatus::NeedsReview) {
+                throw ValidationException::withMessages(['status' => 'Sesi ini sedang menunggu penyelesaian di layar Sesi terdampak.']);
+            }
+
+            if ($from === $to) {
+                return $session;
+            }
+
+            if ($reason !== null && mb_strlen($reason) > 255) {
+                throw ValidationException::withMessages(['reason' => 'Alasan maksimal 255 karakter.']);
+            }
+
+            $old = ['status' => $from->value, 'status_reason' => $session->status_reason];
+
+            if ($to === SessionStatus::Cancelled) {
+                if ($reason === null) {
+                    throw ValidationException::withMessages(['reason' => 'Alasan pembatalan sesi wajib diisi.']);
+                }
+
+                if ($session->appointments()->active()->count() > 0) {
+                    $session->forceFill(['is_manually_modified' => true])->save();
+                    $this->setPendingChange($session, ['source' => PracticeSession::SOURCE_MANUAL_CANCEL, 'reason' => $reason], $actor);
+                } else {
+                    $session->forceFill([
+                        'status' => SessionStatus::Cancelled,
+                        'status_reason' => $reason,
+                        'schedule_exception_id' => null,
+                        'pending_change' => null,
+                        'is_manually_modified' => true,
+                    ])->save();
+                }
+            } elseif ($to === SessionStatus::Open) {
+                if ($from === SessionStatus::Cancelled) {
+                    $this->assertReopenAllowed($session);
+                }
+
+                $session->forceFill([
+                    'status' => SessionStatus::Open,
+                    'status_reason' => null,
+                    'schedule_exception_id' => null,
+                    'pending_change' => null,
+                    'is_manually_modified' => true,
+                ])->save();
+            } else {
+                if ($from === SessionStatus::Cancelled) {
+                    throw ValidationException::withMessages(['status' => 'Sesi yang dibatalkan hanya dapat dibuka kembali.']);
+                }
+
+                $session->forceFill(['status' => SessionStatus::Closed, 'status_reason' => $reason, 'is_manually_modified' => true])->save();
+            }
+
+            $new = ['status' => $session->status->value, 'status_reason' => $session->status_reason];
+
+            if ($session->status === SessionStatus::NeedsReview) {
+                $new['pending_change'] = $session->pending_change;
+            }
+
+            $this->audit->log(
+                'session.status_changed',
+                $session,
+                $old,
+                $new,
+                "Status sesi {$this->describeSession($session)} diubah dari {$from->label()} menjadi {$session->status->label()}.",
+                $actor,
+            );
+
+            return $session;
+        });
+    }
+
+    /**
+     * Hapus sesi tambahan manual (00 C, F3-R20, JDW-19): hanya `doctor_schedule_id` NULL tanpa appointment sama
+     * sekali (`PracticeSession::deletionBlockedReason()`), dan belum berakhir. Berlaku untuk Super Admin juga.
+     */
+    public function deleteManualSession(PracticeSession $session, Actor $actor): void
+    {
+        DB::transaction(function () use ($session, $actor): void {
+            $this->lockFresh($session);
+
+            $reason = $session->deletionBlockedReason();
+
+            if ($reason !== null) {
+                throw ValidationException::withMessages(['session' => $reason]);
+            }
+
+            $this->assertNotEnded($session);
+
+            $values = $this->sessionValues($session);
+            $description = "Sesi tambahan {$this->describeSession($session)} dihapus.";
+
+            $session->delete();
+
+            $this->audit->log('session.deleted', $session, $values, null, $description, $actor);
+        });
+    }
+
+    /**
+     * Dokter dinonaktifkan atau diarsipkan (00 F.4, BR-05/BR-177). Sesi mendatang yang belum berakhir: tanpa
+     * appointment aktif menjadi `cancelled` ("Dokter tidak aktif"), dengan appointment aktif menjadi `needs_review`
+     * sumber `doctor_inactive` lewat setPendingChange(). Sesi yang sudah `cancelled` tidak disentuh. Audit
+     * `doctor.status_changed`/`doctor.archived` ditulis DoctorService dengan ringkasan dampak dari laporan ini.
+     */
+    public function applyDoctorInactive(Doctor $doctor, Actor $actor): ScheduleChangeReport
+    {
+        return DB::transaction(function () use ($doctor, $actor): ScheduleChangeReport {
+            $counts = $this->counters();
+            $open = [SessionStatus::Open, SessionStatus::Closed, SessionStatus::NeedsReview];
+
+            $ids = PracticeSession::query()
+                ->where('doctor_id', $doctor->getKey())
+                ->whereIn('status', array_map(fn (SessionStatus $status): string => $status->value, $open))
+                ->notEnded()
+                ->orderBy('id')
+                ->pluck('id');
+
+            foreach ($ids as $id) {
+                DB::transaction(function () use ($id, $doctor, $actor, $open, &$counts): void {
+                    $session = $this->lockById((int) $id);
+
+                    if ($session === null || $session->isEnded() || ! in_array($session->status, $open, true)) {
+                        return;
+                    }
+
+                    if ($session->appointments()->active()->count() === 0) {
+                        $session->forceFill([
+                            'status' => SessionStatus::Cancelled,
+                            'status_reason' => self::REASON_DOCTOR_INACTIVE,
+                            'schedule_exception_id' => null,
+                            'pending_change' => null,
+                        ])->save();
+                        $counts['cancelled']++;
+
+                        return;
+                    }
+
+                    $this->setPendingChange($session, [
+                        'source' => PracticeSession::SOURCE_DOCTOR_INACTIVE,
+                        'doctor_id' => (int) $doctor->getKey(),
+                    ], $actor);
+                    $counts['needsReview']++;
+                });
+            }
+
+            return $this->toReport($counts);
+        });
+    }
+
     // ---- pembantu privat ----
+
+    /**
+     * Baca ulang baris sesi dengan kunci tulis dan perbarui instance pemanggil, agar instance basi tidak menimpa
+     * perubahan lain. Dipanggil di dalam transaksi.
+     */
+    private function lockFresh(PracticeSession $session): void
+    {
+        $fresh = PracticeSession::query()->whereKey($session->getKey())->lockForUpdate()->firstOrFail();
+
+        $session->setRawAttributes($fresh->getRawOriginal(), true);
+    }
+
+    /** Sesi yang sudah berakhir tidak boleh diubah, ditutup, dibatalkan, atau dihapus (F3-R27, BR-33). */
+    private function assertNotEnded(PracticeSession $session): void
+    {
+        if ($session->isEnded()) {
+            throw ValidationException::withMessages(['session' => self::MESSAGE_SESSION_PAST]);
+        }
+    }
+
+    /**
+     * Sesi `cancelled` hanya boleh dibuka bila dokter `active` dan tanggalnya tidak lagi tercakup pengecualian.
+     */
+    private function assertReopenAllowed(PracticeSession $session): void
+    {
+        $doctor = Doctor::query()->whereKey($session->doctor_id)->first(['id', 'status']);
+
+        if ($doctor === null || $doctor->status !== DoctorStatus::Active) {
+            throw ValidationException::withMessages(['status' => 'Sesi tidak dapat dibuka karena dokter belum aktif kembali.']);
+        }
+
+        $covering = ScheduleException::query()->covering($session->session_date)->forDoctor((int) $session->doctor_id)->get();
+        $picked = ScheduleException::pickFor($covering, (int) $session->doctor_id, $session->session_date);
+
+        if ($picked !== null) {
+            throw ValidationException::withMessages([
+                'status' => "Tanggal ini berada dalam pengecualian jadwal ({$picked->reason}). Hapus atau ubah pengecualian terlebih dahulu.",
+            ]);
+        }
+    }
+
+    /**
+     * Irisan jam dengan sesi non-batal dokter yang sama pada tanggal itu (BR-29, I-28): `start1 < end2 AND start2 < end1`.
+     */
+    private function overlappingSessionExists(int $doctorId, string $date, string $start, string $end, ?int $ignoreId): bool
+    {
+        return PracticeSession::query()
+            ->where('doctor_id', $doctorId)
+            ->where('session_date', $date)
+            ->where('status', '!=', SessionStatus::Cancelled->value)
+            ->where('start_time', '<', $end.':00')
+            ->where('end_time', '>', $start.':00')
+            ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->exists();
+    }
+
+    /**
+     * Nilai sesi yang dicatat di audit (tanpa data pasien).
+     *
+     * @return array<string, mixed>
+     */
+    private function sessionValues(PracticeSession $session): array
+    {
+        return [
+            'doctor_id' => (int) $session->doctor_id,
+            'clinic_id' => (int) $session->clinic_id,
+            'session_date' => $session->session_date->format('Y-m-d'),
+            'start_time' => $this->hhmm($session->start_time),
+            'end_time' => $this->hhmm($session->end_time),
+            'quota' => (int) $session->quota,
+            'status' => $session->status->value,
+        ];
+    }
+
+    /** "HH:MM" atau "HH:MM:SS" yang sah menjadi "HH:MM"; selain itu null. */
+    private function timeOrNull(mixed $time): ?string
+    {
+        if (! is_string($time) || preg_match('/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/', $time) !== 1) {
+            return null;
+        }
+
+        return substr($time, 0, 5);
+    }
+
+    private function nullableTrim(?string $value): ?string
+    {
+        $value = $value === null ? '' : trim($value);
+
+        return $value === '' ? null : $value;
+    }
 
     /**
      * Pagar bagi pemanggil non-HTTP (kombinasi jenis vs dokter E.2, urutan tanggal, dan F3-R21: `start_date` lampau
