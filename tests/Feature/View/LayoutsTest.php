@@ -139,7 +139,6 @@ class LayoutsTest extends TestCase
 
         Route::middleware('web')->get('/_uji/masuk', fn () => 'masuk')->name('login');
         Route::middleware('web')->get('/_uji/daftar-kunjungan', fn () => 'daftar')->name('patient.appointments.create');
-        Route::middleware('web')->get('/_uji/dokter', fn () => 'dokter')->name('doctors.index');
         Route::getRoutes()->refreshNameLookups();
 
         $this->get('/_uji/publik')

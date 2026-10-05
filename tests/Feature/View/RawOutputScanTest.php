@@ -59,7 +59,10 @@ class RawOutputScanTest extends TestCase
 
     public function test_public_views_have_no_inline_event_handlers(): void
     {
-        $files = array_filter($this->viewFiles(), fn (string $file): bool => str_contains($this->relative($file), 'public/') || str_contains($this->relative($file), 'components/doctor-card'));
+        $files = array_filter($this->viewFiles(), fn (string $file): bool => str_contains($this->relative($file), 'public/')
+            || str_contains($this->relative($file), 'components/doctor-card')
+            || str_contains($this->relative($file), 'components/schedule-table')
+            || str_contains($this->relative($file), 'components/availability-badge'));
 
         $this->assertNotEmpty($files);
 

@@ -1,0 +1,1 @@
+<span {{ $attributes->merge(['class' => 'badge text-bg-'.$color.' availability-badge', 'data-availability' => $availability->value]) }}><i class="bi {{ $icon }}" aria-hidden="true"></i> @if ($srPrefix !== '')<span class="visually-hidden">{{ $srPrefix }}</span>@endif{{ $label }}</span>

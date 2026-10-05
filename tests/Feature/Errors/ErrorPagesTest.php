@@ -36,17 +36,13 @@ class ErrorPagesTest extends TestCase
             ->assertSee('Halaman tidak ditemukan');
     }
 
-    public function test_404_links_to_doctor_pages_only_when_those_routes_exist(): void
+    public function test_404_links_to_the_doctor_directory(): void
     {
-        // Berlaku sampai fase 3/4 menambah route doctors.index.
-        if (! Route::has('doctors.index')) {
-            $this->get('/tidak-ada')->assertDontSee('Cari Dokter');
-        }
-
-        Route::middleware('web')->get('/_uji/dokter', fn () => 'dokter')->name('doctors.index');
-        Route::getRoutes()->refreshNameLookups();
-
-        $this->get('/tidak-ada')->assertSee('Cari Dokter');
+        // Route doctors.index ada sejak fase 3 (#6); tautan jadwal menyusul bersama #8.
+        $this->get('/tidak-ada')
+            ->assertNotFound()
+            ->assertSee('Cari Dokter')
+            ->assertSee('href="'.route('doctors.index').'"', false);
     }
 
     public function test_unhandled_exception_with_debug_off_renders_generic_500_without_internal_message(): void
