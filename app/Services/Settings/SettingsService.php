@@ -8,6 +8,7 @@ use App\Models\Media;
 use App\Models\User;
 use App\Models\WebsiteSetting;
 use App\Services\Audit\AuditLogger;
+use App\Services\Booking\BookingRules;
 use App\Support\Actor;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -152,6 +153,15 @@ final class SettingsService
 
             DB::afterCommit(fn () => $this->forget());
         });
+    }
+
+    /**
+     * Snapshot pengaturan `booking.*` (jendela pendaftaran, batas online dan pembatalan, check-in, maksimum
+     * pendaftaran aktif, konfirmasi otomatis). Dipakai DoctorAvailabilityQuery dan ScheduleChangeService.
+     */
+    public function bookingRules(): BookingRules
+    {
+        return BookingRules::fromSettings($this);
     }
 
     public function logoUrl(): string
