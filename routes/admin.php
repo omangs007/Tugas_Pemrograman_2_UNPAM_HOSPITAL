@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\DoctorScheduleController;
 use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\ScheduleExceptionController;
 use App\Http\Controllers\Admin\SpecialtyController;
 use App\Http\Controllers\Auth\AdminLoginController;
 use App\Http\Controllers\Auth\AdminPasswordController;
@@ -83,7 +84,19 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
     // Segmen statis didaftarkan sebelum resource berparameter; di tiap modul kelola lebih dulu, baru lihat.
     // Tidak ada rute `show`, dan tidak ada rute apa pun di bawah `admin/dokter*`.
     // [FASE-3 T12] Rute sesi per tanggal didaftarkan di sini.
-    // [FASE-3 T11] Rute pengecualian didaftarkan di sini.
+    // Pengecualian (cuti dan libur), F3-R19: kelola dahulu, lalu lihat. Tanpa show.
+    Route::middleware('permission:schedules.manage')->group(function (): void {
+        Route::resource('jadwal/pengecualian', ScheduleExceptionController::class)
+            ->names('exceptions')
+            ->parameters(['pengecualian' => 'exception'])
+            ->except(['index', 'show']);
+    });
+    Route::middleware('permission:schedules.view')->group(function (): void {
+        Route::resource('jadwal/pengecualian', ScheduleExceptionController::class)
+            ->names('exceptions')
+            ->parameters(['pengecualian' => 'exception'])
+            ->only(['index']);
+    });
     Route::middleware('permission:schedules.manage')->group(function (): void {
         Route::resource('jadwal', DoctorScheduleController::class)
             ->names('schedules')
