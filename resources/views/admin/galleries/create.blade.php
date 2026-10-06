@@ -1,4 +1,3 @@
-```blade
 @php
     $breadcrumbItems = [
         ['label' => 'Konten', 'url' => route('admin.pages.index')],

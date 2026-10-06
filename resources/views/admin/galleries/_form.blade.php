@@ -1,4 +1,3 @@
-```blade
 {{-- Variabel: $gallery (Gallery|null), $action (URL), $submitLabel. Tanpa input slug (F4A-R7) dan tanpa unggah foto (F4A-R23). --}}
 @php($isEdit = $gallery !== null)
 <form method="POST" action="{{ $action }}">

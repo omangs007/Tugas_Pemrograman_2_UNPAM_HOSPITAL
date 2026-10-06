@@ -1,4 +1,3 @@
-```blade
 @php
     $currentSort = is_string(request()->query('urut')) ? request()->query('urut') : '';
     $statusNow = is_string(request()->query('status')) ? request()->query('status') : '';

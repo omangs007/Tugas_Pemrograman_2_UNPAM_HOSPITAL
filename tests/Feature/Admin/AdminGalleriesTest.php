@@ -114,7 +114,8 @@ class AdminGalleriesTest extends TestCase
             ->assertSee('<span class="badge text-bg-success">Terbit</span>', false)
             ->assertSee('<span class="badge text-bg-secondary">Draf</span>', false)
             ->assertSee('href="'.route('admin.galleries.edit', $persalinan).'"', false)
-            ->assertSee('data-confirm-action="'.route('admin.galleries.destroy', $draf).'"', false);
+            ->assertSee('data-confirm-action="'.route('admin.galleries.destroy', $draf).'"', false)
+            ->assertDontSee('```', false);
     }
 
     public function test_index_shows_module_tabs_breadcrumb_and_add_button(): void
@@ -193,7 +194,8 @@ class AdminGalleriesTest extends TestCase
             ->assertSee('name="sort_order"', false)
             ->assertSee('Foto diunggah setelah album disimpan.')
             ->assertDontSee('name="slug"', false)
-            ->assertDontSee('name="photos[0]"', false);
+            ->assertDontSee('name="photos[0]"', false)
+            ->assertDontSee('```', false);
     }
 
     public function test_content_admin_adds_an_album_without_photos_and_is_sent_to_the_edit_page_crd09(): void
@@ -341,7 +343,8 @@ class AdminGalleriesTest extends TestCase
             ->assertSee('name="photos[0]"', false)
             ->assertSee('name="alt_texts[4]"', false)
             ->assertSee('name="captions[4]"', false)
-            ->assertDontSee('name="photos[5]"', false);
+            ->assertDontSee('name="photos[5]"', false)
+            ->assertDontSee('```', false);
     }
 
     public function test_deleting_an_album_removes_its_photos_and_files_but_not_other_albums_crd13(): void

@@ -1,4 +1,3 @@
-```blade
 @php
     $photos = $gallery->mediaIn('photos')->values();
     $photoIds = $photos->pluck('id')->all();
