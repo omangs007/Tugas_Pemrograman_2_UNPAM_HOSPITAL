@@ -160,3 +160,45 @@ Selain data fase 1–2: 52 templat jadwal (51 aktif, 1 nonaktif milik dokter non
 & $PHP artisan test                      # seluruh suite
 npm run build                            # gaya grid jadwal ikut dibundel
 ```
+
+## Fase 4a — Konten publik dan CMS (halaman, banner, artikel, galeri, FAQ, mitra asuransi)
+
+Yang tersedia:
+- **Konten Website** di <http://unpam-hospital.test/admin/konten/halaman> dengan tujuh tab: **Halaman** (15 halaman tetap), **Banner**, **Artikel**, **Kategori Artikel**, **Galeri**, **FAQ**, dan **Mitra Asuransi** (`/admin/konten/banner`, `/artikel`, `/kategori-artikel`, `/galeri`, `/faq`, `/asuransi`).
+- Halaman publik **Beranda** (`/`, banner carousel, layanan, dokter, artikel terbaru, dan CTA bantuan), **Profil** (`/profil`), **Visi dan Misi** (`/visi-misi`), **BPJS dan Asuransi** (`/bpjs-asuransi`), **Panduan Pendaftaran** (`/panduan-pendaftaran`), **Artikel** (`/artikel`, `/artikel/{slug}`), **Galeri** (`/galeri`, `/galeri/{slug}`), **FAQ** (`/faq`), dan **Kebijakan Privasi** (`/kebijakan-privasi`). Judul halaman #4, #6, dan #8 kini dibaca dari tabel `pages`.
+- Fasilitas, kamar rawat inap, kontak, dan kotak pesan menyusul di fase 4b. Tombol menuju fitur fase berikutnya (Daftar Kunjungan, Masuk, Kirim Pesan) baru tampil setelah route-nya ada.
+
+### Hak akses
+
+| Peran | Kelola konten (halaman, banner, artikel, galeri, FAQ, mitra) |
+|---|:-:|
+| Super Admin | ya |
+| Admin Konten | ya |
+| Petugas Pendaftaran | tidak (403) |
+
+Layar konten tidak pernah memuat data pasien. Halaman publik terbuka untuk semua orang; artikel draf, terjadwal, atau terhapus dan album yang belum terbit menjawab 404 di URL-nya, juga untuk staf yang login.
+
+### Aturan yang berlaku untuk semua peran, termasuk Super Admin
+
+15 halaman bersifat tetap: tidak dapat ditambah atau dihapus, hanya diubah. Isi artikel tidak boleh kosong setelah disanitasi. Satu album paling banyak 100 foto. Mitra asuransi yang masih dirujuk data pendaftaran tidak dapat dihapus (nonaktifkan saja). Menghapus artikel hanya menyembunyikannya (soft delete); menghapus kategori membuat artikelnya tanpa kategori; menghapus album ikut menghapus berkas fotonya.
+
+### Data awal dan data demo
+
+`PageSeeder` membuat 15 halaman di semua lingkungan (termasuk produksi) lewat `db:seed`. Data contoh konten hanya untuk lokal:
+
+```powershell
+& $PHP artisan migrate:fresh --seed   # LOKAL SAJA: menghapus semua tabel dan isi database unpam_hospital
+```
+
+Selain data fase 1–3: 15 halaman, 4 kategori artikel, 8 artikel (7 terbit dan 1 draf; satu artikel sengaja tanpa cover untuk menguji placeholder), 3 banner (banner kedua baru memiliki tombol setelah fase 6), 3 album dengan 12 foto, 12 FAQ, dan 4 mitra asuransi fiktif berlabel "Contoh". Total gambar contoh menjadi 57 (32 fase 2 + 25 konten), semuanya dibuat lokal oleh GD. Teks contoh harus ditinjau dan disesuaikan oleh admin sebelum dipakai di produksi.
+
+### Pemeriksaan cepat (fase 4a)
+
+```powershell
+& $PHP artisan route:list --path=admin   # 90 route admin (50 fase 1-3 + 40 fase 4a)
+& $PHP artisan route:list --except-path=admin --name=articles   # articles.index dan articles.show (publik)
+& $PHP artisan route:list --except-path=admin --name=galleries  # galleries.index dan galleries.show (publik)
+& $PHP artisan media:prune --dry-run     # setelah seeding: 0 baris dan 0 berkas yatim
+& $PHP artisan test                      # seluruh suite
+npm run build                            # carousel beranda dan gaya konten ikut dibundel
+```
