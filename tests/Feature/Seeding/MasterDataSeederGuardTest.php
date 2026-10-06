@@ -3,6 +3,7 @@
 namespace Tests\Feature\Seeding;
 
 use Database\Seeders\ClinicSeeder;
+use Database\Seeders\ContentSeeder;
 use Database\Seeders\DoctorSeeder;
 use Database\Seeders\SpecialtySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,6 +26,7 @@ class MasterDataSeederGuardTest extends TestCase
             'SpecialtySeeder' => [SpecialtySeeder::class],
             'ClinicSeeder' => [ClinicSeeder::class],
             'DoctorSeeder' => [DoctorSeeder::class],
+            'ContentSeeder' => [ContentSeeder::class],
         ];
     }
 
@@ -45,6 +47,12 @@ class MasterDataSeederGuardTest extends TestCase
 
         $this->assertInstanceOf(RuntimeException::class, $thrown);
         $this->assertStringContainsString('DILARANG di APP_ENV=production', $thrown->getMessage());
-        $this->assertSame(0, DB::table('specialties')->count() + DB::table('clinics')->count() + DB::table('doctors')->count());
+        $written = 0;
+
+        foreach (['specialties', 'clinics', 'doctors', 'article_categories', 'articles', 'banners', 'galleries', 'faqs', 'insurance_partners', 'media'] as $table) {
+            $written += DB::table($table)->count();
+        }
+
+        $this->assertSame(0, $written);
     }
 }

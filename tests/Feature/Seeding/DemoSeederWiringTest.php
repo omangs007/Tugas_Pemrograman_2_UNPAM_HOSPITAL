@@ -11,7 +11,7 @@ class DemoSeederWiringTest extends TestCase
         $source = (string) file_get_contents(database_path('seeders/DemoSeeder.php'));
         $positions = array_map(
             fn (string $class): int|false => strpos($source, $class.'::class'),
-            ['DemoUserSeeder', 'SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder'],
+            ['DemoUserSeeder', 'SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder', 'ContentSeeder'],
         );
 
         $this->assertNotContains(false, $positions);
@@ -24,7 +24,7 @@ class DemoSeederWiringTest extends TestCase
     {
         $source = (string) file_get_contents(database_path('seeders/DatabaseSeeder.php'));
 
-        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder'] as $class) {
+        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder', 'ContentSeeder'] as $class) {
             $this->assertStringNotContainsString($class, $source);
         }
     }

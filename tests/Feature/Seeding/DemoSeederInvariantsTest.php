@@ -4,8 +4,14 @@ namespace Tests\Feature\Seeding;
 
 use App\Enums\ClinicType;
 use App\Enums\DoctorStatus;
+use App\Models\Article;
+use App\Models\ArticleCategory;
+use App\Models\Banner;
 use App\Models\Clinic;
 use App\Models\Doctor;
+use App\Models\Faq;
+use App\Models\Gallery;
+use App\Models\InsurancePartner;
 use App\Models\Media;
 use App\Models\Specialty;
 use Database\Seeders\DatabaseSeeder;
@@ -49,9 +55,27 @@ class DemoSeederInvariantsTest extends TestCase
         $this->assertSame(20, DB::table('doctor_specialties')->count());
         $this->assertSame(18, DB::table('doctor_specialties')->where('is_primary', true)->count());
         $this->assertSame(16, Media::query()->where('collection', 'photo')->count());
-        $this->assertSame(16, Media::query()->where('collection', 'cover')->count());
-        $this->assertSame(32, Media::query()->count());
+        $this->assertSame(22, Media::query()->where('collection', 'cover')->count()); // 16 layanan + 6 artikel (ContentSeeder)
+        $this->assertSame(57, Media::query()->count()); // 32 master + 25 konten: 6 cover artikel, 3 banner, 12 foto album, 4 logo
         $this->assertSame(16, Doctor::query()->publiclyVisible()->count());
+    }
+
+    public function test_content_counts_match_the_reference_numbers(): void
+    {
+        $this->seedDemo();
+
+        $this->assertSame(4, ArticleCategory::query()->count());
+        $this->assertSame(8, Article::query()->count());
+        $this->assertSame(7, Article::query()->published()->count());
+        $this->assertSame(3, Banner::query()->count());
+        $this->assertSame(3, Gallery::query()->count());
+        $this->assertSame(12, Faq::query()->count());
+        $this->assertSame(4, InsurancePartner::query()->count());
+        $this->assertSame(6, Media::query()->where('collection', 'cover')->where('model_type', (new Article)->getMorphClass())->count());
+        $this->assertSame(3, Media::query()->where('collection', 'image')->count());
+        $this->assertSame(12, Media::query()->where('collection', 'photos')->count());
+        $this->assertSame(4, Media::query()->where('collection', 'logo')->count());
+        $this->assertSame(15, DB::table('pages')->count());
     }
 
     public function test_every_doctor_has_exactly_one_primary_specialty_and_archive_state_is_consistent(): void
@@ -97,7 +121,10 @@ class DemoSeederInvariantsTest extends TestCase
     {
         $this->seedDemo();
 
-        foreach (Media::query()->get() as $media) {
+        // Gambar konten (ContentSeeder) punya ukuran, format, dan alt sendiri; lihat ContentSeederTest.
+        $masterTypes = [(new Doctor)->getMorphClass(), (new Clinic)->getMorphClass()];
+
+        foreach (Media::query()->whereIn('model_type', $masterTypes)->get() as $media) {
             Storage::disk('public')->assertExists($media->directory.'/'.$media->file_name);
             Storage::disk('public')->assertExists((string) $media->thumb_path);
             $this->assertSame('jpg', $media->extension);
@@ -151,7 +178,7 @@ class DemoSeederInvariantsTest extends TestCase
             ->expectsOutputToContain('Data demo sudah ada')
             ->assertExitCode(0);
 
-        $this->assertSame([13, 17, 18, 20, 32], [
+        $this->assertSame([13, 17, 18, 20, 57], [
             Specialty::query()->count(),
             Clinic::query()->count(),
             Doctor::query()->count(),
@@ -164,11 +191,11 @@ class DemoSeederInvariantsTest extends TestCase
     {
         $this->seedDemo();
 
-        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder'] as $seeder) {
+        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder', 'ContentSeeder'] as $seeder) {
             $this->artisan('db:seed', ['--class' => "Database\\Seeders\\{$seeder}", '--no-interaction' => true])->assertExitCode(0);
         }
 
-        $this->assertSame([13, 17, 18, 20, 32], [
+        $this->assertSame([13, 17, 18, 20, 57], [
             Specialty::query()->count(),
             Clinic::query()->count(),
             Doctor::query()->count(),

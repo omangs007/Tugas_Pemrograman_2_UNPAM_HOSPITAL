@@ -24,7 +24,7 @@ class SeederProductionGuardTest extends TestCase
     {
         parent::setUp();
 
-        // DemoSeeder membuat 32 gambar contoh (fase 2): jangan menulis ke storage nyata.
+        // DemoSeeder membuat 57 gambar contoh (32 fase 2 + 25 konten fase 4a): jangan menulis ke storage nyata.
         Storage::fake('public');
     }
 
@@ -41,6 +41,10 @@ class SeederProductionGuardTest extends TestCase
         $this->assertSame(19, WebsiteSetting::query()->count());
         $this->assertSame(15, DB::table('pages')->count(), 'PageSeeder termasuk seeder inti (13 §2.3).');
         $this->assertSame(0, DB::table('specialties')->count() + DB::table('clinics')->count() + DB::table('doctors')->count() + DB::table('media')->count());
+
+        foreach (['article_categories', 'articles', 'banners', 'galleries', 'faqs', 'insurance_partners'] as $table) {
+            $this->assertSame(0, DB::table($table)->count(), $table);
+        }
         $this->assertSame(0, User::query()->count());
         $this->assertSame(0, User::query()->where('email', 'like', '%.test')->count());
     }
