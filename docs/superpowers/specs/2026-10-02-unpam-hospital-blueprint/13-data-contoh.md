@@ -690,6 +690,8 @@ SELECT COUNT(*) FROM appointment_status_histories;                  -- 64
 SELECT SUM(booked_count) FROM practice_sessions;                    -- 26
 SELECT status, COUNT(*) FROM practice_sessions GROUP BY status;     -- needs_review = 1, closed = 1
 SELECT COUNT(*) FROM users WHERE email LIKE '%.test';               -- 10 (hanya di local/testing)
+SELECT COUNT(*) FROM media;                                         -- 57 setelah fase 4a (32 master + 25 konten: 6 cover artikel, 3 banner, 12 foto album, 4 logo; F4A-R27); fase 4b dan 9 menambah gambar fasilitas dan kamar
+SELECT COUNT(*) FROM articles;                                      -- 8 (7 terbit + 1 draf); article_categories 4, banners 3, galleries 3, faqs 12, insurance_partners 4, pages 15
 ```
 
 ### 11.3 Pemeriksaan di PHP

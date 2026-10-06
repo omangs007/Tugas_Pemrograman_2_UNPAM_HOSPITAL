@@ -954,7 +954,7 @@ Semua kelas di bawah mewarisi `ListFilterRequest` (V-45): parameter yang tidak v
 |---|---|---|---|
 | `Public\DoctorIndexRequest` | `doctors.index` | `q`, `spesialisasi`, `poli`, `tanggal` | `tanggal`: hari ini sampai hari ini + `booking.window_days`; `spesialisasi` dan `poli` = slug aktif |
 | `Public\ScheduleIndexRequest` | `schedules.index` | `minggu`, `poli`, `dokter` | `minggu` dinormalkan ke Senin; `poli`, `dokter` = slug aktif |
-| `Public\ArticleIndexRequest` | `articles.index` | `kategori`, `q` | `kategori` = `article_categories.slug` |
+| `Public\ArticleIndexRequest` | `articles.index` | `kategori`, `q` | `kategori` = `article_categories.slug` yang ada; `q` ≤ 100. Berdiri sendiri seperti `Public\DoctorIndexRequest` (D-101, F4A-R12): nilai tidak valid diabaikan tanpa pesan dan tanpa flash `warning` |
 | `PracticeSessionIndexRequest` | `admin.sessions.index` | `dari`, `sampai`, `dokter`, `poli`, `status` | `status` = `SessionStatus`; `sampai` ≥ `dari` |
 | `AppointmentIndexRequest` | `admin.appointments.index` | `dari`, `sampai`, `poli`, `dokter`, `status`, `kanal`, `q`, `urut` | `status` = `AppointmentStatus`; `kanal` = `BookingChannel`; rentang = tanggal kunjungan |
 | `QueueIndexRequest` | `admin.queue.index` | `tanggal`, `poli`, `dokter`, `kode` | `tanggal` default hari ini; `kode` dinormalkan `BookingCodeGenerator::normalize()` |

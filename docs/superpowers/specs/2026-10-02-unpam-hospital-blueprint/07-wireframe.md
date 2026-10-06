@@ -344,7 +344,7 @@ Satu sesi selalu menampilkan **satu** label `Availability`, dipilih menurut prio
 | | Sp.U                 |  | Sp.PD                |  | Sp.A                 | |
 | | Urologi              |  | Penyakit Dalam       |  | Anak                 | |
 | | Poli Urologi         |  | Poli Penyakit Dalam  |  | Poli Anak            | |
-| | [ Lihat Jadwal ]     |  | [ Lihat Jadwal ]     |  | [ Lihat Jadwal ]     | |
+| | Tersedia - 6 Okt     |  | Penuh - 6 Okt        |  | Cuti - 7 Okt         | |
 | +----------------------+  +----------------------+  +----------------------+ |
 +------------------------------------------------------------------------------+
 | KETERSEDIAAN KAMAR RAWAT INAP                           <Lihat detail kamar> |
@@ -382,7 +382,7 @@ Satu sesi selalu menampilkan **satu** label `Availability`, dipilih menurut prio
 | +- HERO ---------------------+ |      | | {foto dokter}              | |
 | |                            | |      | | dr. Raka Wirawan,          | |
 | | Layanan kesehatan yang     | |      | | Sp.U - Urologi             | |
-| | ramah dan terpercaya       | |      | | [ Lihat Jadwal ]           | |
+| | ramah dan terpercaya       | |      | | Tersedia - 6 Okt           | |
 | |                            | |      | +----------------------------+ |
 | | ( o o o )  [Jeda] [<] [>]  | |      | o o o   (scroll-snap)          |
 | +----------------------------+ |      +--------------------------------+
@@ -411,13 +411,13 @@ Satu sesi selalu menampilkan **satu** label `Availability`, dipilih menurut prio
 **Elemen**
 
 1. **Hero/banner carousel** (`x-image`): judul, subjudul, tombol opsional dari `banners` (`button_label`, `button_url`: path internal atau URL https), indikator slide, panah sebelumnya/berikutnya, tombol jeda/putar. `<h1>` tetap berasal dari `pages.home.title` (tidak ikut berganti saat slide berpindah); judul slide memakai elemen non-heading bergaya h2 **[ASUMSI]**.
-2. **Tiga tombol utama**: **Cari Dokter** → `doctors.index`; **Jadwal Dokter** → `schedules.index`; **Daftar Kunjungan** → `patient.appointments.create` (tamu diarahkan ke `login`, lalu kembali).
+2. **Tiga tombol utama**: **Cari Dokter** → `doctors.index`; **Jadwal Dokter** → `schedules.index`; **Daftar Kunjungan** → `patient.appointments.create` (tamu diarahkan ke `login`, lalu kembali); tombol ini hanya tampil bila route-nya ada (fase 6, F4A-R15). Tiga tombol ditempatkan tepat di bawah `<h1>` dan subjudul, sebelum carousel, agar terlihat tanpa gulir pada 360 px (15 RSP-01; F4A-R34).
 3. **Kotak pencarian dokter cepat** (`x-form.input`, `x-form.select`): nama, spesialisasi, poliklinik, tanggal praktik; kirim GET ke `doctors.index`.
 4. **Layanan unggulan**: enam kartu poliklinik aktif (urut `sort_order`) berisi gambar `cover`/ikon, nama, lokasi, tautan ke `clinics.show`; tautan “Lihat semua layanan”.
-5. **Dokter**: kartu `x-doctor-card` (foto, nama + gelar, spesialisasi, poliklinik, tombol “Lihat Jadwal” → `doctors.show`); tautan “Lihat semua dokter”.
-6. **Ringkasan ketersediaan kamar**: satu kartu kecil per kategori aktif (nama, “N dari M”, badge Tersedia/Penuh) + kalimat **“Diperbarui: {tanggal-jam}”** dan penjelasan bahwa data diperbarui manual dan bukan real-time (`availability_updated_at` paling lama dari kategori; bila kosong “Belum diperbarui”).
+5. **Dokter**: empat kartu `x-doctor-card` pertama menurut `sort_order` (foto, nama + gelar sebagai satu-satunya tautan ke `doctors.show`, spesialisasi, poliklinik, dan bila ada lencana ketersediaan, “Jadwal terdekat”, serta tombol Daftar hanya bila route pendaftaran ada); tanpa tombol “Lihat Jadwal” terpisah karena tautan bersarang dilarang (F3-R25, F4A-R16); tautan “Lihat semua dokter”.
+6. **Ringkasan ketersediaan kamar** (ditunda ke fase 4b, F4A-R1): satu kartu kecil per kategori aktif (nama, “N dari M”, badge Tersedia/Penuh) + kalimat **“Diperbarui: {tanggal-jam}”** dan penjelasan bahwa data diperbarui manual dan bukan real-time (`availability_updated_at` paling lama dari kategori; bila kosong “Belum diperbarui”).
 7. **Artikel terbaru**: tiga artikel terbit (cover, kategori, tanggal, judul, tautan).
-8. **CTA kontak/IGD**: blok latar `$secondary-accent` dengan nomor IGD (placeholder), tombol WhatsApp (tautan biasa), Telepon, Petunjuk Arah (`map.directions_url`), Kirim Pesan (`contact`).
+8. **CTA kontak/IGD**: blok latar `$secondary-accent` dengan nomor IGD (placeholder), tombol WhatsApp (tautan biasa), Telepon, Petunjuk Arah (`map.directions_url`), Kirim Pesan (`contact`; hanya bila route ada, fase 4b, F4A-R15). Blok disembunyikan bila semua isiannya kosong.
 
 **Perilaku interaksi**
 
@@ -445,7 +445,7 @@ Satu sesi selalu menampilkan **satu** label `Availability`, dipilih menurut prio
 
 **Aksesibilitas**
 
-- Urutan fokus: header → hero (indikator, jeda, panah, tombol slide) → tiga tombol utama → pencarian cepat → layanan → dokter → kamar → artikel → CTA → footer.
+- Urutan fokus: header → tiga tombol utama → hero (indikator, jeda, panah, tombol slide; F4A-R34) → pencarian cepat → layanan → dokter → kamar → artikel → CTA → footer.
 - Carousel: `role="region" aria-roledescription="carousel" aria-label="Banner"`; tiap slide `role="group" aria-roledescription="slide" aria-label="1 dari 3"`; indikator `aria-label="Slide 1"`; kemajuan otomatis memakai `aria-live="off"` dan beralih `polite` saat jeda.
 - Teks di atas gambar hero ditempatkan pada **panel solid** `rgba(10,77,140,.85)` (teks putih ±8:1) agar kontras terjaga apa pun gambarnya; `alt` gambar diambil dari `media.alt_text` (wajib saat unggah).
 - Setiap field pencarian punya `<label>` (boleh visually-hidden di mobile); tombol utama berupa tautan dengan teks jelas; badge kamar membawa teks “Tersedia/Penuh”, bukan warna saja.
@@ -479,7 +479,7 @@ Satu sesi selalu menampilkan **satu** label `Availability`, dipilih menurut prio
 | | Sp.U                 |  | Sp.PD                |  |                      | |
 | | Urologi              |  | Penyakit Dalam       |  | Dokter Gigi          | |
 | | Poli Urologi         |  | Poli Penyakit Dalam  |  | Poli Gigi            | |
-| | [ Lihat Jadwal ]     |  | [ Lihat Jadwal ]     |  | [ Lihat Jadwal ]     | |
+| | Tersedia - 6 Okt     |  | Penuh - 6 Okt        |  | Tersedia - 7 Okt     | |
 | +----------------------+  +----------------------+  +----------------------+ |
 | (baris berikutnya: kartu 4-6 dst., 12 kartu per halaman)                     |
 +------------------------------------------------------------------------------+
@@ -514,13 +514,13 @@ Kondisi kosong:
 | | {foto}  dr. Raka Wirawan,  | |      | [Semua               v]        |
 | |         Sp.U               | |      | Poliklinik                     |
 | |         Urologi            | |      | [Semua               v]        |
-| |         [ Lihat Jadwal ]   | |      | Tanggal praktik                |
+| |         Tersedia - 6 Okt   | |      | Tanggal praktik                |
 | +----------------------------+ |      | [__/__/____]                   |
 | +----------------------------+ |      | [   Cari Dokter    ]           |
 | | {foto}  dr. Sinta Maharani,| |      | [   Reset filter   ]           |
 | |         Sp.PD              | |      +--------------------------------+
 | |         Penyakit Dalam     | |
-| |         [ Lihat Jadwal ]   | |
+| |         Penuh - 6 Okt      | |
 | +----------------------------+ |
 | [<]  [1] [2]  [>]              |
 +--------------------------------+
@@ -832,7 +832,7 @@ Kondisi kosong:
 | | dr. Raka Wirawan,   |  | dr. Bima Santoso,   |                             |
 | | Sp.U                |  | Sp.U                |                             |
 | | Sisa 5 (Sen 5 Okt)  |  | Sisa 12 (Sen 12 Okt)|                             |
-| | [ Lihat Jadwal ]    |  | [ Lihat Jadwal ]    |                             |
+| | Tersedia - 5 Okt    |  | Tersedia - 12 Okt   |                             |
 | +---------------------+  +---------------------+                             |
 +------------------------------------------------------------------------------+
 ```
