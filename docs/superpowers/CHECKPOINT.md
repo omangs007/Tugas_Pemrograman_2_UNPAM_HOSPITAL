@@ -1,6 +1,6 @@
 # Checkpoint — UNPAM HOSPITAL
 
-**Terakhir diperbarui:** 2026-10-05 (penyusunan rencana fase 4a **dijeda**: 17 tugas sudah ditulis, pemeriksaan konsistensi 4 dari 5 selesai) · **Tag git:** `checkpoint/2026-10-05-fase-4a-rencana` (sebelumnya `checkpoint/2026-10-05-fase-3-selesai`, `checkpoint/2026-10-05-fase-3-eksekusi`, `checkpoint/2026-10-05-fase-3-rencana`, `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
+**Terakhir diperbarui:** 2026-10-06 (rencana fase 4a **selesai dirakit dan di-commit**, menunggu persetujuan pemilik) · **Tag git:** `checkpoint/2026-10-05-fase-4a-rencana` (sebelumnya `checkpoint/2026-10-05-fase-3-selesai`, `checkpoint/2026-10-05-fase-3-eksekusi`, `checkpoint/2026-10-05-fase-3-rencana`, `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
 
 Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah sebelum bekerja.
 
@@ -12,10 +12,10 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Fase 0 — Lingkungan & skeleton | **Selesai**, di-merge ke `master`. Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
 | Fase 1 — Fondasi | **Selesai** dan **sudah di-merge** ke `master` (fast-forward `0b87342`, 2026-10-04; cabang `fase-1-fondasi` dihapus). Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang beserta perbaikannya sudah selesai. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
 | Fase 2 — Master Data | **Eksekusi dan gerbang fase selesai** di cabang `fase-2-master-data`. Semua 16 tugas lulus review. Final review seluruh cabang beserta satu gelombang perbaikan (F1–F5) selesai. `migrate:fresh --seed` dijalankan dengan izin pemilik dan jumlah datanya persis sesuai target. Uji manual Step 19 dijalankan lewat Playwright (laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-05`); dua cacat temuannya (M1 `&nbsp;` editor, M2 panah galeri) sudah diperbaiki di `929c13a`. Hasil akhir: 1845 tes lulus (8479 asersi), Pint PASS, `npm run build` OK, 31 route admin. **Sudah di-merge** ke `master` (fast-forward `51134af`, 2026-10-05; cabang `fase-2-master-data` dihapus; suite pada hasil merge 1845 lulus). Rencana, catatan eksekusi, dan keputusan X1–X14 ada di bagian akhir `docs/superpowers/plans/2026-10-04-fase-2-master-data.md`. |
-| Cabang git | `master` (fase 0 + fase 1 + fase 2 + fase 3). Cabang `fase-3-jadwal-dokter` sudah di-merge (fast-forward `af4fd02`..`1558f62`) lalu dihapus. Cabang kerja **`fase-4a-konten-publik`** dibuat dari `master` (`a6c9534`); isinya baru commit CHECKPOINT ini, belum ada kode. Tidak ada stash. Repo tanpa remote. |
+| Cabang git | `master` (fase 0 + fase 1 + fase 2 + fase 3). Cabang `fase-3-jadwal-dokter` sudah di-merge (fast-forward `af4fd02`..`1558f62`) lalu dihapus. Cabang kerja **`fase-4a-konten-publik`** dibuat dari `master` (`a6c9534`); isinya commit CHECKPOINT dan rencana fase 4a, belum ada kode. Tidak ada stash. Repo tanpa remote. |
 | Keputusan tertunda pemilik | Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
 | Fase 3 — Penjadwalan (Jadwal Dokter) | Rencana disetujui pemilik. **Task 1–16 selesai** lewat subagent-driven-development (Sonnet 5.5), semuanya lolos review. Putaran perbaikan terjadi di Task 3, 11 (juga view Task 10), dan 13. Final review seluruh cabang: **With fixes** (3 Important, tanpa Critical). Satu gelombang perbaikan final (F1–F3, F6, M1, M2; `49f966a`..`606cfbe`) lolos re-review terbatas. `migrate:fresh --seed` sudah dijalankan dengan izin pemilik, dan uji manual Playwright selesai dengan Lighthouse aksesibilitas 100/100/100 setelah perbaikan. **Gerbang fase terpenuhi:** 2933 tes lulus (14113 asersi), Pint PASS, `npm run build` OK, 50 route admin (19 baru). **Sudah di-merge** ke `master` atas persetujuan pemilik (fast-forward `1558f62`, 2026-10-05; cabang `fase-3-jadwal-dokter` dihapus; suite pada hasil merge 2933 lulus). Rencana, catatan eksekusi, dan keputusan E1–E13: bagian akhir `docs/superpowers/plans/2026-10-05-fase-3-penjadwalan.md`. Rinciannya di §3a. |
-| Fase 4a — Konten Publik dan CMS | **Penyusunan rencana dijeda** (permintaan pemilik). Digest, kerangka kontrak (keputusan F4A-R1–R37), dan teks 17 tugas sudah ditulis. Empat dari lima pemeriksa konsistensi selesai; temuannya belum diperbaiki. Rencana belum dirakit dan belum diajukan ke pemilik. Rinciannya di §3b. |
+| Fase 4a — Konten Publik dan CMS | **Rencana selesai dan di-commit, menunggu persetujuan pemilik:** `docs/superpowers/plans/2026-10-05-fase-4a-konten-publik.md` (17 tugas, keputusan F4A-R1–R37, ±24.500 baris). Kelima pemeriksa konsistensi selesai, dan semua temuannya (3 Blocker, 3 Major, sisanya Minor) sudah diperbaiki atau diputuskan. Rinciannya di §3b. |
 
 ### 3a. Status fase 3 (selesai dan di-merge 2026-10-05)
 
@@ -28,8 +28,9 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 
 - **Merge:** fast-forward ke `master` (`1558f62`) atas pilihan pemilik "1"; suite pada hasil merge 2933 lulus. Cabang `fase-3-jadwal-dokter`, workspace SDD fase 3, dan bahan `.superpowers/plan-fase-3/` sudah dihapus; catatan lengkapnya kini ada di rencana dan riwayat git.
 
-### 3b. Status penyusunan rencana fase 4a (dijeda 2026-10-05)
+### 3b. Status rencana fase 4a (dirakit 2026-10-06)
 
+- **Rencana:** `docs/superpowers/plans/2026-10-05-fase-4a-konten-publik.md`, sudah di-commit dan menunggu persetujuan pemilik.
 - **Cabang:** `fase-4a-konten-publik` (dari `master` `a6c9534`). Belum ada kode.
 - **Cakupan 4a:** F-PUB-01/02/03/10/11/12/13/14/17/18 dan F-ADM-18–23. Halaman publik #1, #2, #3, #16–#21, detail album, dan Kebijakan Privasi; admin #39 (Halaman, Banner, Artikel, Kategori, Galeri, FAQ, Mitra Asuransi); 6 migration; `PageSeeder` dan `ContentSeeder`. Fasilitas, kamar, kontak, dan `map-embed` masuk fase 4b.
 - **Bahan penyusunan** di `.superpowers/plan-fase-4a/` (git-ignored lewat `.gitignore` `*` di folder itu; **jangan** jalankan `git clean -fdx`):
@@ -38,34 +39,21 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
   - `tugas-spesifikasi.md` (isi wajib per tugas), `penulis-instructions.md`, `pemeriksa-instructions.md`.
   - `header.md`: kepala rencana (Goal, Architecture, Tech Stack, Spec, Global Constraints).
   - `tasks/task-01.md` … `task-17.md`: teks 17 tugas, ±23.600 baris, oleh penulis A (T1–T4), B (T5–T8), C (T9–T11), D (T12–T14), dan E (T15–T17).
-  - `pemeriksaan-k1.md`, `-k3.md`, `-k4.md`, `-k5.md`: temuan pemeriksa konsistensi.
+  - `pemeriksaan-k1.md` … `-k5.md`: temuan pemeriksa konsistensi.
+  - `perbaikan-instructions.md`, `perbaikan-A/C/D/E.md`: putaran perbaikan beserta keputusan koordinator.
   - `progress.md`: ledger penyusunan.
-- **Temuan pemeriksa yang belum diperbaiki** (rinciannya di berkas `pemeriksaan-*.md`):
-  - **K1 (T1–T4):** 1 Blocker (T3 `BannerButtonTest` tanpa `RefreshDatabase`) dan 7 Minor.
-  - **K3 (T9–T11):** 6 Minor. Antara lain id `alt_texts-N` di T9, `bail` pada `description` T11, dan berkas yatim saat unggah gagal di tengah (diterima sebagai kompromi; dibersihkan `media:prune`).
-  - **K4 (T12–T14):** 1 Blocker dan 5 Minor. Blocker-nya: T14 harus mengubah `PublicClinicDetailTest:275` `assertDontSee('Galeri')` menjadi `assertDontSee('id="galeri-judul"', false)`. Sapuan menu menunjukkan tidak ada tes lain yang patah oleh menu baru.
-  - **K5 (T15–T17):** 3 Major dan 12 Minor.
-    - Major: D untuk F4A-R34 + Edit 07 "Urutan fokus", D-123 untuk F4A-R32, dan alt foto album di T16 menurut F4A-R36.
-    - Minor, antara lain: D untuk R35, tes "Kirim Pesan" bersyarat `Route::has('contact')`, dan nama `HomeController::FEATURED_*` di 00 J.6.
-  - **K2 (T5–T8):** dihentikan saat jeda dan belum menulis `pemeriksaan-k2.md`. Kirim ulang dulu.
+- **Temuan pemeriksa dan penyelesaiannya** (2026-10-06):
+  - **K1 (T1–T4):** Blocker `BannerButtonTest` tanpa `RefreshDatabase` diperbaiki. Minor diperbaiki atau dicatat di kerangka; trailer tetap Opus 5.5 (F4A-R37).
+  - **K2 (T5–T8):** Blocker `AdminArticlesTest` tanpa `InteractsWithMedia` diperbaiki koordinator. Tidak ada tes lama yang patah oleh menu "Konten Website".
+  - **K3 (T9–T11):** id `alt_texts-N`, `bail` deskripsi mitra, dan hitungan tes diperbaiki. Berkas yatim saat unggah gagal di tengah diterima sebagai keterbatasan (dibersihkan `media:prune`).
+  - **K4 (T12–T14):** Blocker `PublicClinicDetailTest` diperbaiki di T14 Step 8. Tiga tes fallback diganti nama, dan tes FAQ diperketat.
+  - **K5 (T15–T17):** Major D-113/Edit 07 (R34), D-123 (R32), dan alt album (R36) diperbaiki. Minor D-105/D-112, guard produksi `ContentSeeder`, dan nama tambahan di 00 J.6 juga diperbaiki.
+- **Isi rencana:** kepala, Global Constraints, Review Focus, Keputusan F4A-R1–R37, Keterbatasan yang diketahui, Nama baru, Susunan halaman publik, peta 182 berkas, dan Task 1–17. Dirakit dengan skrip dari `header.md`, `kerangka.md`, dan `tasks/`.
 
 Langkah lanjut:
-1. Kirim ulang pemeriksa K2 (Sonnet 5.5) untuk T5–T8 dengan `pemeriksa-instructions.md`. Perhatikan jangkar `routes/admin.php`, impor `use`, dan menu sidebar "Konten Website" yang kini tampil di admin (tes lama yang mungkin patah).
-2. Kirim satu putaran perbaikan per penulis (agen baru Sonnet 5.5, karena agen lama tidak dapat dilanjutkan). Isi tiap putaran:
-   - temuan Blocker/Major/Minor dari `pemeriksaan-*.md`;
-   - keputusan F4A-R31–R37 di kerangka;
-   - perintah untuk mengubah `tasks/task-NN.md` langsung.
-3. Rakit rencana `docs/superpowers/plans/2026-10-05-fase-4a-konten-publik.md`. Urutannya:
-   - `header.md`;
-   - Review Focus (kerangka F);
-   - Keputusan F4A-R1–R37 (kerangka B);
-   - Nama baru (kerangka C);
-   - Susunan halaman (kerangka E);
-   - peta berkas;
-   - `tasks/task-01..17`.
-
-   Lalu jalankan self-review writing-plans: placeholder, cakupan spesifikasi, konsistensi tipe.
-4. Commit rencana di cabang `fase-4a-konten-publik` dan perbarui CHECKPOINT. Ajukan ke pemilik untuk persetujuan. Setelah disetujui, eksekusi dengan `superpowers:subagent-driven-development` (Sonnet 5.5).
+1. Pemilik meninjau rencana dan memilih cara eksekusi.
+2. Setelah disetujui, eksekusi dengan `superpowers:subagent-driven-development` (implementer dan reviewer Sonnet 5.5). Sebelum Task 1, nyalakan Apache dan MySQL di `C:\xampp3\xampp-control.exe` dan pastikan suite basis 2933 lulus.
+3. Gerbang Task 17: `migrate:fresh --seed` di DB pengembangan perlu izin eksplisit pemilik, lalu uji manual Playwright dan Lighthouse.
 
 Yang sudah ada di aplikasi:
 - Fase 1: enum, akun & peran (Spatie), audit log, media + sanitasi HTML, pengaturan situs, tema & komponen Blade, layout publik/pasien/auth/admin, login/logout staf, ganti password wajib, header keamanan, `StaffAccountService`, `app:create-super-admin`, `media:prune`, seeder demo staf.
@@ -96,7 +84,7 @@ git status; git branch --show-current          # harus bersih, di master (atau c
 curl.exe -s -o NUL -w '%{http_code}' http://unpam-hospital.test/layanan       # 200
 ```
 
-Bila semua hijau, lanjutkan dari "Langkah lanjut" §3a: susun rencana fase 4a dengan `superpowers:writing-plans`. Setelah pemilik menyetujui rencananya, eksekusi dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
+Bila semua hijau, lanjutkan dari "Langkah lanjut" §3b: setelah pemilik menyetujui rencana fase 4a, eksekusi dengan `superpowers:subagent-driven-development` memakai subagent **Sonnet 5.5**.
 
 ## 4. Bawaan (carry) untuk fase berikutnya
 
@@ -194,3 +182,7 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
    - Lima penulis paralel menulis 17 tugas.
    - Empat dari lima pemeriksa konsistensi selesai.
    - Dijeda atas permintaan pemilik ("Stop dulu lanjut nanti, buatkan checkpoint"), dan pemeriksa K2 dihentikan.
+11. **2026-10-06:**
+   - Dilanjutkan atas permintaan pemilik ("lanjutkan"). Pemeriksa K2 (T5–T8) dikirim ulang dan selesai (1 Blocker, 3 Minor).
+   - Putaran perbaikan oleh agen baru Sonnet 5.5 untuk penulis A, C, D, dan E, ditambah perbaikan langsung koordinator untuk T5/T8/T14/T17 dan kerangka.
+   - Rencana fase 4a dirakit, di-self-review, lalu di-commit. Rencana diajukan ke pemilik untuk persetujuan.
