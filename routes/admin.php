@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\DoctorScheduleController;
 use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PracticeSessionController;
 use App\Http\Controllers\Admin\ScheduleExceptionController;
 use App\Http\Controllers\Admin\SpecialtyController;
@@ -122,6 +123,19 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
             ->names('schedules')
             ->parameters(['jadwal' => 'schedule'])
             ->only(['index']);
+    });
+
+    // Konten website #39 (fase 4a, F4A-R28): semua route memakai permission:content.manage.
+    Route::middleware('permission:content.manage')->prefix('konten')->group(function (): void {
+        Route::get('halaman', [PageController::class, 'index'])->name('pages.index');
+        Route::get('halaman/{page}/ubah', [PageController::class, 'edit'])->name('pages.edit');
+        Route::match(['put', 'patch'], 'halaman/{page}', [PageController::class, 'update'])->name('pages.update');
+        // Task 6: banner
+        // Task 7: kategori artikel
+        // Task 8: artikel
+        // Task 9: galeri
+        // Task 10: FAQ
+        // Task 11: mitra asuransi
     });
 
     // J. Media (11 §2.3 J, F2-R3). JSON; izin akhir ditentukan MediaPolicy menurut pemilik media.

@@ -118,6 +118,16 @@ return [
             ['label' => 'Pengecualian', 'route' => 'admin.exceptions.index', 'permission' => 'schedules.view', 'active' => ['admin.exceptions.*']],
             ['label' => 'Sesi Terdampak', 'route' => 'admin.sessions.review', 'permission' => 'sessions.review', 'active' => ['admin.sessions.review', 'admin.sessions.resolve']],
         ],
+        // Halaman #39 (F4A-R28). Titik masuk = tab Halaman. Tab ke route yang belum ada otomatis tersembunyi.
+        'content' => [
+            ['label' => 'Halaman', 'route' => 'admin.pages.index', 'permission' => 'content.manage', 'active' => ['admin.pages.*']],
+            ['label' => 'Banner', 'route' => 'admin.banners.index', 'permission' => 'content.manage', 'active' => ['admin.banners.*']],
+            ['label' => 'Artikel', 'route' => 'admin.articles.index', 'permission' => 'content.manage', 'active' => ['admin.articles.*']],
+            ['label' => 'Kategori Artikel', 'route' => 'admin.article-categories.index', 'permission' => 'content.manage', 'active' => ['admin.article-categories.*']],
+            ['label' => 'Galeri', 'route' => 'admin.galleries.index', 'permission' => 'content.manage', 'active' => ['admin.galleries.*']],
+            ['label' => 'FAQ', 'route' => 'admin.faqs.index', 'permission' => 'content.manage', 'active' => ['admin.faqs.*']],
+            ['label' => 'Mitra Asuransi', 'route' => 'admin.insurance-partners.index', 'permission' => 'content.manage', 'active' => ['admin.insurance-partners.*']],
+        ],
     ],
 
 ];
