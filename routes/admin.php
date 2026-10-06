@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\ClinicController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DoctorController;
@@ -130,7 +131,10 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
         Route::get('halaman', [PageController::class, 'index'])->name('pages.index');
         Route::get('halaman/{page}/ubah', [PageController::class, 'edit'])->name('pages.edit');
         Route::match(['put', 'patch'], 'halaman/{page}', [PageController::class, 'update'])->name('pages.update');
-        // Task 6: banner
+        Route::resource('banner', BannerController::class)
+            ->names('banners')
+            ->parameters(['banner' => 'banner'])
+            ->except(['show']);
         // Task 7: kategori artikel
         // Task 8: artikel
         // Task 9: galeri
