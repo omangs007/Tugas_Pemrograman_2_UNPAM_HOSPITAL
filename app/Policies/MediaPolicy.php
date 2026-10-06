@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Models\Article;
+use App\Models\Banner;
 use App\Models\Clinic;
 use App\Models\Doctor;
+use App\Models\Gallery;
+use App\Models\InsurancePartner;
 use App\Models\Media;
+use App\Models\Page;
 use App\Models\Specialty;
 use App\Models\User;
 
@@ -14,9 +19,10 @@ use App\Models\User;
  * 04 §5.1 / F2-R16: izin ditentukan pemilik media.
  *
  * - Doctor => `doctors.manage`; Clinic dan Specialty => `clinics.manage`.
+ * - Page, Article, Banner, Gallery, dan InsurancePartner => `content.manage` (F4A-R9).
  * - `model_type` NULL: koleksi `logo` => `settings.manage`; koleksi `editor` => pengunggah sendiri atau
  *   salah satu dari `content.manage`/`clinics.manage`/`facilities.manage`; koleksi lain ditolak.
- * - `model_type` lain belum dipetakan sehingga ditolak (fase 4 menambah Facility, RoomCategory, dst.).
+ * - `model_type` lain belum dipetakan sehingga ditolak (fase 4b menambah Facility dan RoomCategory).
  *
  * Hanya akun staf. Super Admin lolos lewat Gate::before sebelum sampai ke sini.
  */
@@ -63,6 +69,7 @@ final class MediaPolicy
         return match ($media->model_type) {
             Doctor::class => $user->can('doctors.manage'),
             Clinic::class, Specialty::class => $user->can('clinics.manage'),
+            Page::class, Article::class, Banner::class, Gallery::class, InsurancePartner::class => $user->can('content.manage'),
             default => false,
         };
     }

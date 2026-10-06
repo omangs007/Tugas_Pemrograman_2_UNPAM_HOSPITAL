@@ -2,9 +2,14 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\Article;
+use App\Models\Banner;
 use App\Models\Clinic;
 use App\Models\Doctor;
+use App\Models\Gallery;
+use App\Models\InsurancePartner;
 use App\Models\Media;
+use App\Models\Page;
 use App\Models\Specialty;
 use App\Models\User;
 use App\Policies\MediaPolicy;
@@ -41,6 +46,12 @@ class MediaPolicyTest extends TestCase
             'cover poliklinik' => [Clinic::class, 'cover', $contentOnly],
             'galeri poliklinik' => [Clinic::class, 'gallery', $contentOnly],
             'media spesialisasi' => [Specialty::class, 'cover', $contentOnly],
+            'gambar editor halaman' => [Page::class, 'editor', $contentOnly],
+            'cover artikel' => [Article::class, 'cover', $contentOnly],
+            'gambar editor artikel' => [Article::class, 'editor', $contentOnly],
+            'gambar banner' => [Banner::class, 'image', $contentOnly],
+            'foto album galeri' => [Gallery::class, 'photos', $contentOnly],
+            'logo mitra asuransi' => [InsurancePartner::class, 'logo', $contentOnly],
             'logo situs (tanpa pemilik)' => [null, 'logo', $superOnly],
             'tipe pemilik yang belum dipetakan' => ['App\Models\Facility', 'cover', $superOnly],
             'koleksi tanpa pemilik selain logo dan editor' => [null, 'photo', $superOnly],
@@ -75,6 +86,22 @@ class MediaPolicyTest extends TestCase
         $this->assertFalse(Gate::forUser($this->userFor('patient'))->allows('reorder', $owned));
         $this->assertFalse(Gate::forUser($content)->allows('reorder', $unowned));
         $this->assertTrue(Gate::forUser($content)->allows('reorder', $this->mediaFor(Doctor::class, 'photo')));
+    }
+
+    public function test_reorder_of_content_owned_media_is_for_content_managers_only(): void
+    {
+        $content = $this->userFor('content-admin');
+        $officer = $this->userFor('registration-officer');
+        $patient = $this->userFor('patient');
+
+        foreach ([[Gallery::class, 'photos'], [Article::class, 'cover'], [Banner::class, 'image'], [InsurancePartner::class, 'logo'], [Page::class, 'editor']] as [$type, $collection]) {
+            $media = $this->mediaFor($type, $collection);
+
+            $this->assertTrue(Gate::forUser($content)->allows('reorder', $media), "content-admin {$collection}");
+            $this->assertTrue(Gate::forUser($this->userFor('super-admin'))->allows('reorder', $media), "super-admin {$collection}");
+            $this->assertFalse(Gate::forUser($officer)->allows('reorder', $media), "petugas {$collection}");
+            $this->assertFalse(Gate::forUser($patient)->allows('reorder', $media), "pasien {$collection}");
+        }
     }
 
     public function test_content_admin_cannot_touch_the_site_logo_but_super_admin_can(): void

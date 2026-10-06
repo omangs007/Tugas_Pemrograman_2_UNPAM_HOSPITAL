@@ -22,12 +22,20 @@ return [
         'schedule' => 'Templat jadwal',
         'exception' => 'Pengecualian jadwal',
         'session' => 'Sesi praktik',
+        'page' => 'Halaman',
+        'banner' => 'Banner',
+        'article' => 'Artikel',
+        'article_category' => 'Kategori artikel',
+        'gallery' => 'Album galeri',
+        'faq' => 'FAQ',
+        'insurance_partner' => 'Mitra asuransi',
     ],
 
     // Pesan aturan validasi kustom (12 §3.1); :attribute diganti nama bidang oleh validator.
     'rules' => [
         'person_name' => ':Attribute hanya boleh berisi huruf, spasi, titik, apostrof, dan tanda hubung.',
         'no_html' => ':Attribute tidak boleh mengandung tag HTML.',
+        'internal_or_https_url' => 'Tautan harus berupa alamat internal (diawali /) atau URL https.',
     ],
 
     // Deskripsi baris audit yang ditulis AuditObserver.

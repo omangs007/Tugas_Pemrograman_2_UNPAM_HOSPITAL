@@ -58,11 +58,13 @@ final class MediaService
 
     /**
      * Kolom rich text yang boleh memuat gambar editor (`tabel` => [kolom]). Dipakai `prune()` agar gambar
-     * tanpa pemilik yang masih dirujuk tidak dihapus. Fase 4a (halaman dan artikel) WAJIB menambahkan
-     * tabel dan kolom rich text barunya di sini.
+     * tanpa pemilik yang masih dirujuk tidak dihapus. Fase 4b WAJIB menambahkan `facilities` dan
+     * `room_categories` (kolom `description`) di sini.
      */
     public const EDITOR_REFERENCE_COLUMNS = [
         'clinics' => ['description'],
+        'pages' => ['body'],
+        'articles' => ['body'],
     ];
 
     private const ORPHAN_ROW_HOURS = 24;

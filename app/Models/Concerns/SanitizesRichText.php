@@ -62,8 +62,9 @@ trait SanitizesRichText
 
     /**
      * Kosong secara visual (mis. `<p><br></p>` dari Quill atau `<p>&nbsp;</p>`): tanpa teks dan tanpa gambar.
+     * Publik agar ArticleRequest dapat menolak isi artikel yang kosong setelah sanitasi (F4A-R11).
      */
-    private static function isBlankRichText(string $html): bool
+    public static function isBlankRichText(string $html): bool
     {
         if ($html === '') {
             return true;

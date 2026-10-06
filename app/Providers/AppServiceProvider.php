@@ -2,7 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\Article;
+use App\Models\ArticleCategory;
+use App\Models\Banner;
 use App\Models\Clinic;
+use App\Models\Faq;
+use App\Models\Gallery;
+use App\Models\InsurancePartner;
+use App\Models\Page;
 use App\Models\Specialty;
 use App\Models\User;
 use App\Observers\AuditObserver;
@@ -49,6 +56,15 @@ class AppServiceProvider extends ServiceProvider
         // Audit otomatis model master sederhana (F2-R19). Doctor dicatat DoctorService.
         Specialty::observe(AuditObserver::class);
         Clinic::observe(AuditObserver::class);
+
+        // Audit otomatis konten website fase 4a (F4A-R8, 12 §8.3).
+        Page::observe(AuditObserver::class);
+        Banner::observe(AuditObserver::class);
+        Article::observe(AuditObserver::class);
+        ArticleCategory::observe(AuditObserver::class);
+        Gallery::observe(AuditObserver::class);
+        Faq::observe(AuditObserver::class);
+        InsurancePartner::observe(AuditObserver::class);
 
         // Pengaturan situs tersedia di semua layout sebagai $site (SettingsService).
         View::composer(['components.layouts.*'], function ($view): void {

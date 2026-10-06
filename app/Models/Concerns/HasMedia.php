@@ -25,7 +25,11 @@ trait HasMedia
     public static function bootHasMedia(): void
     {
         static::deleting(function (Model $model): void {
-            app(MediaService::class)->deleteFor($model);
+            // Soft delete mempertahankan media (09 §6.3); media dihapus hanya bila model tanpa soft delete
+            // atau sedang force delete (F4A-R32).
+            if (! method_exists($model, 'isForceDeleting') || $model->isForceDeleting()) {
+                app(MediaService::class)->deleteFor($model);
+            }
         });
     }
 

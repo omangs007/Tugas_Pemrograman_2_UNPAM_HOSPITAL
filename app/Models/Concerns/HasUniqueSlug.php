@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Concerns;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
@@ -60,7 +61,14 @@ trait HasUniqueSlug
 
     private static function slugTaken(string $slug, ?int $ignoreId): bool
     {
-        return static::query()
+        $query = static::query();
+
+        // Indeks UNIQUE `slug` mencakup baris soft delete: slug artikel terhapus tidak dipakai ulang (F4A-R7).
+        if (in_array(SoftDeletes::class, class_uses_recursive(static::class), true)) {
+            $query->withTrashed();
+        }
+
+        return $query
             ->where('slug', $slug)
             ->when($ignoreId !== null, fn ($query) => $query->whereKeyNot($ignoreId))
             ->exists();

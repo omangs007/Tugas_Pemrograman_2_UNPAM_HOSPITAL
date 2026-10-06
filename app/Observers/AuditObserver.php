@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 /**
- * Jejak audit otomatis untuk model master sederhana (11 §5.9, F2-R19): `specialty.*` dan `clinic.*`.
+ * Jejak audit otomatis untuk model master sederhana (11 §5.9, F2-R19): `specialty.*` dan `clinic.*`, serta konten
+ * fase 4a (F4A-R8): `page.*`, `banner.*`, `article.*`, `article_category.*`, `gallery.*`, `faq.*`, `insurance_partner.*`.
  * Aksi = snake_case nama kelas + "." + peristiwa. Pelaku: staf yang login, selain itu sistem.
  * `Doctor` sengaja tidak diobservasi (DoctorService mencatat `doctor.*` sendiri).
  */
@@ -58,10 +59,27 @@ final class AuditObserver
             $new,
             __("messages.audit.{$event}", [
                 'entity' => __("messages.entities.{$key}"),
-                'name' => (string) $model->getAttribute('name'),
+                'name' => $this->nameOf($model),
             ]),
             $this->actor(),
         );
+    }
+
+    /**
+     * Nama pada deskripsi: atribut pertama yang terisi dari `name`, `title`, `question`, dipotong 80 karakter
+     * (F4A-R8). Dibaca dari atribut mentah dengan array_key_exists (F4A-R33) agar mode ketat tidak melempar untuk kolom yang tidak dimiliki model.
+     */
+    private function nameOf(Model $model): string
+    {
+        $attributes = $model->getAttributes();
+
+        foreach (['name', 'title', 'question'] as $column) {
+            if (array_key_exists($column, $attributes) && filled($attributes[$column])) {
+                return Str::limit((string) $attributes[$column], 80);
+            }
+        }
+
+        return '';
     }
 
     private function actor(): Actor
