@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\DoctorScheduleController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\GalleryController;
+use App\Http\Controllers\Admin\InsurancePartnerController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PracticeSessionController;
@@ -158,7 +159,11 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
             ->names('faqs')
             ->parameters(['faq' => 'faq'])
             ->except(['show']);
-        // Task 11: mitra asuransi
+        // Mitra asuransi (halaman #39, F-ADM-23; F4A-R21): hapus ditolak bila dirujuk appointment (BR-180).
+        Route::resource('asuransi', InsurancePartnerController::class)
+            ->names('insurance-partners')
+            ->parameters(['asuransi' => 'insurancePartner'])
+            ->except(['show']);
     });
 
     // J. Media (11 §2.3 J, F2-R3). JSON; izin akhir ditentukan MediaPolicy menurut pemilik media.
