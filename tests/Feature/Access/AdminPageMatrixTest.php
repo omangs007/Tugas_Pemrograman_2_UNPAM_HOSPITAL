@@ -5,8 +5,10 @@ namespace Tests\Feature\Access;
 use App\Models\Media;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\InteractsWithContent;
 use Tests\Support\InteractsWithMasterData;
 use Tests\Support\InteractsWithMedia;
 use Tests\Support\InteractsWithSchedules;
@@ -14,7 +16,8 @@ use Tests\Support\InteractsWithStaff;
 use Tests\TestCase;
 
 /**
- * 15 §3.1 baris 4 sampai 8 dan §3.3 baris 31, 31b, 32, 33, 33b, 34, 35, 35b, 35d × lima aktor (AKS-01 sampai AKS-05),
+ * 15 §3.1 baris 1 sampai 8, 16 sampai 21 (+ detail album dan privasi) dan §3.3 baris 31, 31b, 32, 33, 33b, 34, 35, 35b,
+ * 35d, 39 × lima aktor (AKS-01 sampai AKS-05),
  * ditambah matriks mutasi non-GET (15 §3 catatan) untuk modul master data, media, dan jadwal.
  * Hasil: 200 = tampil, 403 = ditolak, L = redirect ke admin.login, D = redirect dasbor sesuai tipe akun,
  * OK = lolos otorisasi (200/201/204/302/422, bukan 403/login), G = tamu (redirect login atau 401 JSON).
@@ -22,6 +25,7 @@ use Tests\TestCase;
  */
 class AdminPageMatrixTest extends TestCase
 {
+    use InteractsWithContent;
     use InteractsWithMasterData;
     use InteractsWithMedia;
     use InteractsWithSchedules;
@@ -32,6 +36,9 @@ class AdminPageMatrixTest extends TestCase
 
     /** Hasil mutasi untuk route berizin kelola: Tamu G, Pasien 403, Admin Konten OK, Petugas 403, Super Admin OK. */
     private const MANAGE = ['G', '403', 'OK', '403', 'OK'];
+
+    /** Layar konten #39 (`content.manage`): Tamu →L, Pasien 403, Admin Konten 200, Petugas 403, Super Admin 200. */
+    private const CONTENT_SCREEN = ['L', '403', '200', '403', '200'];
 
     /** @return array<string, array{string, ?string, string, string}> */
     public static function matrix(): array
@@ -60,6 +67,26 @@ class AdminPageMatrixTest extends TestCase
             '35b Jadwal (sesi, ubah)' => ['admin.sessions.edit', 'session', ['L', '403', '200', '403', '200']],
             '35b Jadwal (pengecualian, tambah)' => ['admin.exceptions.create', null, ['L', '403', '200', '403', '200']],
             '35b Jadwal (pengecualian, ubah)' => ['admin.exceptions.edit', 'exception', ['L', '403', '200', '403', '200']],
+            '39 Halaman (daftar)' => ['admin.pages.index', null, self::CONTENT_SCREEN],
+            '39 Halaman (ubah)' => ['admin.pages.edit', 'page', self::CONTENT_SCREEN],
+            '39 Banner (daftar)' => ['admin.banners.index', null, self::CONTENT_SCREEN],
+            '39 Banner (tambah)' => ['admin.banners.create', null, self::CONTENT_SCREEN],
+            '39 Banner (ubah)' => ['admin.banners.edit', 'banner', self::CONTENT_SCREEN],
+            '39 Artikel (daftar)' => ['admin.articles.index', null, self::CONTENT_SCREEN],
+            '39 Artikel (tambah)' => ['admin.articles.create', null, self::CONTENT_SCREEN],
+            '39 Artikel (ubah)' => ['admin.articles.edit', 'article', self::CONTENT_SCREEN],
+            '39 Kategori artikel (daftar)' => ['admin.article-categories.index', null, self::CONTENT_SCREEN],
+            '39 Kategori artikel (tambah)' => ['admin.article-categories.create', null, self::CONTENT_SCREEN],
+            '39 Kategori artikel (ubah)' => ['admin.article-categories.edit', 'article-category', self::CONTENT_SCREEN],
+            '39 Galeri (daftar)' => ['admin.galleries.index', null, self::CONTENT_SCREEN],
+            '39 Galeri (tambah)' => ['admin.galleries.create', null, self::CONTENT_SCREEN],
+            '39 Galeri (ubah)' => ['admin.galleries.edit', 'gallery', self::CONTENT_SCREEN],
+            '39 FAQ (daftar)' => ['admin.faqs.index', null, self::CONTENT_SCREEN],
+            '39 FAQ (tambah)' => ['admin.faqs.create', null, self::CONTENT_SCREEN],
+            '39 FAQ (ubah)' => ['admin.faqs.edit', 'faq', self::CONTENT_SCREEN],
+            '39 Mitra asuransi (daftar)' => ['admin.insurance-partners.index', null, self::CONTENT_SCREEN],
+            '39 Mitra asuransi (tambah)' => ['admin.insurance-partners.create', null, self::CONTENT_SCREEN],
+            '39 Mitra asuransi (ubah)' => ['admin.insurance-partners.edit', 'insurance-partner', self::CONTENT_SCREEN],
         ];
 
         $cases = [];
@@ -79,11 +106,22 @@ class AdminPageMatrixTest extends TestCase
         $cases = [];
 
         $rows = [
+            '1 Beranda' => ['home', null],
+            '2 Profil' => ['about', null],
+            '3 Visi dan misi' => ['vision-mission', null],
             '4 Daftar layanan' => ['clinics.index', null],
             '5 Detail layanan' => ['clinics.show', 'public-clinic'],
             '6 Daftar dokter' => ['doctors.index', null],
             '7 Detail dokter' => ['doctors.show', 'public-doctor'],
             '8 Jadwal dokter' => ['schedules.index', null],
+            '16 Info BPJS dan asuransi' => ['insurance', null],
+            '17 Panduan pendaftaran' => ['registration-guide', null],
+            '18 Daftar artikel' => ['articles.index', null],
+            '19 Detail artikel' => ['articles.show', 'public-article'],
+            '20 Galeri' => ['galleries.index', null],
+            '20b Detail album' => ['galleries.show', 'public-gallery'],
+            '21 FAQ' => ['faq', null],
+            'Kebijakan privasi' => ['privacy', null],
         ];
 
         foreach ($rows as $label => [$routeName, $kind]) {
@@ -125,6 +163,26 @@ class AdminPageMatrixTest extends TestCase
             'PUT ubah sesi' => ['put', 'admin.sessions.update', 'session', self::MANAGE],
             'PATCH status sesi' => ['patch', 'admin.sessions.status', 'session', self::MANAGE],
             'DELETE sesi (35d)' => ['delete', 'admin.sessions.destroy', 'session', self::MANAGE],
+            'PUT ubah halaman' => ['put', 'admin.pages.update', 'page', self::MANAGE],
+            'POST banner baru' => ['post', 'admin.banners.store', null, self::MANAGE],
+            'PUT ubah banner' => ['put', 'admin.banners.update', 'banner', self::MANAGE],
+            'DELETE banner' => ['delete', 'admin.banners.destroy', 'banner', self::MANAGE],
+            'POST artikel baru' => ['post', 'admin.articles.store', null, self::MANAGE],
+            'PUT ubah artikel' => ['put', 'admin.articles.update', 'article', self::MANAGE],
+            'DELETE artikel' => ['delete', 'admin.articles.destroy', 'article', self::MANAGE],
+            'POST kategori artikel baru' => ['post', 'admin.article-categories.store', null, self::MANAGE],
+            'PUT ubah kategori artikel' => ['put', 'admin.article-categories.update', 'article-category', self::MANAGE],
+            'DELETE kategori artikel' => ['delete', 'admin.article-categories.destroy', 'article-category', self::MANAGE],
+            'POST album baru' => ['post', 'admin.galleries.store', null, self::MANAGE],
+            'PUT ubah album' => ['put', 'admin.galleries.update', 'gallery', self::MANAGE],
+            'DELETE album' => ['delete', 'admin.galleries.destroy', 'gallery', self::MANAGE],
+            'POST foto album' => ['post', 'admin.galleries.photos.store', 'gallery', self::MANAGE],
+            'POST FAQ baru' => ['post', 'admin.faqs.store', null, self::MANAGE],
+            'PUT ubah FAQ' => ['put', 'admin.faqs.update', 'faq', self::MANAGE],
+            'DELETE FAQ' => ['delete', 'admin.faqs.destroy', 'faq', self::MANAGE],
+            'POST mitra asuransi baru' => ['post', 'admin.insurance-partners.store', null, self::MANAGE],
+            'PUT ubah mitra asuransi' => ['put', 'admin.insurance-partners.update', 'insurance-partner', self::MANAGE],
+            'DELETE mitra asuransi' => ['delete', 'admin.insurance-partners.destroy', 'insurance-partner', self::MANAGE],
         ];
 
         $cases = [];
@@ -205,6 +263,64 @@ class AdminPageMatrixTest extends TestCase
         $this->actingAs($patient)->post('/admin/jadwal')->assertForbidden();
     }
 
+    public function test_patient_is_forbidden_from_admin_content_urls(): void
+    {
+        $patient = User::factory()->patient()->create();
+
+        foreach (['halaman', 'banner', 'artikel', 'kategori-artikel', 'galeri', 'faq', 'asuransi'] as $segment) {
+            $this->actingAs($patient)->get('/admin/konten/'.$segment)->assertForbidden();
+        }
+
+        $this->actingAs($patient)->post('/admin/konten/banner')->assertForbidden();
+        $this->actingAs($patient)->post('/admin/konten/artikel')->assertForbidden();
+    }
+
+    /** AKS-04 dan F4A-R30: layar konten tidak mengueri data pasien, pendaftaran, atau pesan kontak. */
+    public function test_content_screens_never_query_patient_data(): void
+    {
+        $admin = $this->createStaff('content-admin');
+
+        $screens = [
+            ['admin.pages.index', []],
+            ['admin.pages.edit', ['page' => $this->createPage('about')->id]],
+            ['admin.banners.index', []],
+            ['admin.banners.create', []],
+            ['admin.banners.edit', ['banner' => $this->createBanner()->id]],
+            ['admin.articles.index', []],
+            ['admin.articles.create', []],
+            ['admin.articles.edit', ['article' => $this->createArticle()->id]],
+            ['admin.article-categories.index', []],
+            ['admin.article-categories.create', []],
+            ['admin.article-categories.edit', ['articleCategory' => $this->createArticleCategory()->id]],
+            ['admin.galleries.index', []],
+            ['admin.galleries.create', []],
+            ['admin.galleries.edit', ['gallery' => $this->createGallery()->id]],
+            ['admin.faqs.index', []],
+            ['admin.faqs.create', []],
+            ['admin.faqs.edit', ['faq' => $this->createFaq()->id]],
+            ['admin.insurance-partners.index', []],
+            ['admin.insurance-partners.create', []],
+            ['admin.insurance-partners.edit', ['insurancePartner' => $this->createInsurancePartner()->id]],
+        ];
+
+        foreach ($screens as [$name, $parameters]) {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+
+            $this->actingAs($admin)->get(route($name, $parameters))->assertOk();
+
+            foreach (DB::getQueryLog() as $entry) {
+                $this->assertDoesNotMatchRegularExpression(
+                    '/\b(patient_profiles|appointments|appointment_status_histories|contact_messages)\b/',
+                    $entry['query'],
+                    "{$name} mengueri data pasien: {$entry['query']}",
+                );
+            }
+        }
+
+        DB::disableQueryLog();
+    }
+
     private function assertGuestRejected(int $status, string $location): void
     {
         $this->assertContains($status, [302, 401], "Tamu harus dialihkan ke login atau menerima 401, bukan {$status}.");
@@ -234,6 +350,15 @@ class AdminPageMatrixTest extends TestCase
             'schedule' => ['schedule' => $this->createSchedule()->id],
             'session' => ['session' => $this->createSession()->id],
             'exception' => ['exception' => $this->createException()->id],
+            'page' => ['page' => $this->createPage('about')->id],
+            'banner' => ['banner' => $this->createBanner()->id],
+            'article' => ['article' => $this->createArticle()->id],
+            'article-category' => ['articleCategory' => $this->createArticleCategory()->id],
+            'gallery' => ['gallery' => $this->createGallery()->id],
+            'faq' => ['faq' => $this->createFaq()->id],
+            'insurance-partner' => ['insurancePartner' => $this->createInsurancePartner()->id],
+            'public-article' => ['article' => $this->createArticle()->slug],
+            'public-gallery' => ['gallery' => $this->createGallery(['is_published' => true])->slug],
         };
     }
 

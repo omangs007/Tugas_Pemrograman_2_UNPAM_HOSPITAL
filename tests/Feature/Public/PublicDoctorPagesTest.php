@@ -324,7 +324,7 @@ class PublicDoctorPagesTest extends TestCase
     public function test_an_empty_schedule_shows_the_empty_state_without_a_contact_link_when_the_route_is_missing(): void
     {
         if (Route::has('contact')) {
-            $this->markTestSkipped('Route contact sudah ada (fase 4a): tautan diuji di tes fase tersebut.');
+            $this->markTestSkipped('Route contact sudah ada (fase 4b): tautan diuji di tes fase tersebut.');
         }
 
         $doctor = $this->createDoctor();
