@@ -24515,3 +24515,80 @@ Server lokal hidup (`http://unpam-hospital.test`), data demo baru. Catat hasil p
 6. **Aksesibilitas.** Audit Lighthouse aksesibilitas ≥ 90 untuk beranda `/`, `/artikel`, `/artikel/{slug}`, `/galeri`, dan `/faq` (15 A11-05); urutan fokus keyboard beranda: skip link → header → tiga tombol → carousel (panah, indikator, Jeda) → pencarian → layanan → dokter → artikel → CTA → footer.
 
 Hasil dan temuan dicatat koordinator; tidak ada commit pada langkah ini.
+
+---
+
+## Catatan Eksekusi (2026-10-06)
+
+Dieksekusi dengan `superpowers:subagent-driven-development`. Semua peran memakai subagent **Sonnet 5.5** (preferensi pemilik): implementer, reviewer per tugas, re-reviewer, final reviewer, implementer gelombang perbaikan final, dan penguji manual Playwright. Eksekusi berlangsung 2026-10-06 dalam satu sesi. Satu kali agen terputus karena galat jaringan (ENOTFOUND) di akhir Task 2; agen yang sama dilanjutkan dan commit-nya utuh.
+
+Cabang `fase-4a-konten-publik` dibuat dari `master` (`a6c9534`). Isinya dua commit penyusunan (`4a9b27a` CHECKPOINT, `8e46a10` rencana), 22 commit kerja (`31d32af`..`a57eccf`), ditambah commit catatan ini.
+
+**Hasil akhir:**
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `artisan test` | **4348 tes lulus (21166 asersi)**, ±665 s, diverifikasi koordinator di `a57eccf`; basis fase 3: 2933 |
+| `pint --test` | PASS |
+| `npm run build` | Sukses (T14, T15, T17); tanpa entri Vite baru |
+| `route:list --path=admin` | 90 route (50 fase 1–3 + 40 baru di `admin/konten`) |
+| `migrate:fresh --seed` (DB pengembangan, Step 13) | OK setelah izin pemilik ("Ya, jalankan migrate:fresh --seed"). Hitungan: `pages` 15, `article_categories` 4, `articles` 8 (7 terbit, 1 draf), `banners` 3, `galleries` 3, `faqs` 12, `insurance_partners` 4, `media` 57 (cover 22, image 3, photos 12, logo 4, photo 16). `media:prune` membersihkan 66 berkas yatim sisa isi DB lama, sehingga `--dry-run` kini 0/0. |
+| Smoke publik | 14 URL publik 200, draf `/artikel/draf-menjaga-kesehatan-di-musim-hujan` 404, `?kategori=%00` dan `?q[]=x` 200. |
+| MANUAL (Step 14) | Dijalankan lewat Playwright dan Lighthouse; laporan bergambar (42 screenshot) di `Documents\UNPAM-Uji-Manual-2026-10-06-fase-4a\index.html`. Kelompok 1–6 sesuai, dengan 0 galat JS, 0 pelanggaran CSP, 0 permintaan eksternal, dan 0 atribut event inline. Lighthouse aksesibilitas dan SEO **100** untuk `/`, `/artikel`, detail artikel, `/galeri`, dan `/faq`. Best Practices 78 hanya karena HTTP lokal. Temuan: 0 Critical, 0 Important, 2 Minor (M1 target sentuh tautan teks, M2 tanpa kontrol hapus logo mitra; keduanya bawaan). Sisa data uji di DB pengembangan: 2 artikel uji terhapus-lunak beserta 1 cover yang dipertahankan (F4A-R32). |
+
+**Putaran perbaikan per tugas** (masing-masing satu putaran, semuanya lulus re-review):
+
+| Tugas | Perbaikan |
+|---|---|
+| Task 9 | Baris pagar Markdown "```blade" ikut tersalin ke baris 1 empat view galeri admin; dihapus, dan tes render kini mengasersi `assertDontSee('```')`. Instruksi implementer ditambah larangan menyalin pagar. |
+| Task 15 | Carousel banner berhenti diam-diam setelah kontrol diklik mouse; kini hanya fokus keyboard (`:focus-visible`) yang menjeda. |
+
+**Final review** (seluruh cabang, `8e46a10..f4431e8`): verdict **Dengan perbaikan**. Tidak ada temuan Critical. Satu Important dan tiga Minor murah ditutup dalam satu gelombang (`a57eccf`). Re-review terbatas menyatakan keempatnya ADDRESSED tanpa kerusakan baru.
+
+| Butir | Perbaikan |
+|---|---|
+| F1 | Daftar admin Artikel: draf tanpa tanggal tampil lebih dulu (`published_at IS NULL DESC`, lalu `published_at DESC`, `id DESC`), agar draf yang baru disimpan tidak tenggelam setelah lebih dari 25 artikel bertanggal. Scope publik `newestFirst()` tidak berubah. |
+| F2 | `og:image` beranda dibungkus `url()` seperti halaman lain. |
+| F3 | Nomor telepon tanpa digit tidak lagi menghasilkan tautan `tel:` kosong. |
+| F4 | README: checklist deploy `php artisan db:seed --class=PageSeeder --force`. |
+
+### Keputusan (rulings) selama eksekusi
+
+| ID | Keputusan | Biaya bila keliru |
+|---|---|---|
+| E1 | Tanpa git worktree; bekerja di checkout utama pada cabang `fase-4a-konten-publik` (pola fase 0–3). | Checkout utama terkunci di cabang ini selama eksekusi. |
+| E2 | Semua subagent, termasuk final review, memakai Sonnet 5.5 (preferensi pemilik). | Final review sedikit kurang tajam; dimitigasi review per tugas dan uji manual. |
+| E3 | Trailer commit subagen mengikuti atribusi harness (`Claude Sonnet 5.5`), sesuai F4A-R37. | Hanya teks trailer. |
+| E4 | Step 13 dan 14 Task 17 dikerjakan koordinator; Step 13 dijalankan setelah izin eksplisit pemilik. | Pemilik perlu login ulang. |
+| E5 | Closure `explode` di tes pencarian kategori (temuan K2 #3) dibiarkan. | Tes perlu disesuaikan bila view kategori diformat ulang. |
+| E6 | Task 3: `restore()` artikel tercatat sebagai `article.updated` (`deleted_at` → null). Tes brief yang mengharapkan 0 audit diganti nama dan mengunci perilaku nyata; observer tidak diubah. Restore tidak ada di UI 4a. | Satu baris audit per restore lewat konsol. |
+| E7 | Task 7: data tes urutan kategori mengisi `description` null, karena deskripsi acak factory merusak asersi kolom Nama. | Tampilan deskripsi di daftar tidak dikunci tes itu. |
+| E8 | Task 8: `Admin\ArticleIndexRequest::filters()` membuang `kategori` yang kosong setelah `trim()`, karena middleware `TrimStrings` membuang byte NUL sehingga aturan `exists` terlewati. Versi publik sudah aman lewat regex slug. | Satu method tambahan di luar daftar Nama baru. |
+| E9 | Task 9: tamu pada tiga endpoint `admin.media.*` mendapat 401 JSON (perilaku fase 2, `bootstrap/app.php:85`), bukan redirect login; tes disesuaikan. | Tidak ada. |
+| E10 | Task 15: dua asersi `PublicHomeTest` disesuaikan dengan markup view brief (ikon sebelum label "Kirim Pesan"; layanan penunjang sah tampil di Layanan Unggulan menurut F4A-R16). | Tidak ada. |
+| E11 | Task 15: fokus yang menjeda carousel hanya fokus keyboard (`:focus-visible`). | Pengguna mouse melihat carousel lanjut berputar setelah kursor keluar (perilaku Bootstrap standar). |
+| E12 | Task 15: duplikasi `nextSession` dan saringan spesialisasi aktif antara `HomeController` dan `DoctorController` (±6 baris, diwajibkan brief) ditunda; final review menilainya tidak perlu sebelum merge. | Definisi "jadwal terdekat" beranda dan `/dokter` bisa menyimpang bila kelak diubah di satu tempat. |
+| E13 | Gelombang perbaikan final memuat F1 (Important) dan tiga Minor murah (F2–F4). F1 menyimpang dari F4A-R14 khusus daftar admin. | Cakupan sedikit melebihi minimum; urutan admin berbeda dari publik. |
+| E14 | Minor final lainnya dan butir parked ditunda ke backlog (lihat bawaan). | Utang kecil terbawa ke fase berikutnya. |
+
+### Bawaan (carry) untuk rencana fase berikutnya
+
+**Fase 4b:**
+- Hapus `ContentSchemaTest::test_the_phase_4b_migrations_are_not_created_yet` saat migration 4b dibuat.
+- Pertimbangkan partial `_page-content` (blok isi/empty-state + `x-open-graph`) sebelum menambah halaman berbasis `Page`.
+- Ekstrak escape LIKE dan `applyTo` ke helper bersama di `ListFilterRequest` (kini ada di lima tempat); jangan tambah salinan keenam.
+- Tautan "Kontak"/"Kirim Pesan" dan blok kamar beranda muncul otomatis lewat `Route::has()`.
+
+**Fase 6 (Booking):**
+- Pindahkan `nextSession` dan saringan spesialisasi aktif ke satu tempat (`DoctorAvailabilityQuery` atau `SessionAvailability`) sebelum salinan ketiga muncul (E12).
+- Tombol banner seed #2 (`/pasien/pendaftaran/baru`) dan tombol "Daftar Kunjungan" beranda muncul otomatis saat route ada; perbarui asersi banner #2 di `ContentSeederTest`.
+
+**Minor yang ditunda (tidak memblokir):**
+- Target sentuh tautan teks footer, breadcrumb, dan kartu (20–25 px; uji manual M1).
+- Form mitra tanpa kontrol "hapus logo" (uji manual M2; logo cukup diganti).
+- Pratinjau draf/artikel terjadwal untuk staf (kini 404 untuk semua, F4A-R10).
+- Daftar galeri publik dan admin memuat semua foto per album untuk sampul; ganti `withCount` + relasi sampul.
+- Admin Halaman bergantung pada `PageSeeder` (README sudah memuat checklist deploy).
+- `HomeController` memutasi `request()->query` untuk `page`; aturan `page` mati di `Public\ArticleIndexRequest`; kategori tanpa artikel ikut di dropdown #18; canonical #18 halaman 2/berfilter menunjuk `/artikel`.
+- `tel:+` bila nomor hanya berisi `+`; balapan cek-lalu-hapus mitra (500 FK); `forceDelete` artikel terhapus-lunak mungkin mencatat audit dua kali.
+- Suite kini ±11–14 menit (4348 tes); implementer perlu menjalankannya di latar belakang.
