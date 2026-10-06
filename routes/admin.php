@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ClinicController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\DoctorScheduleController;
+use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\GalleryController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\PageController;
@@ -152,7 +153,11 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
             ->parameters(['galeri' => 'gallery'])
             ->except(['show']);
         Route::post('galeri/{gallery}/foto', [GalleryController::class, 'storePhotos'])->name('galleries.photos.store');
-        // Task 10: FAQ
+        // FAQ (halaman #39, F-ADM-22; F4A-R22): urutan = field sort_order, tanpa route reorder.
+        Route::resource('faq', FaqController::class)
+            ->names('faqs')
+            ->parameters(['faq' => 'faq'])
+            ->except(['show']);
         // Task 11: mitra asuransi
     });
 
