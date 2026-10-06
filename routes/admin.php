@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ArticleCategoryController;
+use App\Http\Controllers\Admin\ArticleController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\ClinicController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -140,7 +141,10 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
             ->names('article-categories')
             ->parameters(['kategori-artikel' => 'articleCategory'])
             ->except(['show']);
-        // Task 8: artikel
+        Route::resource('artikel', ArticleController::class)
+            ->names('articles')
+            ->parameters(['artikel' => 'article'])
+            ->except(['show']);
         // Task 9: galeri
         // Task 10: FAQ
         // Task 11: mitra asuransi
