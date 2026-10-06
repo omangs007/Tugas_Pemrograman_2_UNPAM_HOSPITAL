@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ClinicController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\DoctorScheduleController;
+use App\Http\Controllers\Admin\GalleryController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PracticeSessionController;
@@ -145,7 +146,12 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
             ->names('articles')
             ->parameters(['artikel' => 'article'])
             ->except(['show']);
-        // Task 9: galeri
+        // Galeri (halaman #39, F-ADM-21; F4A-R23): album dibuat tanpa foto, foto diunggah lewat route terpisah.
+        Route::resource('galeri', GalleryController::class)
+            ->names('galleries')
+            ->parameters(['galeri' => 'gallery'])
+            ->except(['show']);
+        Route::post('galeri/{gallery}/foto', [GalleryController::class, 'storePhotos'])->name('galleries.photos.store');
         // Task 10: FAQ
         // Task 11: mitra asuransi
     });
