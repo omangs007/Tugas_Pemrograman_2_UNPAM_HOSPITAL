@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Public\ArticleController;
 use App\Http\Controllers\Public\ClinicController;
 use App\Http\Controllers\Public\DoctorController;
 use App\Http\Controllers\Public\PageController;
@@ -28,4 +29,8 @@ Route::get('/jadwal-dokter', [ScheduleController::class, 'index'])->name('schedu
 // BPJS dan asuransi (#16), panduan pendaftaran (#17), dan kebijakan privasi: isi dari tabel `pages` (F4A-R4).
 Route::get('/bpjs-asuransi', [PageController::class, 'insurance'])->name('insurance');
 Route::get('/panduan-pendaftaran', [PageController::class, 'registrationGuide'])->name('registration-guide');
+
+// Artikel kesehatan (#18, #19): hanya yang tayang; draf, terjadwal, dan terhapus menjawab 404 untuk semua orang.
+Route::get('/artikel', [ArticleController::class, 'index'])->name('articles.index');
+Route::get('/artikel/{article:slug}', [ArticleController::class, 'show'])->name('articles.show');
 Route::get('/kebijakan-privasi', [PageController::class, 'privacy'])->name('privacy');
