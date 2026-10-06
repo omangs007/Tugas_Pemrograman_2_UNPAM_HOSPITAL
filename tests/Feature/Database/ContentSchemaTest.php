@@ -385,13 +385,6 @@ class ContentSchemaTest extends TestCase
         }
     }
 
-    public function test_the_phase_4b_migrations_are_not_created_yet(): void
-    {
-        foreach (['001200_create_room_categories_table', '001300_create_facilities_table', '002000_create_contact_messages_table'] as $suffix) {
-            $this->assertFileDoesNotExist(database_path("migrations/2026_10_02_{$suffix}.php"));
-        }
-    }
-
     public function test_every_down_method_drops_its_table(): void
     {
         foreach ([
