@@ -272,7 +272,7 @@ class PublicClinicDetailTest extends TestCase
     {
         $clinic = $this->createClinic();
 
-        $this->get($this->url($clinic))->assertOk()->assertDontSee('galeri-modal', false)->assertDontSee('Galeri');
+        $this->get($this->url($clinic))->assertOk()->assertDontSee('galeri-modal', false)->assertDontSee('id="galeri-judul"', false);
     }
 
     // --- SEO (05 §7) dan breadcrumb (05 §8.1) ------------------------------------------------

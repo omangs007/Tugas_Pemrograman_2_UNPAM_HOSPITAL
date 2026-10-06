@@ -199,6 +199,12 @@ header .navbar-dark {
   overflow-wrap: anywhere;
 }
 
+// Jawaban FAQ adalah teks biasa (di-escape): baris baru dari admin dipertahankan (#21).
+.faq-answer {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
 // Lencana boleh membungkus baris pada sel sempit; teks tidak pernah terpotong.
 .availability-badge {
   white-space: normal;

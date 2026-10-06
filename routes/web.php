@@ -3,6 +3,8 @@
 use App\Http\Controllers\Public\ArticleController;
 use App\Http\Controllers\Public\ClinicController;
 use App\Http\Controllers\Public\DoctorController;
+use App\Http\Controllers\Public\FaqController;
+use App\Http\Controllers\Public\GalleryController;
 use App\Http\Controllers\Public\PageController;
 use App\Http\Controllers\Public\ScheduleController;
 use Illuminate\Support\Facades\Route;
@@ -33,4 +35,11 @@ Route::get('/panduan-pendaftaran', [PageController::class, 'registrationGuide'])
 // Artikel kesehatan (#18, #19): hanya yang tayang; draf, terjadwal, dan terhapus menjawab 404 untuk semua orang.
 Route::get('/artikel', [ArticleController::class, 'index'])->name('articles.index');
 Route::get('/artikel/{article:slug}', [ArticleController::class, 'show'])->name('articles.show');
+
+// Galeri (#20) dan detail album: hanya album terbit; album draf 404 untuk semua orang, termasuk staf.
+Route::get('/galeri', [GalleryController::class, 'index'])->name('galleries.index');
+Route::get('/galeri/{gallery:slug}', [GalleryController::class, 'show'])->name('galleries.show');
+
+// FAQ (#21): hanya FAQ terbit, dikelompokkan per kategori.
+Route::get('/faq', [FaqController::class, 'index'])->name('faq');
 Route::get('/kebijakan-privasi', [PageController::class, 'privacy'])->name('privacy');
