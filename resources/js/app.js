@@ -278,9 +278,20 @@ function initBannerCarousel() {
                 sync();
             }
         });
-        root.addEventListener('focusin', () => {
-            focused = true;
-            sync();
+        // Hanya fokus keyboard yang menjeda; fokus sisa klik mouse pada tombol tidak boleh menghentikan putaran.
+        root.addEventListener('focusin', (event) => {
+            let keyboardFocus = true;
+
+            try {
+                keyboardFocus = event.target.matches(':focus-visible');
+            } catch (error) {
+                keyboardFocus = true; // Peramban lama tanpa :focus-visible: perilaku semula.
+            }
+
+            if (keyboardFocus) {
+                focused = true;
+                sync();
+            }
         });
         root.addEventListener('focusout', (event) => {
             if (!root.contains(event.relatedTarget)) {

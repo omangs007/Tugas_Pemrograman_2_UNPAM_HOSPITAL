@@ -153,6 +153,10 @@ class FrontendManifestTest extends TestCase
             $this->assertStringContainsString($needle, $app, "app.js harus memuat {$needle}");
         }
 
+        $carouselStart = (int) strpos($app, 'function initBannerCarousel()');
+        $carouselSource = substr($app, $carouselStart, (int) strpos($app, 'function initGalleryModals()') - $carouselStart);
+        $this->assertStringContainsString(':focus-visible', $carouselSource, 'Hanya fokus keyboard yang boleh menjeda carousel');
+
         $init = substr($app, (int) strpos($app, 'function init()'));
         $this->assertStringContainsString('initBannerCarousel();', $init);
         $this->assertStringContainsString('initGalleryModals();', $init);
