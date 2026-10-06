@@ -17,7 +17,9 @@ class SmokeTest extends TestCase
             ->assertSee('class="skip-link" href="#konten-utama"', false)
             ->assertSee('<main id="konten-utama" tabindex="-1"', false)
             ->assertSee('UNPAM HOSPITAL')
-            ->assertSee('Situs ini masih dalam tahap pembangunan.');
+            ->assertSee('<h1 id="judul-beranda" class="display-5 fw-bold text-primary">UNPAM HOSPITAL</h1>', false)
+            ->assertSee('Cari Dokter')
+            ->assertDontSee('Situs ini masih dalam tahap pembangunan.');
     }
 
     public function test_home_page_has_exactly_one_h1(): void

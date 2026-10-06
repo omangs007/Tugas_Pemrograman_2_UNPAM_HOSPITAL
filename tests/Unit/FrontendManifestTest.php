@@ -135,6 +135,44 @@ class FrontendManifestTest extends TestCase
         $this->assertSame(1, $listeners, 'Harus ada tepat satu listener error terdelegasi di seluruh JS');
     }
 
+    public function test_app_script_provides_the_banner_carousel_without_a_second_error_listener(): void
+    {
+        $app = $this->read('resources/js/app.js');
+
+        foreach ([
+            'function initBannerCarousel()',
+            '[data-banner-carousel]',
+            '[data-banner-live]',
+            '[data-banner-toggle]',
+            'prefers-reduced-motion: reduce',
+            'interval: 6000',
+            "setAttribute('aria-pressed'",
+            "setAttribute('aria-live'",
+            'Carousel.getOrCreateInstance(',
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $app, "app.js harus memuat {$needle}");
+        }
+
+        $init = substr($app, (int) strpos($app, 'function init()'));
+        $this->assertStringContainsString('initBannerCarousel();', $init);
+        $this->assertStringContainsString('initGalleryModals();', $init);
+
+        // Ditulis sebelum initGalleryModals() agar potongan kode yang dikunci RawOutputScanTest tidak berubah.
+        $this->assertLessThan(strpos($app, 'function initGalleryModals()'), strpos($app, 'function initBannerCarousel()'));
+
+        $this->assertSame(1, preg_match_all("/addEventListener\\(\\s*'error'/", $app), 'Tidak boleh ada listener error kedua');
+        $this->assertStringNotContainsString('onerror', strtolower($app));
+    }
+
+    public function test_public_styles_define_the_home_page_classes(): void
+    {
+        $public = $this->read('resources/scss/_public.scss');
+
+        foreach (['.home-hero', '.home-hero-actions', '.banner-carousel', '.banner-slide-media', '.banner-caption', '.banner-carousel-controls', '.home-section', '.home-section-header', '.quick-search', 'rgba(10, 77, 140, .85)'] as $needle) {
+            $this->assertStringContainsString($needle, $public, "_public.scss harus memuat {$needle}");
+        }
+    }
+
     public function test_image_preview_uses_data_url_not_blob_url(): void
     {
         $preview = $this->read('resources/js/image-preview.js');

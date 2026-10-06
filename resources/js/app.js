@@ -201,6 +201,98 @@ function initOffcanvasToggles() {
     });
 }
 
+// ---------------------------------------------------------------- Carousel banner beranda (#1, F4A-R17)
+// Markup: .carousel[data-banner-carousel] berisi .carousel-inner[data-banner-live], indikator Bootstrap, dan tombol
+// [data-banner-toggle] (Jeda/Putar; awalnya hidden karena tanpa JavaScript tombol ini tidak berguna). Berputar tiap
+// 6000 ms kecuali prefers-reduced-motion: reduce; berhenti saat kursor mouse berada di atasnya, saat fokus berada di
+// dalamnya, dan saat dijeda pengguna. aria-live bernilai off selama berputar dan polite selama berhenti.
+function initBannerCarousel() {
+    document.querySelectorAll('[data-banner-carousel]').forEach((root) => {
+        if (root.querySelectorAll('.carousel-item').length < 2) {
+            return;
+        }
+
+        const instance = window.bootstrap.Carousel.getOrCreateInstance(root, {
+            interval: 6000,
+            ride: false,
+            pause: false,
+            wrap: true,
+            touch: true,
+            keyboard: true,
+        });
+        const live = root.querySelector('[data-banner-live]');
+        const toggle = root.querySelector('[data-banner-toggle]');
+        const toggleLabel = toggle ? toggle.querySelector('[data-banner-toggle-label]') : null;
+        const toggleIcon = toggle ? toggle.querySelector('[data-banner-toggle-icon]') : null;
+
+        // Pengguna dengan prefers-reduced-motion mulai dalam keadaan dijeda; tombol Putar tetap dapat memulai putaran.
+        let userPaused = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let hovered = false;
+        let focused = false;
+
+        const sync = () => {
+            const running = !userPaused && !hovered && !focused;
+
+            if (running) {
+                instance.cycle();
+            } else {
+                instance.pause();
+            }
+
+            if (live) {
+                live.setAttribute('aria-live', running ? 'off' : 'polite');
+            }
+
+            if (toggle) {
+                toggle.setAttribute('aria-pressed', userPaused ? 'true' : 'false');
+
+                if (toggleLabel) {
+                    toggleLabel.textContent = userPaused ? 'Putar' : 'Jeda';
+                }
+
+                if (toggleIcon) {
+                    toggleIcon.classList.toggle('bi-pause-fill', !userPaused);
+                    toggleIcon.classList.toggle('bi-play-fill', userPaused);
+                }
+            }
+        };
+
+        if (toggle) {
+            toggle.hidden = false;
+            toggle.addEventListener('click', () => {
+                userPaused = !userPaused;
+                sync();
+            });
+        }
+
+        // Hanya kursor mouse yang menjeda; sentuhan tidak meninggalkan status "hover" yang menggantung.
+        root.addEventListener('pointerenter', (event) => {
+            if (event.pointerType === 'mouse') {
+                hovered = true;
+                sync();
+            }
+        });
+        root.addEventListener('pointerleave', (event) => {
+            if (event.pointerType === 'mouse') {
+                hovered = false;
+                sync();
+            }
+        });
+        root.addEventListener('focusin', () => {
+            focused = true;
+            sync();
+        });
+        root.addEventListener('focusout', (event) => {
+            if (!root.contains(event.relatedTarget)) {
+                focused = false;
+                sync();
+            }
+        });
+
+        sync();
+    });
+}
+
 // ---------------------------------------------------------------- Galeri layanan (modal + carousel Bootstrap)
 // Markup: modal [data-gallery-modal] berisi .carousel; tombol pemicu membawa data-gallery-index.
 function initGalleryModals() {
@@ -236,6 +328,7 @@ function init() {
     initCharCounters();
     initOffcanvasToggles();
     initGalleryModals();
+    initBannerCarousel();
 
     if (document.querySelector('[data-image-input]')) {
         import('./image-preview.js');

@@ -5,12 +5,13 @@ use App\Http\Controllers\Public\ClinicController;
 use App\Http\Controllers\Public\DoctorController;
 use App\Http\Controllers\Public\FaqController;
 use App\Http\Controllers\Public\GalleryController;
+use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Public\PageController;
 use App\Http\Controllers\Public\ScheduleController;
 use Illuminate\Support\Facades\Route;
 
-// Beranda sementara (F1-R3); HomeController dibangun di fase 4a.
-Route::view('/', 'public.home')->name('home');
+// Beranda (#1): banner, layanan, dokter, artikel, dan CTA; memicu pembangkitan sesi harian (D-66, F4A-R17).
+Route::get('/', [HomeController::class, 'index'])->name('home');
 
 // Profil (#2) dan Visi dan Misi (#3): isi dari tabel `pages` (F4A-R4).
 Route::get('/profil', [PageController::class, 'about'])->name('about');

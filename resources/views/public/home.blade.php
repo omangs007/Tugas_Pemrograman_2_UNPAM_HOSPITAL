@@ -1,21 +1,40 @@
 @inject('site', 'App\Services\Settings\SettingsService')
-<x-layouts.public title="Beranda">
-    <section class="py-4 py-lg-5 text-center">
-        <h1 class="display-5 fw-bold text-primary">{{ $site->string('site.name', config('app.name')) }}</h1>
-        <p class="lead mb-4">{{ $site->string('site.tagline', 'Layanan kesehatan yang ramah dan terpercaya') }}</p>
+@php
+    $ogDescription = filled($metaDescription) ? $metaDescription : $site->string('seo.default_meta_description');
+@endphp
+<x-layouts.public :title="$title" :meta-description="$metaDescription" :full-title="true">
+    @push('head')
+        <x-open-graph :title="$title" :description="$ogDescription !== '' ? $ogDescription : null" :image="$ogImage" type="website" :canonical="route('home')" />
+    @endpush
 
-        <div class="d-flex flex-wrap justify-content-center gap-2">
-            @if (Route::has('doctors.index'))
-                <a class="btn btn-primary btn-lg" href="{{ route('doctors.index') }}">Cari Dokter</a>
+    <section class="home-hero" aria-labelledby="judul-beranda">
+        <div class="text-center">
+            <h1 id="judul-beranda" class="display-5 fw-bold text-primary">{{ $page->title }}</h1>
+            @if ($subtitle !== '')
+                <p class="lead mb-4">{{ $subtitle }}</p>
             @endif
-            @if (Route::has('schedules.index'))
-                <a class="btn btn-outline-primary btn-lg" href="{{ route('schedules.index') }}">Jadwal Dokter</a>
-            @endif
-            @if (Route::has('patient.appointments.create'))
-                <a class="btn btn-primary btn-lg" href="{{ route('patient.appointments.create') }}">Daftar Kunjungan</a>
-            @endif
+
+            <div class="home-hero-actions">
+                @if (Route::has('doctors.index'))
+                    <a class="btn btn-primary btn-lg" href="{{ route('doctors.index') }}">Cari Dokter</a>
+                @endif
+                @if (Route::has('schedules.index'))
+                    <a class="btn btn-outline-primary btn-lg" href="{{ route('schedules.index') }}">Jadwal Dokter</a>
+                @endif
+                @if (Route::has('patient.appointments.create'))
+                    <a class="btn btn-primary btn-lg" href="{{ route('patient.appointments.create') }}">Daftar Kunjungan</a>
+                @endif
+            </div>
         </div>
 
-        <p class="text-body-secondary mt-4 mb-0">Situs ini masih dalam tahap pembangunan. Halaman dokter, jadwal, dan pendaftaran kunjungan akan tersedia pada tahap berikutnya.</p>
+        @if ($banners->isNotEmpty())
+            @include('public.partials._banner-carousel', ['banners' => $banners])
+        @endif
     </section>
+
+    @include('public.partials._quick-search')
+    @include('public.partials._featured-clinics')
+    @include('public.partials._featured-doctors')
+    @include('public.partials._latest-articles')
+    @include('public.partials._help-cta')
 </x-layouts.public>

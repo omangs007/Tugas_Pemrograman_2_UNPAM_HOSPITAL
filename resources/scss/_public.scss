@@ -253,6 +253,152 @@ header .navbar-dark {
   margin-bottom: .375rem;
 }
 
+// ---------------------------------------------------------------- Beranda (#1, F4A-R17)
+.home-hero {
+  margin-bottom: 2.5rem;
+}
+
+// Tiga tombol utama: bertumpuk penuh lebar di layar kecil, sebaris dan rata tengah mulai sm.
+.home-hero-actions {
+  display: grid;
+  gap: .75rem;
+  max-width: 28rem;
+  margin-inline: auto;
+
+  @include media-breakpoint-up(sm) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: none;
+  }
+}
+
+.banner-carousel {
+  margin-top: 2rem;
+}
+
+// Gambar banner 1600x600: rasio 16:9 di layar kecil, 3:1 mulai md.
+.banner-slide-media {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: $light;
+  border-radius: $border-radius $border-radius 0 0;
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  @include media-breakpoint-up(md) {
+    aspect-ratio: 3 / 1;
+    border-radius: $border-radius;
+  }
+}
+
+// Judul slide memakai <p class="h2"> (bukan heading, h1 tetap pages.home.title). Di layar kecil panel solid di bawah
+// gambar; mulai md panel menutup sudut kiri bawah dengan $primary 85% (kontras teks putih tetap >= 4,5:1).
+.banner-caption {
+  padding: 1rem 1.25rem;
+  background: $primary;
+  color: #fff;
+  border-radius: 0 0 $border-radius $border-radius;
+
+  .h2 {
+    margin-bottom: .25rem;
+    color: #fff;
+    font-size: 1.375rem;
+  }
+
+  :focus-visible {
+    outline-color: #fff;
+  }
+
+  @include media-breakpoint-up(md) {
+    position: absolute;
+    inset-block-end: 1.5rem;
+    inset-inline-start: 1.5rem;
+    max-width: min(36rem, 70%);
+    background: rgba(10, 77, 140, .85); // $primary
+    border-radius: $border-radius;
+  }
+}
+
+// Kontrol di bawah slide: panah, indikator (area sentuh 44 px), dan tombol Jeda/Putar.
+.banner-carousel-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  margin-top: .75rem;
+
+  .carousel-indicators {
+    position: static;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+
+    [data-bs-target] {
+      position: relative;
+      box-sizing: border-box;
+      flex: 0 0 auto;
+      width: 2.75rem;
+      height: 2.75rem;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      opacity: 1;
+
+      // Titik: cincin untuk slide lain, terisi untuk slide aktif (kontras $primary vs putih >= 3:1).
+      &::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: .875rem;
+        height: .875rem;
+        margin: -.4375rem 0 0 -.4375rem;
+        border: 2px solid $primary;
+        border-radius: 50%;
+        background: transparent;
+      }
+
+      &.active::after {
+        background: $primary;
+      }
+    }
+  }
+}
+
+.home-section {
+  margin-bottom: 3rem;
+}
+
+.home-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.quick-search {
+  margin-bottom: 3rem;
+  padding: 1.25rem;
+  background: $light;
+  border-radius: $border-radius;
+
+  @include media-breakpoint-up(md) {
+    padding: 1.5rem;
+  }
+}
+
 // Rich text tersanitasi (clinics.description).
 .rich-text {
   overflow-wrap: anywhere;
