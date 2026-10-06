@@ -275,7 +275,7 @@ class PublicHomeTest extends TestCase
         $this->assertStringContainsString('alt="Pemandangan lobi rumah sakit"', $html);
         $this->assertStringContainsString('src="'.$media->url.'"', $html);
         $this->assertStringContainsString('data-fallback="'.asset('images/placeholders/banner.svg').'"', $html);
-        $this->assertStringContainsString('<meta property="og:image" content="'.$media->url.'">', $html);
+        $this->assertStringContainsString('<meta property="og:image" content="'.url($media->url).'">', $html);
     }
 
     public function test_the_banner_button_appears_only_for_a_usable_link(): void
@@ -429,6 +429,18 @@ class PublicHomeTest extends TestCase
         $this->assertStringNotContainsString('Petunjuk Arah', $cta);
         $this->assertStringNotContainsString('IGD:', $cta);
         $this->assertStringContainsString('href="tel:02100000000"', $cta);
+    }
+
+    public function test_a_phone_number_without_digits_renders_no_empty_tel_link(): void
+    {
+        $this->seed(SettingsSeeder::class);
+        app(SettingsService::class)->setMany(['contact.emergency_phone' => '-', 'contact.phone' => '-']);
+
+        $cta = $this->section($this->get('/')->assertOk()->getContent(), 'judul-bantuan');
+
+        $this->assertStringNotContainsString('href="tel:"', $cta);
+        $this->assertStringContainsString('IGD:', $cta);
+        $this->assertStringNotContainsString('Telepon</a>', $cta);
     }
 
     public function test_the_send_message_button_appears_only_when_the_contact_route_exists(): void

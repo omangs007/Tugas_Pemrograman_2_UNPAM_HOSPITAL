@@ -57,7 +57,7 @@ class ArticleIndexRequest extends ListFilterRequest
     }
 
     /**
-     * Tanpa `urut` dipakai scope newestFirst() (published_at menurun, lalu id menurun). Karakter `%`, `_`, dan `\`
+     * Tanpa `urut` (atau `terbaru`): draf tanpa tanggal dulu, lalu published_at menurun, lalu id menurun. `-terbaru` tetap menaik (tanggal kosong dulu). Karakter `%`, `_`, dan `\`
      * pada kata kunci di-escape.
      *
      * @param  Builder<Model>  $query
@@ -86,7 +86,12 @@ class ArticleIndexRequest extends ListFilterRequest
         $sort = $filters['urut'] ?? null;
 
         if ($sort === null || $sort === 'terbaru') {
-            return $query->newestFirst();
+            // Khusus daftar admin: draf tanpa tanggal lebih dulu agar draf baru tidak tenggelam di halaman akhir.
+            // Scope publik newestFirst() tidak diubah.
+            return $query
+                ->orderByRaw($model->qualifyColumn('published_at').' IS NULL DESC')
+                ->orderByDesc($model->qualifyColumn('published_at'))
+                ->orderByDesc($model->qualifyColumn('id'));
         }
 
         if ($sort === '-terbaru') {

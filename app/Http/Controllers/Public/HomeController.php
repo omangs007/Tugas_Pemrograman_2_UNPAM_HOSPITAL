@@ -86,12 +86,14 @@ class HomeController extends Controller
             ? (string) $page->meta_title
             : ($tagline !== '' ? $siteName.' — '.$tagline : $siteName);
 
+        $ogImage = $banners->first()?->firstMedia('image')?->url;
+
         return view('public.home', [
             'page' => $page,
             'title' => $title,
             'subtitle' => filled($page->subtitle) ? (string) $page->subtitle : $tagline,
             'metaDescription' => filled($page->meta_description) ? (string) $page->meta_description : null,
-            'ogImage' => $banners->first()?->firstMedia('image')?->url,
+            'ogImage' => $ogImage !== null ? url($ogImage) : null,
             'banners' => $banners,
             'clinics' => $clinics,
             'doctors' => $doctors,

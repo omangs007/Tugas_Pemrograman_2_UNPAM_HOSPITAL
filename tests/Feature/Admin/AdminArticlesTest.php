@@ -163,11 +163,12 @@ class AdminArticlesTest extends TestCase
             ->assertDontSee('Artikel Dihapus')
             ->getContent();
 
-        $this->assertSame(['Artikel Terjadwal', 'Artikel Terbit', 'Artikel Lama', 'Artikel Draf'], $this->cells($html, 'Judul'));
-        $this->assertSame(['Gaya Hidup', 'Kesehatan Umum', 'Kesehatan Umum', 'Tanpa kategori'], $this->cells($html, 'Kategori'));
-        $this->assertSame(['Terbit Terjadwal', 'Terbit', 'Terbit', 'Draf'], $this->cells($html, 'Status'));
-        $this->assertSame(['20 Okt 2026 08.00', '03 Okt 2026 09.00', '01 Sep 2026 14.30', '—'], $this->cells($html, 'Tanggal terbit'));
-        $this->assertSame(['Budi Konten', 'Siti Editor', 'Siti Editor', 'Budi Konten'], $this->cells($html, 'Penulis'));
+        // Draf tanpa tanggal tampil paling atas (F1), lalu tanggal terbit menurun.
+        $this->assertSame(['Artikel Draf', 'Artikel Terjadwal', 'Artikel Terbit', 'Artikel Lama'], $this->cells($html, 'Judul'));
+        $this->assertSame(['Tanpa kategori', 'Gaya Hidup', 'Kesehatan Umum', 'Kesehatan Umum'], $this->cells($html, 'Kategori'));
+        $this->assertSame(['Draf', 'Terbit Terjadwal', 'Terbit', 'Terbit'], $this->cells($html, 'Status'));
+        $this->assertSame(['—', '20 Okt 2026 08.00', '03 Okt 2026 09.00', '01 Sep 2026 14.30'], $this->cells($html, 'Tanggal terbit'));
+        $this->assertSame(['Budi Konten', 'Budi Konten', 'Siti Editor', 'Siti Editor'], $this->cells($html, 'Penulis'));
     }
 
     public function test_index_shows_actions_tabs_breadcrumb_and_add_button(): void
@@ -208,7 +209,7 @@ class AdminArticlesTest extends TestCase
             'Judul',
         );
 
-        $this->assertSame(['Artikel Terjadwal', 'Artikel Terbit', 'Artikel Lama', 'Artikel Draf'], $titles([]));
+        $this->assertSame(['Artikel Draf', 'Artikel Terjadwal', 'Artikel Terbit', 'Artikel Lama'], $titles([]));
         $this->assertSame(['Artikel Draf'], $titles(['status' => 'draf']));
         $this->assertSame(['Artikel Terjadwal', 'Artikel Terbit', 'Artikel Lama'], $titles(['status' => 'terbit']));
         $this->assertSame(['Artikel Terbit', 'Artikel Lama'], $titles(['kategori' => $this->category->slug]));
@@ -217,6 +218,22 @@ class AdminArticlesTest extends TestCase
         $this->assertSame(['Artikel Draf', 'Artikel Lama', 'Artikel Terbit', 'Artikel Terjadwal'], $titles(['urut' => 'judul']));
         $this->assertSame(['Artikel Terjadwal', 'Artikel Terbit', 'Artikel Lama', 'Artikel Draf'], $titles(['urut' => '-judul']));
         $this->assertSame(['Artikel Draf', 'Artikel Lama', 'Artikel Terbit', 'Artikel Terjadwal'], $titles(['urut' => '-terbaru']), 'Urutan menaik menempatkan tanggal kosong lebih dulu.');
+    }
+
+    public function test_a_new_undated_draft_is_on_the_first_page_even_with_more_than_a_page_of_dated_articles(): void
+    {
+        foreach (range(1, 26) as $number) {
+            $this->createArticle(['title' => 'Artikel Bertanggal '.$number, 'published_at' => Carbon::parse('2026-09-01 08:00:00')->addDays($number)], $this->category);
+        }
+        $this->createArticle(['title' => 'Draf Baru Tanpa Tanggal', 'status' => 'draft', 'published_at' => null]);
+
+        $titles = $this->cells(
+            $this->actingAs($this->createStaff('content-admin'))->get(route('admin.articles.index'))->assertOk()->getContent(),
+            'Judul',
+        );
+
+        $this->assertSame('Draf Baru Tanpa Tanggal', $titles[0]);
+        $this->assertContains('Artikel Bertanggal 26', $titles);
     }
 
     public function test_index_search_escapes_like_characters(): void

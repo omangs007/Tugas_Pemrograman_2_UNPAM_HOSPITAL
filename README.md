@@ -192,6 +192,8 @@ Layar konten tidak pernah memuat data pasien. Halaman publik terbuka untuk semua
 
 Selain data fase 1–3: 15 halaman, 4 kategori artikel, 8 artikel (7 terbit dan 1 draf; satu artikel sengaja tanpa cover untuk menguji placeholder), 3 banner (banner kedua baru memiliki tombol setelah fase 6), 3 album dengan 12 foto, 12 FAQ, dan 4 mitra asuransi fiktif berlabel "Contoh". Total gambar contoh menjadi 57 (32 fase 2 + 25 konten), semuanya dibuat lokal oleh GD. Teks contoh harus ditinjau dan disesuaikan oleh admin sebelum dipakai di produksi.
 
+Checklist deploy: jalankan `php artisan db:seed --class=PageSeeder --force` (aman di produksi dan idempoten). Admin Halaman hanya menampilkan baris yang sudah ada, sehingga bila deploy hanya menjalankan `migrate`, daftarnya kosong.
+
 ### Pemeriksaan cepat (fase 4a)
 
 ```powershell

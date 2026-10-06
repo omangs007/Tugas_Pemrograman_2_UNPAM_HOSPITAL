@@ -301,7 +301,7 @@ class ArticleRequestTest extends TestCase
 
         $titles = fn (array $query): array => $this->indexRequest($query)->applyTo(Article::query())->pluck('title')->all();
 
-        $this->assertSame(['Cuci Tangan', 'Bubur Sehat', 'Antibiotik 100%'], $titles([]));
+        $this->assertSame(['Antibiotik 100%', 'Cuci Tangan', 'Bubur Sehat'], $titles([]), 'Draf tanpa tanggal lebih dulu (F1).');
         $this->assertSame(['Antibiotik 100%'], $titles(['status' => 'draf']));
         $this->assertSame(['Cuci Tangan', 'Bubur Sehat'], $titles(['status' => 'terbit']));
         $this->assertSame(['Bubur Sehat'], $titles(['kategori' => 'gizi']));
