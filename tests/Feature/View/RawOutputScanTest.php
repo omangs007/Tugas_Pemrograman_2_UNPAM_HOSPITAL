@@ -35,7 +35,7 @@ class RawOutputScanTest extends TestCase
         return ltrim(str_replace('\\', '/', substr($path, strlen(resource_path('views')))), '/');
     }
 
-    public function test_raw_blade_output_is_only_used_for_the_clinic_description(): void
+    public function test_raw_blade_output_is_only_used_for_the_rich_text_columns(): void
     {
         $found = [];
 
@@ -47,7 +47,12 @@ class RawOutputScanTest extends TestCase
             }
         }
 
-        $this->assertSame(['public/clinics/show.blade.php: <div class="rich-text clinic-description">{!! $clinic->description !!}</div>'], $found);
+        sort($found);
+
+        $this->assertSame([
+            'public/clinics/show.blade.php: <div class="rich-text clinic-description">{!! $clinic->description !!}</div>',
+            'public/partials/_page-body.blade.php: <div class="rich-text page-body">{!! $page->body !!}</div>',
+        ], $found);
     }
 
     public function test_views_do_not_build_html_strings_by_hand(): void
@@ -62,7 +67,8 @@ class RawOutputScanTest extends TestCase
         $files = array_filter($this->viewFiles(), fn (string $file): bool => str_contains($this->relative($file), 'public/')
             || str_contains($this->relative($file), 'components/doctor-card')
             || str_contains($this->relative($file), 'components/schedule-table')
-            || str_contains($this->relative($file), 'components/availability-badge'));
+            || str_contains($this->relative($file), 'components/availability-badge')
+            || str_contains($this->relative($file), 'components/open-graph'));
 
         $this->assertNotEmpty($files);
 

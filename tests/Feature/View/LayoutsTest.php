@@ -170,6 +170,25 @@ class LayoutsTest extends TestCase
         $this->get('/_uji/publik')->assertSee('<meta name="robots" content="noindex,nofollow">', false);
     }
 
+    public function test_public_layout_full_title_drops_the_site_name_suffix(): void
+    {
+        $this->page('/_uji/publik-penuh', '<x-layouts.public title="Judul Utuh Uji" :full-title="true"><p>Isi</p></x-layouts.public>');
+
+        $this->get('/_uji/publik-penuh')
+            ->assertOk()
+            ->assertSee('<title>Judul Utuh Uji</title>', false)
+            ->assertDontSee('Judul Utuh Uji — ', false);
+    }
+
+    public function test_public_layout_full_title_is_escaped_and_defaults_to_the_suffixed_title(): void
+    {
+        $this->page('/_uji/publik-penuh', '<x-layouts.public :title="\'<b>Utuh</b>\'" :full-title="true"><p>Isi</p></x-layouts.public>');
+        $this->page('/_uji/publik-biasa', '<x-layouts.public title="Judul Biasa Uji"><p>Isi</p></x-layouts.public>');
+
+        $this->get('/_uji/publik-penuh')->assertSee('<title>&lt;b&gt;Utuh&lt;/b&gt;</title>', false);
+        $this->get('/_uji/publik-biasa')->assertSee('<title>Judul Biasa Uji — '.config('app.name').'</title>', false);
+    }
+
     // --- layout pasien -----------------------------------------------------------------------
 
     public function test_patient_layout_wraps_the_public_layout_with_noindex_and_single_h1(): void

@@ -1,9 +1,9 @@
-<x-layouts.public title="Layanan Kami">
+<x-layouts.public :title="$page->seo_title" :meta-description="$page->seo_description">
     <x-slot:breadcrumb>
         <x-breadcrumb :items="[['label' => 'Layanan']]" />
     </x-slot:breadcrumb>
 
-    <x-page-header title="Layanan Kami" subtitle="Poliklinik dan layanan penunjang UNPAM HOSPITAL." />
+    <x-page-header :title="$page->title" :subtitle="$page->subtitle" />
 
     @forelse ($groups as $group)
         <section class="mb-5" aria-labelledby="layanan-{{ $group['type']->value }}">

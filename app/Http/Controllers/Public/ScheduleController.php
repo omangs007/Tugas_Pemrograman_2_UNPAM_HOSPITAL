@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\ScheduleIndexRequest;
 use App\Models\Clinic;
 use App\Models\Doctor;
+use App\Models\Page;
 use App\Services\Scheduling\AvailabilityFilter;
 use App\Services\Scheduling\DoctorAvailabilityQuery;
 use App\Services\Scheduling\PracticeSessionGenerator;
@@ -113,6 +114,7 @@ class ScheduleController extends Controller
         view()->share('errors', (new ViewErrorBag)->put('default', $errors));
 
         return view('public.schedules.index', [
+            'page' => Page::forKey('schedules-index'),
             'items' => $items,
             'days' => $days,
             'byDate' => $byDate,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Enums\ClinicType;
 use App\Http\Controllers\Controller;
 use App\Models\Clinic;
+use App\Models\Page;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -28,7 +29,7 @@ class ClinicController extends Controller
             }
         }
 
-        return view('public.clinics.index', ['groups' => $groups]);
+        return view('public.clinics.index', ['groups' => $groups, 'page' => Page::forKey('clinics-index')]);
     }
 
     public function show(Clinic $clinic): View

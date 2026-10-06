@@ -1,4 +1,4 @@
-<x-layouts.public title="Jadwal Dokter" meta-description="Jadwal praktik dokter UNPAM HOSPITAL per minggu dengan sisa kuota.">
+<x-layouts.public :title="$page->seo_title" :meta-description="$page->seo_description">
     <x-slot:breadcrumb>
         <x-breadcrumb :items="[['label' => 'Jadwal Dokter']]" />
     </x-slot:breadcrumb>
@@ -7,7 +7,7 @@
         <link rel="canonical" href="{{ route('schedules.index') }}">
     @endpush
 
-    <x-page-header title="Jadwal Dokter" subtitle="Jadwal praktik per minggu" />
+    <x-page-header :title="$page->title" :subtitle="$page->subtitle" />
 
     @if ($notice)
         <div class="alert alert-warning" role="status" data-schedule-notice>{{ $notice }}</div>

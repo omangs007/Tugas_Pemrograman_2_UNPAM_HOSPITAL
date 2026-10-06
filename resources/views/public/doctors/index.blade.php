@@ -4,7 +4,7 @@
     // Galat inline (filter diabaikan) harus terlihat di layar kecil: panel filter ikut terbuka.
     $expanded = $hasFilters || $errors->any();
 @endphp
-<x-layouts.public title="Cari Dokter" meta-description="Cari dokter UNPAM HOSPITAL berdasarkan nama, spesialisasi, poliklinik, dan tanggal." :noindex="$doctors->isEmpty()">
+<x-layouts.public :title="$page->seo_title" :meta-description="$page->seo_description" :noindex="$doctors->isEmpty()">
     <x-slot:breadcrumb>
         <x-breadcrumb :items="[['label' => 'Dokter']]" />
     </x-slot:breadcrumb>
@@ -13,7 +13,7 @@
         <link rel="canonical" href="{{ route('doctors.index') }}">
     @endpush
 
-    <x-page-header title="Cari Dokter" subtitle="Cari berdasarkan nama, spesialisasi, poliklinik, atau tanggal praktik" />
+    <x-page-header :title="$page->title" :subtitle="$page->subtitle" />
 
     <form method="GET" action="{{ route('doctors.index') }}" role="search" aria-label="Cari dokter" class="card card-body bg-light border-0 mb-4" id="form-cari-dokter">
         <button class="btn btn-outline-primary d-md-none w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filter-dokter" aria-expanded="{{ $expanded ? 'true' : 'false' }}" aria-controls="filter-dokter">

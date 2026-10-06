@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\DoctorIndexRequest;
 use App\Models\Clinic;
 use App\Models\Doctor;
+use App\Models\Page;
 use App\Models\Specialty;
 use App\Services\Scheduling\AvailabilityFilter;
 use App\Services\Scheduling\DoctorAvailabilityQuery;
@@ -96,6 +97,7 @@ class DoctorController extends Controller
         view()->share('errors', (new ViewErrorBag)->put('default', $errors));
 
         return view('public.doctors.index', [
+            'page' => Page::forKey('doctors-index'),
             'doctors' => $doctors,
             'nextSessions' => $nextSessions,
             'filters' => $filters,

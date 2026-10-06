@@ -97,8 +97,11 @@ class PublicClinicPagesTest extends TestCase
 
         $response = $this->get(route('clinics.index'))->assertOk();
 
-        $response->assertSee('<title>Layanan Kami — '.config('app.name').'</title>', false)
-            ->assertSee('Poliklinik dan layanan penunjang UNPAM HOSPITAL.')
+        $response->assertSee('<title>Layanan dan Poliklinik — '.config('app.name').'</title>', false)
+            ->assertSee('<h1 class="mb-1">Layanan dan Poliklinik</h1>', false)
+            ->assertSee('Pilih layanan sesuai kebutuhan Anda')
+            ->assertSee('<meta name="description" content="Daftar poliklinik dan layanan penunjang UNPAM HOSPITAL.">', false)
+            ->assertDontSee('Layanan Kami')
             ->assertSee('aria-label="Breadcrumb"', false)
             ->assertSee('<li class="breadcrumb-item active" aria-current="page">Layanan</li>', false);
         $this->assertSame(1, substr_count($response->getContent(), '<h1'));

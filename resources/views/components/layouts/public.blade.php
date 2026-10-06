@@ -1,4 +1,4 @@
-@props(['title', 'metaDescription' => null, 'noindex' => false])
+@props(['title', 'metaDescription' => null, 'noindex' => false, 'fullTitle' => false])
 @php
     $siteName = $site->string('site.name', config('app.name'));
     $tagline = $site->string('site.tagline');
@@ -50,7 +50,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title }} — {{ $siteName }}</title>
+    <title>{{ $fullTitle ? $title : $title.' — '.$siteName }}</title>
     <meta name="description" content="{{ $description }}">
     @if ($noindex)
         <meta name="robots" content="noindex,nofollow">
