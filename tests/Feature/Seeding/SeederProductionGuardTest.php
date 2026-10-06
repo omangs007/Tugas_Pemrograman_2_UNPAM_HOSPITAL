@@ -39,6 +39,7 @@ class SeederProductionGuardTest extends TestCase
         $this->assertSame(3, Role::query()->count());
         $this->assertSame(19, Permission::query()->count());
         $this->assertSame(19, WebsiteSetting::query()->count());
+        $this->assertSame(15, DB::table('pages')->count(), 'PageSeeder termasuk seeder inti (13 §2.3).');
         $this->assertSame(0, DB::table('specialties')->count() + DB::table('clinics')->count() + DB::table('doctors')->count() + DB::table('media')->count());
         $this->assertSame(0, User::query()->count());
         $this->assertSame(0, User::query()->where('email', 'like', '%.test')->count());
