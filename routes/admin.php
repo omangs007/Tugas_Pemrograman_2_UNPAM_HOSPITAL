@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ClinicController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\DoctorScheduleController;
+use App\Http\Controllers\Admin\FacilityController;
 use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\GalleryController;
 use App\Http\Controllers\Admin\InsurancePartnerController;
@@ -165,6 +166,17 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
             ->parameters(['asuransi' => 'insurancePartner'])
             ->except(['show']);
     });
+
+    // Fasilitas dan kamar (halaman #36) serta kotak pesan kontak, fase 4b (F4B-R13). Semua di dalam G-ADMIN; tanpa show (00 I.6).
+    // Fasilitas (tab Fasilitas): izin tunggal facilities.manage.
+    Route::middleware('permission:facilities.manage')->group(function (): void {
+        Route::resource('fasilitas', FacilityController::class)
+            ->names('facilities')
+            ->parameters(['fasilitas' => 'facility'])
+            ->except(['show']);
+    });
+    // Task 5: kategori kamar
+    // Task 6: pesan kontak
 
     // J. Media (11 §2.3 J, F2-R3). JSON; izin akhir ditentukan MediaPolicy menurut pemilik media.
     // `editor` dan `urutkan` bersifat statis dan harus didaftarkan SEBELUM `{media}`.

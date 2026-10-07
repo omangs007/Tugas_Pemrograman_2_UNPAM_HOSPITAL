@@ -73,18 +73,18 @@ class Phase4aRoutePermissionTest extends TestCase
         $this->assertEqualsCanonicalizing(array_keys(self::permissions()), $names);
     }
 
-    public function test_the_admin_area_has_ninety_routes_after_phase_4a(): void
+    public function test_the_content_area_has_forty_routes(): void
     {
         $count = 0;
 
         foreach (Route::getRoutes()->getRoutes() as $route) {
-            if ($route->uri() === 'admin' || str_starts_with($route->uri(), 'admin/')) {
+            if (str_starts_with($route->uri(), 'admin/konten/')) {
                 $count++;
             }
         }
 
-        // 31 fase 1-2 + 19 fase 3 + 40 fase 4a (F4A-R28); fase 4b dan seterusnya wajib memperbarui angka ini.
-        $this->assertSame(90, $count);
+        // 40 route fase 4a (F4A-R28). Total seluruh area admin dikunci Phase4bRoutePermissionTest (F4B-R37).
+        $this->assertSame(40, $count);
     }
 
     public function test_route_parameters_are_named_as_documented(): void
