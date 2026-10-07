@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\InsurancePartnerController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PracticeSessionController;
+use App\Http\Controllers\Admin\RoomCategoryController;
 use App\Http\Controllers\Admin\ScheduleExceptionController;
 use App\Http\Controllers\Admin\SpecialtyController;
 use App\Http\Controllers\Auth\AdminLoginController;
@@ -175,7 +176,20 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
             ->parameters(['fasilitas' => 'facility'])
             ->except(['show']);
     });
-    // Task 5: kategori kamar
+    // Kategori kamar (tab Kamar dan Kapasitas, F-ADM-10/11): struktur memakai facilities.manage; daftar terbuka juga bagi
+    // rooms.update-availability (mode ketersediaan Petugas, D-12); aksi ketersediaan memakai rooms.update-availability. Tanpa show.
+    Route::middleware('permission:facilities.manage')->group(function (): void {
+        Route::resource('kamar', RoomCategoryController::class)
+            ->names('room-categories')
+            ->parameters(['kamar' => 'roomCategory'])
+            ->except(['index', 'show']);
+    });
+    Route::get('kamar', [RoomCategoryController::class, 'index'])
+        ->middleware('permission:facilities.manage|rooms.update-availability')
+        ->name('room-categories.index');
+    Route::patch('kamar/{roomCategory}/ketersediaan', [RoomCategoryController::class, 'availability'])
+        ->middleware('permission:rooms.update-availability')
+        ->name('room-categories.availability');
     // Task 6: pesan kontak
 
     // J. Media (11 §2.3 J, F2-R3). JSON; izin akhir ditentukan MediaPolicy menurut pemilik media.
