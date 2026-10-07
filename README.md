@@ -204,3 +204,48 @@ Checklist deploy: jalankan `php artisan db:seed --class=PageSeeder --force` (ama
 & $PHP artisan test                      # seluruh suite
 npm run build                            # carousel beranda dan gaya konten ikut dibundel
 ```
+
+## Fase 4b — Fasilitas, kamar rawat inap, dan kontak
+
+Yang tersedia (dengan fase ini kedua puluh dua halaman publik lengkap):
+- **Fasilitas dan Kamar** di <http://unpam-hospital.test/admin/kamar> dengan dua tab: **Kamar dan Kapasitas** (`/admin/kamar`, termasuk pembaruan ketersediaan tempat tidur secara manual) dan **Fasilitas** (`/admin/fasilitas`).
+- **Pesan Kontak** (kotak pesan) di `/admin/pesan`: daftar dengan pencarian dan filter status, serta detail pesan dengan tombol Tandai Dibalas, Arsipkan, dan Pulihkan. Aplikasi tidak mengirim balasan otomatis; balas manual lewat email atau telepon.
+- Halaman publik **Fasilitas** (`/fasilitas`, `/fasilitas/{slug}`), **Kamar Rawat Inap** (`/kamar-rawat-inap`, `/kamar-rawat-inap/{slug}`; empat kategori contoh), dan **Kontak dan Lokasi** (`/kontak`: alamat, peta tersemat dengan cadangan saat offline, dan formulir pesan). Beranda kini memuat blok **Ketersediaan Kamar Rawat Inap**.
+- Tombol "Kirim Pesan" dan tautan "Kontak" yang menunggu route di fase 4a kini tampil otomatis; beranda memuat tautan "Lihat detail kamar" ke Kamar Rawat Inap.
+- Pengaturan situs (alamat, telepon, tautan peta) baru dapat diubah dari admin di fase 8; sampai saat itu nilainya berasal dari seeder pengaturan. Bila `map.embed_url` kosong, halaman kontak menulis "Peta tidak tersedia." dan tombol Petunjuk Arah tetap tampil.
+
+### Hak akses
+
+| Peran | Fasilitas dan kategori kamar (tambah, ubah, hapus) | Perbarui ketersediaan kamar | Kotak pesan kontak |
+|---|:-:|:-:|:-:|
+| Super Admin | ya | ya | ya |
+| Admin Konten | ya | ya | tidak (403) |
+| Petugas Pendaftaran | tidak (403) | ya | ya |
+
+Petugas Pendaftaran membuka daftar kamar dalam mode ketersediaan saja: ia dapat memperbarui jumlah tempat tidur tersedia, tetapi tidak dapat menambah, mengubah, atau menghapus kategori dan gambarnya. Layar Fasilitas dan Kamar tidak pernah memuat data pasien atau pesan kontak. Halaman publik terbuka untuk semua orang; fasilitas dan kategori kamar nonaktif menjawab 404 di URL-nya, juga untuk staf yang login.
+
+### Aturan yang berlaku untuk semua peran, termasuk Super Admin
+
+Jumlah tempat tidur tersedia tidak boleh melebihi kapasitas, dan kapasitas tidak boleh diturunkan di bawah jumlah tersedia saat ini. Ketersediaan kamar hanya diperbarui manual oleh petugas dan halaman publik menampilkan waktu pembaruan terakhirnya (tanpa klaim waktu nyata); data yang lebih tua dari 24 jam diberi peringatan. Galeri fasilitas dan kamar paling banyak 20 gambar. Status pesan kontak tidak dapat dikembalikan ke "Baru" dan pesan tidak dapat dihapus, hanya diarsipkan. Formulir kontak dibatasi 3 kiriman per 10 menit per alamat IP; alamat IP tidak disimpan, hanya hash-nya.
+
+### Data demo
+
+Seeder `RoomCategorySeeder`, `FacilitySeeder`, dan `ContactMessageSeeder` hanya berjalan di lokal:
+
+```powershell
+& $PHP artisan migrate:fresh --seed   # LOKAL SAJA: menghapus semua tabel dan isi database unpam_hospital
+```
+
+Selain data fase 1–4a: 4 kategori kamar (satu sengaja penuh untuk menguji badge "Penuh"), 10 fasilitas, dan 5 pesan kontak fiktif (2 baru, 1 dibaca, 1 dibalas, 1 diarsipkan). Total gambar contoh menjadi 83 (57 sebelumnya + 26 fasilitas dan kamar), semuanya dibuat lokal oleh GD. Nama kategori kamar dan tarifnya adalah contoh prototipe, bukan ketentuan BPJS atau tarif resmi, dan harus ditinjau sebelum dipakai di produksi.
+
+### Pemeriksaan cepat (fase 4b)
+
+```powershell
+& $PHP artisan route:list --path=admin   # 106 route admin (90 fase 1-4a + 16 fase 4b)
+& $PHP artisan route:list --except-path=admin --name=facilities   # facilities.index dan facilities.show (publik)
+& $PHP artisan route:list --except-path=admin --name=rooms        # rooms.index dan rooms.show (publik)
+& $PHP artisan route:list --except-path=admin --name=contact      # contact (GET) dan contact.store (POST, throttle)
+& $PHP artisan media:prune --dry-run     # setelah seeding: 0 baris dan 0 berkas yatim
+& $PHP artisan test                      # seluruh suite
+npm run build                            # peta tersemat (initMapEmbeds) dan gaya fasilitas/kamar ikut dibundel
+```
