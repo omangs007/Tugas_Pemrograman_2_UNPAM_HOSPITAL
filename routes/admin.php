@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ArticleCategoryController;
 use App\Http\Controllers\Admin\ArticleController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\ClinicController;
+use App\Http\Controllers\Admin\ContactMessageController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DoctorController;
 use App\Http\Controllers\Admin\DoctorScheduleController;
@@ -190,7 +191,12 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
     Route::patch('kamar/{roomCategory}/ketersediaan', [RoomCategoryController::class, 'availability'])
         ->middleware('permission:rooms.update-availability')
         ->name('room-categories.availability');
-    // Task 6: pesan kontak
+    // Kotak pesan kontak (F-ADM-24): izin tunggal messages.manage; tanpa destroy (00 C, KNS-01).
+    Route::middleware('permission:messages.manage')->group(function (): void {
+        Route::get('pesan', [ContactMessageController::class, 'index'])->name('messages.index');
+        Route::get('pesan/{message}', [ContactMessageController::class, 'show'])->name('messages.show');
+        Route::patch('pesan/{message}/status', [ContactMessageController::class, 'status'])->name('messages.status');
+    });
 
     // J. Media (11 §2.3 J, F2-R3). JSON; izin akhir ditentukan MediaPolicy menurut pemilik media.
     // `editor` dan `urutkan` bersifat statis dan harus didaftarkan SEBELUM `{media}`.
