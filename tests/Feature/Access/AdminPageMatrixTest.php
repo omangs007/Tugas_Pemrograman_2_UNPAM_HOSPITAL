@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Access;
 
+use App\Enums\ContactMessageStatus;
 use App\Models\Media;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\InteractsWithContent;
+use Tests\Support\InteractsWithFacilities;
 use Tests\Support\InteractsWithMasterData;
 use Tests\Support\InteractsWithMedia;
 use Tests\Support\InteractsWithSchedules;
@@ -16,8 +18,8 @@ use Tests\Support\InteractsWithStaff;
 use Tests\TestCase;
 
 /**
- * 15 §3.1 baris 1 sampai 8, 16 sampai 21 (+ detail album dan privasi) dan §3.3 baris 31, 31b, 32, 33, 33b, 34, 35, 35b,
- * 35d, 39 × lima aktor (AKS-01 sampai AKS-05),
+ * 15 §3.1 baris 1 sampai 22 (+ detail album, empat slug kamar, dan privasi) dan §3.3 baris 31, 31b, 32, 33, 33b, 34, 35,
+ * 35b, 35d, 36, 36b, 36c, 39, 39b × lima aktor (AKS-01 sampai AKS-05),
  * ditambah matriks mutasi non-GET (15 §3 catatan) untuk modul master data, media, dan jadwal.
  * Hasil: 200 = tampil, 403 = ditolak, L = redirect ke admin.login, D = redirect dasbor sesuai tipe akun,
  * OK = lolos otorisasi (200/201/204/302/422, bukan 403/login), G = tamu (redirect login atau 401 JSON).
@@ -26,6 +28,7 @@ use Tests\TestCase;
 class AdminPageMatrixTest extends TestCase
 {
     use InteractsWithContent;
+    use InteractsWithFacilities;
     use InteractsWithMasterData;
     use InteractsWithMedia;
     use InteractsWithSchedules;
@@ -39,6 +42,21 @@ class AdminPageMatrixTest extends TestCase
 
     /** Layar konten #39 (`content.manage`): Tamu →L, Pasien 403, Admin Konten 200, Petugas 403, Super Admin 200. */
     private const CONTENT_SCREEN = ['L', '403', '200', '403', '200'];
+
+    /** Layar #36 kelola fasilitas dan kamar (`facilities.manage`): sama dengan konten, Petugas 403 (D-12). */
+    private const FACILITY_SCREEN = ['L', '403', '200', '403', '200'];
+
+    /** #36b daftar kamar (`facilities.manage` atau `rooms.update-availability`): Petugas ikut 200 (mode ketersediaan). */
+    private const ROOM_LIST = ['L', '403', '200', '200', '200'];
+
+    /** #39b kotak pesan (`messages.manage`): Admin Konten 403, Petugas dan Super Admin 200. */
+    private const MESSAGE_SCREEN = ['L', '403', '403', '200', '200'];
+
+    /** #36c PATCH ketersediaan (`rooms.update-availability`): Admin Konten, Petugas, dan Super Admin berhak. */
+    private const AVAILABILITY = ['G', '403', 'OK', 'OK', 'OK'];
+
+    /** PATCH status pesan (`messages.manage`): Petugas dan Super Admin berhak. */
+    private const MESSAGE_STATUS = ['G', '403', '403', 'OK', 'OK'];
 
     /** @return array<string, array{string, ?string, string, string}> */
     public static function matrix(): array
@@ -87,6 +105,14 @@ class AdminPageMatrixTest extends TestCase
             '39 Mitra asuransi (daftar)' => ['admin.insurance-partners.index', null, self::CONTENT_SCREEN],
             '39 Mitra asuransi (tambah)' => ['admin.insurance-partners.create', null, self::CONTENT_SCREEN],
             '39 Mitra asuransi (ubah)' => ['admin.insurance-partners.edit', 'insurance-partner', self::CONTENT_SCREEN],
+            '36 Fasilitas (daftar)' => ['admin.facilities.index', null, self::FACILITY_SCREEN],
+            '36 Fasilitas (tambah)' => ['admin.facilities.create', null, self::FACILITY_SCREEN],
+            '36 Fasilitas (ubah)' => ['admin.facilities.edit', 'facility', self::FACILITY_SCREEN],
+            '36b Kamar dan kapasitas (daftar)' => ['admin.room-categories.index', null, self::ROOM_LIST],
+            '36 Kategori kamar (tambah)' => ['admin.room-categories.create', null, self::FACILITY_SCREEN],
+            '36 Kategori kamar (ubah)' => ['admin.room-categories.edit', 'room-category', self::FACILITY_SCREEN],
+            '39b Kotak pesan (daftar)' => ['admin.messages.index', null, self::MESSAGE_SCREEN],
+            '39b Kotak pesan (detail)' => ['admin.messages.show', 'message', self::MESSAGE_SCREEN],
         ];
 
         $cases = [];
@@ -114,6 +140,13 @@ class AdminPageMatrixTest extends TestCase
             '6 Daftar dokter' => ['doctors.index', null],
             '7 Detail dokter' => ['doctors.show', 'public-doctor'],
             '8 Jadwal dokter' => ['schedules.index', null],
+            '9 Daftar fasilitas' => ['facilities.index', null],
+            '10 Detail fasilitas' => ['facilities.show', 'public-facility'],
+            '11 Ringkasan kamar' => ['rooms.index', null],
+            '12 Kamar BPJS Kelas 1' => ['rooms.show', 'public-room-bpjs-kelas-1'],
+            '13 Kamar BPJS Kelas 2' => ['rooms.show', 'public-room-bpjs-kelas-2'],
+            '14 Kamar BPJS Kelas 3' => ['rooms.show', 'public-room-bpjs-kelas-3'],
+            '15 Kamar VIP' => ['rooms.show', 'public-room-vip'],
             '16 Info BPJS dan asuransi' => ['insurance', null],
             '17 Panduan pendaftaran' => ['registration-guide', null],
             '18 Daftar artikel' => ['articles.index', null],
@@ -121,6 +154,7 @@ class AdminPageMatrixTest extends TestCase
             '20 Galeri' => ['galleries.index', null],
             '20b Detail album' => ['galleries.show', 'public-gallery'],
             '21 FAQ' => ['faq', null],
+            '22 Kontak dan lokasi' => ['contact', null],
             'Kebijakan privasi' => ['privacy', null],
         ];
 
@@ -183,6 +217,14 @@ class AdminPageMatrixTest extends TestCase
             'POST mitra asuransi baru' => ['post', 'admin.insurance-partners.store', null, self::MANAGE],
             'PUT ubah mitra asuransi' => ['put', 'admin.insurance-partners.update', 'insurance-partner', self::MANAGE],
             'DELETE mitra asuransi' => ['delete', 'admin.insurance-partners.destroy', 'insurance-partner', self::MANAGE],
+            'POST fasilitas baru' => ['post', 'admin.facilities.store', null, self::MANAGE],
+            'PUT ubah fasilitas' => ['put', 'admin.facilities.update', 'facility', self::MANAGE],
+            'DELETE fasilitas' => ['delete', 'admin.facilities.destroy', 'facility', self::MANAGE],
+            'POST kategori kamar baru' => ['post', 'admin.room-categories.store', null, self::MANAGE],
+            'PUT ubah kategori kamar' => ['put', 'admin.room-categories.update', 'room-category', self::MANAGE],
+            'DELETE kategori kamar' => ['delete', 'admin.room-categories.destroy', 'room-category', self::MANAGE],
+            'PATCH ketersediaan kamar (36c)' => ['patch', 'admin.room-categories.availability', 'room-category', self::AVAILABILITY],
+            'PATCH status pesan kontak' => ['patch', 'admin.messages.status', 'message', self::MESSAGE_STATUS],
         ];
 
         $cases = [];
@@ -321,6 +363,93 @@ class AdminPageMatrixTest extends TestCase
         DB::disableQueryLog();
     }
 
+    public function test_patient_is_forbidden_from_admin_facility_room_and_message_urls(): void
+    {
+        $patient = User::factory()->patient()->create();
+        $room = $this->createRoomCategory();
+        $message = $this->createContactMessage();
+
+        foreach (['/admin/fasilitas', '/admin/kamar', '/admin/pesan'] as $url) {
+            $this->actingAs($patient)->get($url)->assertForbidden();
+        }
+
+        $this->actingAs($patient)->post('/admin/fasilitas')->assertForbidden();
+        $this->actingAs($patient)->post('/admin/kamar')->assertForbidden();
+        $this->actingAs($patient)->patch(route('admin.room-categories.availability', $room))->assertForbidden();
+        $this->actingAs($patient)->patch(route('admin.messages.status', $message))->assertForbidden();
+    }
+
+    /** AKS-05 dan D-12: Petugas hanya mendapat mode ketersediaan; kelola struktur kamar dan fasilitas 403. */
+    public function test_registration_officer_only_gets_the_availability_mode_of_the_room_screen(): void
+    {
+        $officer = $this->createStaff('registration-officer');
+        $room = $this->createRoomCategory(['bed_capacity' => 10, 'beds_available' => 3]);
+
+        $this->actingAs($officer)->get('/admin/fasilitas')->assertForbidden();
+        $this->actingAs($officer)->get('/admin/kamar')->assertOk();
+        $this->actingAs($officer)->get('/admin/kamar/buat')->assertForbidden();
+        $this->actingAs($officer)->get(route('admin.room-categories.edit', $room))->assertForbidden();
+        $this->actingAs($officer)->delete(route('admin.room-categories.destroy', $room))->assertForbidden();
+
+        $this->actingAs($officer)
+            ->patch(route('admin.room-categories.availability', $room), ['beds_available' => 1, 'availability_for' => $room->id])
+            ->assertRedirect(route('admin.room-categories.index'));
+
+        $this->assertSame(1, $room->fresh()->beds_available);
+        $this->assertDatabaseHas('room_categories', ['id' => $room->id]);
+    }
+
+    /** Review Focus 5 dan F4B-R39: Admin Konten tidak memegang `messages.manage`. */
+    public function test_content_admin_cannot_open_or_change_the_message_inbox(): void
+    {
+        $admin = $this->createStaff('content-admin');
+        $message = $this->createContactMessage();
+
+        $this->actingAs($admin)->get('/admin/pesan')->assertForbidden();
+        $this->actingAs($admin)->get(route('admin.messages.show', $message))->assertForbidden();
+        $this->actingAs($admin)->patch(route('admin.messages.status', $message), ['status' => 'archived'])->assertForbidden();
+
+        $this->assertSame(ContactMessageStatus::New, $message->fresh()->status);
+    }
+
+    /** AKS-04 dan F4B-R39: layar #36 tidak mengueri data pasien, pendaftaran, atau pesan kontak. */
+    public function test_facility_and_room_screens_never_query_patient_data_or_messages(): void
+    {
+        $admin = $this->createStaff('content-admin');
+
+        $screens = [
+            ['admin.facilities.index', []],
+            ['admin.facilities.create', []],
+            ['admin.facilities.edit', ['facility' => $this->createFacility()->id]],
+            ['admin.room-categories.index', []],
+            ['admin.room-categories.create', []],
+            ['admin.room-categories.edit', ['roomCategory' => $this->createRoomCategory()->id]],
+        ];
+
+        foreach ($screens as [$name, $parameters]) {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+
+            $this->actingAs($admin)->get(route($name, $parameters))->assertOk();
+
+            foreach (DB::getQueryLog() as $entry) {
+                $this->assertDoesNotMatchRegularExpression(
+                    '/\b(patient_profiles|appointments|appointment_status_histories|contact_messages)\b/',
+                    $entry['query'],
+                    "{$name} mengueri data pasien atau pesan: {$entry['query']}",
+                );
+            }
+        }
+
+        DB::disableQueryLog();
+    }
+
+    /** @return array<string, string> */
+    private function publicRoomParameters(string $slug, string $name): array
+    {
+        return ['roomCategory' => $this->createRoomCategory(['name' => $name, 'slug' => $slug, 'is_active' => true])->slug];
+    }
+
     private function assertGuestRejected(int $status, string $location): void
     {
         $this->assertContains($status, [302, 401], "Tamu harus dialihkan ke login atau menerima 401, bukan {$status}.");
@@ -359,6 +488,14 @@ class AdminPageMatrixTest extends TestCase
             'insurance-partner' => ['insurancePartner' => $this->createInsurancePartner()->id],
             'public-article' => ['article' => $this->createArticle()->slug],
             'public-gallery' => ['gallery' => $this->createGallery(['is_published' => true])->slug],
+            'facility' => ['facility' => $this->createFacility()->id],
+            'room-category' => ['roomCategory' => $this->createRoomCategory()->id],
+            'message' => ['message' => $this->createContactMessage()->id],
+            'public-facility' => ['facility' => $this->createFacility(['is_active' => true])->slug],
+            'public-room-bpjs-kelas-1' => $this->publicRoomParameters('bpjs-kelas-1', 'Kamar BPJS Kelas 1'),
+            'public-room-bpjs-kelas-2' => $this->publicRoomParameters('bpjs-kelas-2', 'Kamar BPJS Kelas 2'),
+            'public-room-bpjs-kelas-3' => $this->publicRoomParameters('bpjs-kelas-3', 'Kamar BPJS Kelas 3'),
+            'public-room-vip' => $this->publicRoomParameters('vip', 'Kamar VIP/Pribadi'),
         };
     }
 
