@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Media;
 use App\Models\RoomCategory;
+use App\Services\Media\MediaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -182,6 +183,22 @@ class RoomCategoryRequestTest extends TestCase
         $this->assertSame('Kamar Sasaran', $target->fresh()->name);
         $this->assertSame(12, $target->fresh()->bed_capacity);
         $this->assertSame(0, Media::query()->count());
+    }
+
+    public function test_update_with_an_array_cover_alt_is_a_validation_error_not_a_server_error(): void
+    {
+        Storage::fake('public');
+        $target = $this->createRoomCategory(['name' => 'Kamar Sasaran']);
+        app(MediaService::class)->store(ImageFixtures::jpeg(1200, 800, 'cover.jpg'), 'cover', $target, ['alt_text' => 'Alt lama']);
+
+        $this->actingAs($this->createStaff('content-admin'))
+            ->from(route('admin.room-categories.edit', $target))
+            ->put(route('admin.room-categories.update', $target), array_merge($this->valid(), ['cover_alt' => ['x']]))
+            ->assertRedirect(route('admin.room-categories.edit', $target))
+            ->assertSessionHasErrors(['cover_alt' => 'Teks alternatif gambar harus berupa teks.']);
+
+        $this->assertSame('Kamar Sasaran', $target->fresh()->name);
+        $this->assertSame('Alt lama', Media::query()->where('collection', 'cover')->sole()->alt_text);
     }
 
     public function test_beds_available_is_ignored_on_update_even_when_it_is_invalid(): void

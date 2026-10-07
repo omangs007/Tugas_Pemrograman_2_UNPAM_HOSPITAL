@@ -171,7 +171,9 @@ class FacilityRequest extends FormRequest
 
     public function coverAlt(): string
     {
-        return trim((string) $this->input('cover_alt'));
+        $alt = $this->input('cover_alt');
+
+        return is_string($alt) ? trim($alt) : '';
     }
 
     /**

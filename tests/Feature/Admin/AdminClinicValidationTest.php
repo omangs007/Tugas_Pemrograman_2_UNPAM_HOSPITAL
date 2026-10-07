@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Clinic;
 use App\Models\Media;
+use App\Services\Media\MediaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -95,6 +96,22 @@ class AdminClinicValidationTest extends TestCase
         $this->assertSame(0, Clinic::query()->count());
         $this->assertSame(0, Media::query()->count());
         $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_update_with_an_array_cover_alt_is_a_validation_error_not_a_server_error(): void
+    {
+        Storage::fake('public');
+        $target = $this->createClinic(['name' => 'Poliklinik Sasaran', 'code' => 'SSR']);
+        app(MediaService::class)->store(ImageFixtures::jpeg(1200, 800, 'cover.jpg'), 'cover', $target, ['alt_text' => 'Alt lama']);
+
+        $this->actingAs($this->createStaff('content-admin'))
+            ->from(route('admin.clinics.edit', $target))
+            ->put(route('admin.clinics.update', $target), array_merge($this->valid(), ['cover_alt' => ['x']]))
+            ->assertRedirect(route('admin.clinics.edit', $target))
+            ->assertSessionHasErrors(['cover_alt' => 'Teks alternatif gambar harus berupa teks.']);
+
+        $this->assertSame('Poliklinik Sasaran', $target->fresh()->name);
+        $this->assertSame('Alt lama', Media::query()->where('collection', 'cover')->sole()->alt_text);
     }
 
     public function test_invalid_form_keeps_old_input_and_shows_an_error_summary(): void
