@@ -1189,7 +1189,7 @@ flowchart TD
 2. `PATCH /admin/kamar/{roomCategory}/ketersediaan` (`admin.room-categories.availability`, `UpdateRoomAvailabilityRequest`): `beds_available` bilangan bulat `0 ≤ nilai ≤ bed_capacity`.
 3. Dalam transaksi dengan `lockForUpdate` pada baris kategori: simpan `beds_available`, `availability_updated_at = now()`, `availability_updated_by = user`. CHECK DB `beds_available BETWEEN 0 AND bed_capacity` menjadi lapis pengaman.
 4. Audit `room.availability_updated` (`old_values`/`new_values`: `beds_available`).
-5. Halaman publik `rooms.index` dan `rooms.show` menampilkan "Tersedia {x} dari {y} tempat tidur" dan "Diperbarui manual oleh petugas pada {tanggal} {jam} WIB. Hubungi rumah sakit untuk memastikan ketersediaan." Status ringkas **[ASUMSI]**: `Penuh` bila 0, `Terbatas` bila ≤ 20% kapasitas, selain itu `Tersedia`; label "Data mungkin tidak terkini" bila pembaruan terakhir > 24 jam. Dashboard admin menampilkan ringkasan yang sama dengan waktu pembaruan.
+5. Halaman publik `rooms.index` dan `rooms.show` menampilkan "Tersedia {x} dari {y} tempat tidur" dan "Diperbarui manual oleh petugas pada {tanggal} {jam} WIB. Hubungi rumah sakit untuk memastikan ketersediaan." Status ringkas hanya dua badge: `Tersedia` bila `beds_available > 0` dan `Penuh` bila 0, masing-masing berisi teks, ikon, dan warna (status `Terbatas` tidak dibuat, F4B-R9); kalimat "Data mungkin tidak terkini. Hubungi rumah sakit untuk memastikan ketersediaan." tampil bila `availability_updated_at` kosong atau lebih tua dari 24 jam (F4B-R10). Dashboard admin menampilkan ringkasan yang sama dengan waktu pembaruan.
 6. Kategori yang `is_active = false` tidak tampil di publik tetapi tetap dapat diperbarui di admin. Mengubah `bed_capacity`/tarif/deskripsi memerlukan `facilities.manage` (`admin.room-categories.update`), dan `bed_capacity` tidak boleh lebih kecil dari `beds_available` saat ini.
 
 **Cabang galat**
@@ -1402,7 +1402,7 @@ flowchart TD
 flowchart TD
     A(["Tamu membuka /kontak"]) --> B["Isi nama, email, telepon opsional, subjek, pesan, centang persetujuan"]
     B --> C{"Throttle contact lolos? 3 per 10 menit per IP"}
-    C -->|"Tidak"| C1["429 Terlalu banyak pesan"]
+    C -->|"Tidak"| C1["302 kembali ke /kontak: Terlalu banyak percobaan (D-127)"]
     C -->|"Ya"| D{"Kolom jebakan website terisi?"}
     D -->|"Ya"| D1["Tampil pesan sukses, tidak disimpan"]
     D -->|"Tidak"| E{"StoreContactMessageRequest valid?"}
@@ -1434,7 +1434,7 @@ stateDiagram-v2
 **Langkah**
 
 1. `GET /kontak` (`contact`) menampilkan alamat teks, tombol "Petunjuk Arah", peta tersemat (`x-map-embed`, tetap menampilkan alamat tanpa internet), dan form. Di bawah kolom pesan tertera: "Jangan menuliskan data medis atau nomor identitas pada pesan ini."
-2. `POST /kontak` (`contact.store`) melewati throttle `contact` (3 per 10 menit per IP) lalu `StoreContactMessageRequest`. Kolom jebakan (*honeypot*) tersembunyi `website` **[ASUMSI]**: bila terisi, controller menampilkan sukses palsu tanpa menyimpan.
+2. `POST /kontak` (`contact.store`) melewati throttle `contact` (3 per 10 menit per IP) lalu `StoreContactMessageRequest`. Kolom jebakan (*honeypot*) tersembunyi `website` (di dalam `<div class="d-none" aria-hidden="true">`, `tabindex="-1"`, `autocomplete="off"`; tidak ada di `rules()`): bila terisi, controller mengalihkan ke `contact` dengan flash sukses yang sama tanpa menyimpan apa pun (F4B-R7).
 3. Disimpan ke `contact_messages`: `name`, `email`, `phone` (opsional), `subject`, `message`, `status = new`, `consent_at = now()`, `ip_hash = hash('sha256', IP . APP_KEY)` (**IP mentah tidak disimpan**). Isi pesan hanya dirender dengan `{{ }}` (tanpa HTML).
 4. Pemegang `messages.manage` (Super Admin; Petugas Pendaftaran **[ASUMSI]**) membuka `admin.messages.index` (pencarian, filter status, pagination, tampilan kartu di mobile) lalu `admin.messages.show`. Membuka pesan berstatus `new` mengubahnya menjadi `read` otomatis **[ASUMSI]**.
 5. Balasan dilakukan manual di luar aplikasi (email/telepon/WhatsApp biasa; **bukan** pengiriman otomatis). Petugas mengubah status lewat `PATCH /admin/pesan/{message}/status` (`admin.messages.status`) ke `replied` atau `archived`; `handled_by` dan `handled_at` diisi saat status menjadi `replied`/`archived`. Status tidak dapat dikembalikan ke `new`.
@@ -1448,7 +1448,7 @@ stateDiagram-v2
 | Format email/telepon salah | "Format email tidak valid." / "Nomor telepon tidak valid. Gunakan nomor seluler Indonesia, mis. 081234567890." |
 | Pesan terlalu pendek/panjang | "Pesan minimal 10 karakter." / "Pesan maksimal 2000 karakter." |
 | Persetujuan tidak dicentang | "Anda harus menyetujui pengolahan data untuk mengirim pesan." |
-| Throttle `contact` terlampaui | 429 "Terlalu banyak pesan dikirim. Silakan coba lagi dalam {menit} menit." |
+| Throttle `contact` terlampaui | Redirect 302 kembali ke `/kontak` dengan flash `error` "Terlalu banyak percobaan. Silakan coba lagi dalam {n} detik.", header `Retry-After`, input lama dipertahankan, tanpa baris tersimpan (D-23, F4B-R6) |
 | Sukses | Flash: "Terima kasih. Pesan Anda telah kami terima dan akan ditindaklanjuti oleh petugas kami." |
 | Admin tanpa izin `messages.manage` | 403 "Anda tidak memiliki izin untuk mengakses halaman ini." |
 
@@ -1563,7 +1563,7 @@ Memenuhi F-ADM-25 (halaman 40, tab Pengaturan Website; izin `settings.manage`, h
 15. Menonaktifkan dokter membatalkan sesi mendatang tanpa appointment aktif dan mengirim sesi berappointment aktif ke Sesi terdampak (`doctor_inactive`); mengarsipkan hanya bila tidak ada appointment aktif mendatang → diputuskan di 00 F.4 / 17 D-01, D-02.
 16. **[ASUMSI]** `slug` dibuat sistem dan tidak berubah saat nama/judul diedit.
 17. **[ASUMSI]** Cache aplikasi hanya `settings:all` dan `pages:{key}`; data dokter/jadwal tidak di-cache.
-18. **[ASUMSI]** Status ringkas kamar `Penuh`/`Terbatas` (≤ 20%)/`Tersedia` dan label "Data mungkin tidak terkini" bila pembaruan > 24 jam.
+18. Status ringkas kamar hanya `Penuh`/`Tersedia` (status `Terbatas` ≤ 20% tidak dibuat, F4B-R9) dan kalimat "Data mungkin tidak terkini" bila pembaruan kosong atau > 24 jam (F4B-R10).
 19. **[ASUMSI]** Password sementara staf: 12 karakter acak dibuat sistem, ditampilkan sekali kepada Super Admin; satu staf satu peran; Super Admin boleh membuat Super Admin lain.
 20. **[ASUMSI]** Izin `staff.manage`, `settings.manage`, `audit.view` tidak dapat diberikan ke peran selain Super Admin; `dashboard.view` wajib; izin `*.manage` menyertakan `*.view` pasangannya.
 21. **[ASUMSI]** Ekspor CSV: rentang maksimal 366 hari, sel dinetralkan dari injeksi rumus, audit ditulis sebelum streaming dimulai.

@@ -354,7 +354,7 @@ Satu sesi selalu menampilkan **satu** label `Availability`, dipilih menurut prio
 | | [Tersedia]    |  | [Tersedia]    |  | [Tersedia]    |  | [Tersedia]    |   |
 | +---------------+  +---------------+  +---------------+  +---------------+   |
 | Diperbarui: 02 Okt 2026 09.30 WIB - diperbarui manual oleh petugas,          |
-| bukan data real-time. Hubungi rumah sakit untuk memastikan.                  |
+| Hubungi rumah sakit untuk memastikan ketersediaan.                           |
 +------------------------------------------------------------------------------+
 | ARTIKEL TERBARU                                        <Lihat semua artikel> |
 | +----------------------+  +----------------------+  +----------------------+ |
@@ -415,7 +415,7 @@ Satu sesi selalu menampilkan **satu** label `Availability`, dipilih menurut prio
 3. **Kotak pencarian dokter cepat** (`x-form.input`, `x-form.select`): nama, spesialisasi, poliklinik, tanggal praktik; kirim GET ke `doctors.index`.
 4. **Layanan unggulan**: enam kartu poliklinik aktif (urut `sort_order`) berisi gambar `cover`/ikon, nama, lokasi, tautan ke `clinics.show`; tautan “Lihat semua layanan”.
 5. **Dokter**: empat kartu `x-doctor-card` pertama menurut `sort_order` (foto, nama + gelar sebagai satu-satunya tautan ke `doctors.show`, spesialisasi, poliklinik, dan bila ada lencana ketersediaan, “Jadwal terdekat”, serta tombol Daftar hanya bila route pendaftaran ada); tanpa tombol “Lihat Jadwal” terpisah karena tautan bersarang dilarang (F3-R25, F4A-R16); tautan “Lihat semua dokter”.
-6. **Ringkasan ketersediaan kamar** (ditunda ke fase 4b, F4A-R1): satu kartu kecil per kategori aktif (nama, “N dari M”, badge Tersedia/Penuh) + kalimat **“Diperbarui: {tanggal-jam}”** dan penjelasan bahwa data diperbarui manual dan bukan real-time (`availability_updated_at` paling lama dari kategori; bila kosong “Belum diperbarui”).
+6. **Ringkasan ketersediaan kamar** (fase 4b, F4B-R31): satu kartu kecil per kategori aktif (maksimal 4; nama sebagai tautan `rooms.show`, “N dari M tempat tidur tersedia”, badge Tersedia/Penuh, dan label “Diperbarui manual oleh petugas pada {tanggal}, pukul {jam} WIB” atau “Belum diperbarui”) + kalimat pendek “Diperbarui manual oleh petugas. Hubungi rumah sakit untuk memastikan ketersediaan.” tanpa kata “real-time” (F4B-R11); tautan “Lihat detail kamar” ke `rooms.index`; blok disembunyikan bila tidak ada kategori aktif.
 7. **Artikel terbaru**: tiga artikel terbit (cover, kategori, tanggal, judul, tautan).
 8. **CTA kontak/IGD**: blok latar `$secondary-accent` dengan nomor IGD (placeholder), tombol WhatsApp (tautan biasa), Telepon, Petunjuk Arah (`map.directions_url`), Kirim Pesan (`contact`; hanya bila route ada, fase 4b, F4A-R15). Blok disembunyikan bila semua isiannya kosong.
 
@@ -896,7 +896,7 @@ Kondisi kosong:
 | Beranda > Kamar Rawat Inap                                                   |
 | KAMAR RAWAT INAP                                 (h1, pages.rooms-index)     |
 | +--------------------------------------------------------------------------+ |
-| | (i) Ketersediaan diperbarui manual oleh petugas, bukan data real-time.   | |
+| | (i) Ketersediaan tempat tidur diperbarui manual oleh petugas.            | |
 | | Nama dan klasifikasi kategori adalah kebutuhan prototipe, bukan ketentuan| |
 | | BPJS yang sudah diverifikasi. Tarif adalah contoh.                       | |
 | +--------------------------------------------------------------------------+ |
@@ -949,8 +949,8 @@ Kondisi kosong:
 | +------------+ +------------+ +------------+  | tindakan medis (rate_note).| |
 |                                               +----------------------------+ |
 | Deskripsi kategori (rich text tersanitasi).   | Diperbarui : 02 Okt 2026   | |
-|                                               | 09.30 WIB (manual, bukan   | |
-| FASILITAS KAMAR (amenities)                   | real-time)                 | |
+|                                               | 09.30 WIB (diperbarui      | |
+| FASILITAS KAMAR (amenities)                   | manual)                    | |
 | (v) Tempat tidur      (v) Televisi            +----------------------------+ |
 | (v) Kamar mandi dalam (v) Lemari pasien       | [ Tanya Ketersediaan ]     | |
 | (v) AC                (v) Bel panggil         | [ Chat WhatsApp      ]     | |
@@ -986,7 +986,7 @@ Kondisi kosong:
 
 **Elemen**
 
-1. Kalimat peringatan (ringkasan dan detail): “Ketersediaan diperbarui manual oleh petugas, bukan data real-time. Nama dan klasifikasi kategori adalah kebutuhan prototipe, bukan ketentuan BPJS yang sudah diverifikasi. Tarif adalah contoh.”
+1. Kalimat peringatan (ringkasan dan detail, kotak `alert alert-info` berikon `bi-info-circle`): “Ketersediaan tempat tidur diperbarui manual oleh petugas dan dapat berubah sewaktu-waktu. Hubungi rumah sakit untuk memastikan. Nama dan klasifikasi kategori adalah kebutuhan prototipe, bukan ketentuan BPJS yang sudah diverifikasi. Tarif adalah contoh.” (F4B-R11; kata “real-time” tidak dipakai).
 2. Ringkasan: kartu per kategori aktif (`room_categories`): gambar `cover`, nama, `short_description`, kapasitas (`bed_capacity`), tersedia (`beds_available`, badge Tersedia/Penuh), **tarif contoh** (`sample_rate` + `rate_unit`, selalu berlabel “contoh”), **“Diperbarui: {availability_updated_at}”**, tombol **Lihat Detail**.
 3. Detail: galeri (`gallery`, foto utama + thumbnail), deskripsi rich text, **daftar fasilitas** (`amenities`, JSON array teks) berikon centang, panel ringkasan (kapasitas, tersedia, tarif contoh + `rate_note`, waktu pembaruan), tombol **Tanya Ketersediaan** (`contact`) dan **Chat WhatsApp** (tautan `wa.me`, bukan otomatis).
 

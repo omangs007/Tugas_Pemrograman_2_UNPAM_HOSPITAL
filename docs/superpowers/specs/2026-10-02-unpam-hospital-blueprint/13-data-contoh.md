@@ -690,7 +690,8 @@ SELECT COUNT(*) FROM appointment_status_histories;                  -- 64
 SELECT SUM(booked_count) FROM practice_sessions;                    -- 26
 SELECT status, COUNT(*) FROM practice_sessions GROUP BY status;     -- needs_review = 1, closed = 1
 SELECT COUNT(*) FROM users WHERE email LIKE '%.test';               -- 10 (hanya di local/testing)
-SELECT COUNT(*) FROM media;                                         -- 57 setelah fase 4a (32 master + 25 konten: 6 cover artikel, 3 banner, 12 foto album, 4 logo; F4A-R27); fase 4b dan 9 menambah gambar fasilitas dan kamar
+SELECT COUNT(*) FROM media;                                         -- 83 setelah fase 4b (57 fase 1-4a + 26: fasilitas 10 cover + 4 galeri, kamar 4 cover + 8 galeri; cover 36, gallery 12; F4B-R36)
+SELECT COUNT(*) FROM room_categories;                               -- 4 (kapasitas 58, tersedia 16; Kelas 2 penuh); facilities 10 (2 medis, 3 penunjang, 5 umum); contact_messages 5 (2 new, 1 read, 1 replied, 1 archived)
 SELECT COUNT(*) FROM articles;                                      -- 8 (7 terbit + 1 draf); article_categories 4, banners 3, galleries 3, faqs 12, insurance_partners 4, pages 15
 ```
 

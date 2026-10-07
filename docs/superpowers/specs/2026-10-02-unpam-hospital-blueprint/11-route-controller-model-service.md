@@ -190,13 +190,13 @@ Catatan E: sesi tidak memiliki `show`; `destroy` sesi hanya untuk sesi tambahan 
 
 | Method | URI | Nama route | Controller@method | Middleware | Form Request | Policy/izin |
 |---|---|---|---|---|---|---|
-| GET | `/admin/fasilitas` | `admin.facilities.index` | `FacilityController@index` | `permission:facilities.manage` | `ListFilterRequest` | `FacilityPolicy::viewAny` |
+| GET | `/admin/fasilitas` | `admin.facilities.index` | `FacilityController@index` | `permission:facilities.manage` | `FacilityIndexRequest` (turunan `ListFilterRequest`: `status`, `kategori`, `urut`, `q`; F4B-R22) | `FacilityPolicy::viewAny` |
 | GET | `/admin/fasilitas/buat` | `admin.facilities.create` | `FacilityController@create` | `permission:facilities.manage` | — | `FacilityPolicy::create` |
 | POST | `/admin/fasilitas` | `admin.facilities.store` | `FacilityController@store` | `permission:facilities.manage` | `FacilityRequest` | `FacilityPolicy::create` |
 | GET | `/admin/fasilitas/{facility}/ubah` | `admin.facilities.edit` | `FacilityController@edit` | `permission:facilities.manage` | — | `FacilityPolicy::update` |
 | PUT/PATCH | `/admin/fasilitas/{facility}` | `admin.facilities.update` | `FacilityController@update` | `permission:facilities.manage` | `FacilityRequest` | `FacilityPolicy::update` |
 | DELETE | `/admin/fasilitas/{facility}` | `admin.facilities.destroy` | `FacilityController@destroy` | `permission:facilities.manage` | — | `FacilityPolicy::delete`; menghapus media terkait via `MediaService` |
-| GET | `/admin/kamar` | `admin.room-categories.index` | `RoomCategoryController@index` | `permission:facilities.manage\|rooms.update-availability` | `ListFilterRequest` | `RoomCategoryPolicy::viewAny` |
+| GET | `/admin/kamar` | `admin.room-categories.index` | `RoomCategoryController@index` | `permission:facilities.manage\|rooms.update-availability` | — (semua kategori urut `ordered()`, tanpa filter dan paginasi; F4B-R16) | `RoomCategoryPolicy::viewAny` |
 | GET | `/admin/kamar/buat` | `admin.room-categories.create` | `RoomCategoryController@create` | `permission:facilities.manage` | — | `RoomCategoryPolicy::create` |
 | POST | `/admin/kamar` | `admin.room-categories.store` | `RoomCategoryController@store` | `permission:facilities.manage` | `RoomCategoryRequest` | `RoomCategoryPolicy::create` |
 | GET | `/admin/kamar/{roomCategory}/ubah` | `admin.room-categories.edit` | `RoomCategoryController@edit` | `permission:facilities.manage` | — | `RoomCategoryPolicy::update` |
@@ -296,7 +296,7 @@ Urutan di file: `buat` dan `ekspor` sebelum `{appointment}`; parameter `{appoint
 | PUT/PATCH | `/admin/hak-akses/{role}` | `admin.roles.update` | `RoleController@update` | `permission:staff.manage` | `UpdateRolePermissionsRequest` | `RolePolicy::update`; peran `super-admin` terkunci |
 | GET | `/admin/audit-log` | `admin.audit-logs.index` | `AuditLogController@index` | `permission:audit.view` | `AuditLogIndexRequest` | `AuditLogPolicy::viewAny` |
 | GET | `/admin/audit-log/{auditLog}` | `admin.audit-logs.show` | `AuditLogController@show` | `permission:audit.view` | — | `AuditLogPolicy::view` |
-| GET | `/admin/pesan` | `admin.messages.index` | `ContactMessageController@index` | `permission:messages.manage` | `ListFilterRequest` | `ContactMessagePolicy::viewAny` |
+| GET | `/admin/pesan` | `admin.messages.index` | `ContactMessageController@index` | `permission:messages.manage` | `ContactMessageIndexRequest` (turunan `ListFilterRequest`: `status`, `q`; urutan tetap terbaru lebih dulu; F4B-R23) | `ContactMessagePolicy::viewAny` |
 | GET | `/admin/pesan/{message}` | `admin.messages.show` | `ContactMessageController@show` | `permission:messages.manage` | — | `ContactMessagePolicy::view`; status `new` otomatis → `read` |
 | PATCH | `/admin/pesan/{message}/status` | `admin.messages.status` | `ContactMessageController@status` | `permission:messages.manage` | `UpdateContactMessageStatusRequest` | `ContactMessagePolicy::updateStatus` |
 | POST | `/admin/media/editor` | `admin.media.editor-upload` | `MediaController@editorUpload` | `permission:content.manage\|clinics.manage\|facilities.manage` | `EditorImageUploadRequest` | `MediaPolicy::upload`; respons JSON `{url, alt, media_id}` |

@@ -685,7 +685,7 @@ Bila sesi memiliki appointment aktif, perubahan jam atau pembatalan tidak langsu
 | `name` | `required` `string` `min:3` `max:100` `Rule::unique('facilities','name')->ignore($id)` | "Nama fasilitas wajib diisi."<br>"Nama fasilitas minimal 3 karakter."<br>"Nama fasilitas maksimal 100 karakter."<br>"Nama fasilitas sudah digunakan." |
 | `category` | `required` `Rule::enum(FacilityCategory::class)` | "Kategori fasilitas wajib dipilih."<br>"Kategori fasilitas tidak valid." |
 | `short_description` | `required` `string` `max:255` | "Deskripsi singkat wajib diisi."<br>"Deskripsi singkat maksimal 255 karakter." |
-| `description` (rich text) | `nullable` `string` `max:50000`; disanitasi `HtmlSanitizer` | "Deskripsi maksimal 50.000 karakter." |
+| `description` (rich text) | `nullable` `string` `max:30000`; disanitasi `HtmlSanitizer` (30.000 menggantikan 50.000 karena `TEXT` 65.535 byte; F4B-R3, 09 §1 butir 10) | "Deskripsi maksimal 30.000 karakter." |
 | `is_active` | `required` `boolean` | "Status aktif tidak valid." |
 | `sort_order` | `nullable` `integer` `between:0,9999` | "Urutan harus antara 0 dan 9999." |
 | `meta_title` / `meta_description` | `nullable` `string` `max:70` / `max:160` | "Meta title maksimal 70 karakter." / "Meta description maksimal 160 karakter." |
@@ -700,7 +700,7 @@ Bila sesi memiliki appointment aktif, perubahan jam atau pembatalan tidak langsu
 |---|---|---|
 | `name` | `required` `string` `min:3` `max:100` `Rule::unique('room_categories','name')->ignore($id)` | "Nama kategori kamar wajib diisi."<br>"Nama kategori kamar minimal 3 karakter."<br>"Nama kategori kamar maksimal 100 karakter."<br>"Nama kategori kamar sudah digunakan." |
 | `short_description` | `required` `string` `max:255` | "Deskripsi singkat wajib diisi."<br>"Deskripsi singkat maksimal 255 karakter." |
-| `description` (rich text) | `nullable` `string` `max:50000`; disanitasi | "Deskripsi maksimal 50.000 karakter." |
+| `description` (rich text) | `nullable` `string` `max:30000`; disanitasi (F4B-R3) | "Deskripsi maksimal 30.000 karakter." |
 | `amenities` | `nullable` `array` `max:30` | "Fasilitas kamar maksimal 30 butir." |
 | `amenities.*` | `string` `min:2` `max:80` `distinct` | "Setiap butir fasilitas harus 2 sampai 80 karakter."<br>"Butir fasilitas tidak boleh sama." |
 | `bed_capacity` | `required` `integer` `between:1,500` `gte:{beds_available saat ini}` (saat ubah) | "Kapasitas tempat tidur wajib diisi."<br>"Kapasitas tempat tidur harus berupa angka bulat."<br>"Kapasitas tempat tidur harus antara 1 dan 500."<br>"Kapasitas tidak boleh lebih kecil dari tempat tidur tersedia saat ini ({n}). Perbarui ketersediaan terlebih dahulu." |
@@ -829,7 +829,7 @@ Bila sesi memiliki appointment aktif, perubahan jam atau pembatalan tidak langsu
 | `subject` | `required` `string` `min:5` `max:150` | "Subjek wajib diisi."<br>"Subjek minimal 5 karakter."<br>"Subjek maksimal 150 karakter." |
 | `message` | `required` `string` `min:10` `max:2000` | "Pesan wajib diisi."<br>"Pesan minimal 10 karakter."<br>"Pesan maksimal 2000 karakter." |
 | `consent` | `accepted` | "Anda harus menyetujui pengolahan data untuk mengirim pesan." |
-| `website` (kolom jebakan tersembunyi) | `nullable` `max:0`; bila terisi: controller menampilkan sukses palsu tanpa menyimpan | (tidak pernah menampilkan galat) |
+| `website` (kolom jebakan tersembunyi) | tidak ada di `rules()` (F4B-R7); controller memeriksa `isHoneypotFilled()` dan, bila terisi, mengalihkan ke `contact` dengan flash sukses yang sama tanpa menyimpan | (tidak pernah menampilkan galat) |
 
 ### V-38 Status pesan kontak (admin)
 
@@ -959,6 +959,8 @@ Semua kelas di bawah mewarisi `ListFilterRequest` (V-45): parameter yang tidak v
 | `AppointmentIndexRequest` | `admin.appointments.index` | `dari`, `sampai`, `poli`, `dokter`, `status`, `kanal`, `q`, `urut` | `status` = `AppointmentStatus`; `kanal` = `BookingChannel`; rentang = tanggal kunjungan |
 | `QueueIndexRequest` | `admin.queue.index` | `tanggal`, `poli`, `dokter`, `kode` | `tanggal` default hari ini; `kode` dinormalkan `BookingCodeGenerator::normalize()` |
 | `CreateWalkInAppointmentRequest` | `admin.appointments.create` | `pasien`, `sesi`, `tanggal`, `poli`, `dokter`, `kembali` | `pasien` = id profil aktif; `sesi` = id sesi; `kembali` = path internal |
+| `FacilityIndexRequest` | `admin.facilities.index` | `status`, `kategori`, `urut`, `q` | `status` ∈ `aktif`/`nonaktif`; `kategori` = `FacilityCategory`; `urut` ∈ `urutan`/`nama`; `q` pada `name` (`LikePattern::contains()`); 25 per halaman (F4B-R22) |
+| `ContactMessageIndexRequest` | `admin.messages.index` | `status`, `q` | `status` ∈ `baru`/`dibaca`/`dibalas`/`diarsipkan` (dipetakan `STATUS_MAP`); `q` pada `name`, `email`, `subject`; tanpa `urut` (terbaru lebih dulu); 25 per halaman (F4B-R23) |
 | `AuditLogIndexRequest` | `admin.audit-logs.index` | `dari`, `sampai`, `pengguna`, `aksi`, `objek` | `pengguna` = id user; `aksi` = awalan `action` (daftar putih katalog §8); `objek` = nama kelas `auditable_type` yang dikenal; `sampai` ≥ `dari` |
 
 Parameter `pengguna`, `aksi`, `objek` (filter audit) dan `rentang` (V-44) belum tercantum di tabel parameter 00 I.5; dicatat sebagai nama baru yang diusulkan di akhir bagian ini.
