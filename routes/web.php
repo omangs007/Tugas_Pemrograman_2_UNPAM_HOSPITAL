@@ -3,6 +3,7 @@
 use App\Http\Controllers\Public\ArticleController;
 use App\Http\Controllers\Public\ClinicController;
 use App\Http\Controllers\Public\DoctorController;
+use App\Http\Controllers\Public\FacilityController;
 use App\Http\Controllers\Public\FaqController;
 use App\Http\Controllers\Public\GalleryController;
 use App\Http\Controllers\Public\HomeController;
@@ -28,6 +29,10 @@ Route::get('/dokter/{doctor:slug}', [DoctorController::class, 'show'])->name('do
 
 // Jadwal dokter (#8): grid mingguan dan daftar bertumpuk dari DoctorAvailabilityQuery (F3-R9, F3-R24).
 Route::get('/jadwal-dokter', [ScheduleController::class, 'index'])->name('schedules.index');
+
+// Fasilitas (#9, #10): hanya fasilitas aktif; yang nonaktif 404 untuk semua orang, termasuk staf (F4B-R14, A-42).
+Route::get('/fasilitas', [FacilityController::class, 'index'])->name('facilities.index');
+Route::get('/fasilitas/{facility:slug}', [FacilityController::class, 'show'])->name('facilities.show');
 
 // BPJS dan asuransi (#16), panduan pendaftaran (#17), dan kebijakan privasi: isi dari tabel `pages` (F4A-R4).
 Route::get('/bpjs-asuransi', [PageController::class, 'insurance'])->name('insurance');

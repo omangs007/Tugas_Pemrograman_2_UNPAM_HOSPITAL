@@ -52,6 +52,7 @@ class RawOutputScanTest extends TestCase
         $this->assertSame([
             'public/articles/show.blade.php: <div class="rich-text article-body">{!! $article->body !!}</div>',
             'public/clinics/show.blade.php: <div class="rich-text clinic-description">{!! $clinic->description !!}</div>',
+            'public/facilities/show.blade.php: <div class="rich-text facility-body">{!! $facility->description !!}</div>',
             'public/partials/_page-body.blade.php: <div class="rich-text page-body">{!! $page->body !!}</div>',
         ], $found);
     }

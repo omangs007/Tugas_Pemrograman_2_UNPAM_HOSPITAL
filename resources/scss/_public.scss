@@ -412,3 +412,22 @@ header .navbar-dark {
     width: 100%;
   }
 }
+
+// ---------------------------------------------------------------- Fasilitas (#9, #10, F4B-R29)
+.facility-card {
+  .card-title a {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      color: $primary;
+      text-decoration: underline;
+    }
+  }
+}
+
+// Deskripsi fasilitas (rich text tersanitasi): baris teks tidak melebar di layar lebar.
+.facility-body {
+  max-width: 48rem;
+}
