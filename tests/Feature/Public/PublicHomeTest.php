@@ -102,10 +102,17 @@ class PublicHomeTest extends TestCase
             ->assertDontSee('Layanan Unggulan')
             ->assertDontSee('Dokter Kami')
             ->assertDontSee('Artikel Terbaru')
-            ->assertDontSee('Butuh bantuan segera?')
             ->assertDontSee('Situs ini masih dalam tahap pembangunan.');
 
         $this->assertSame(1, substr_count($html, '<h1'));
+
+        // Route `contact` ada (fase 4b): blok bantuan tetap tampil dengan satu tombol "Kirim Pesan" dan tanpa kontak pengaturan.
+        $cta = $this->section($html, 'judul-bantuan');
+        $this->assertStringContainsString('</i> Kirim Pesan</a>', $cta);
+
+        foreach (['wa.me', 'IGD:', 'Petunjuk Arah', 'Telepon</a>'] as $absent) {
+            $this->assertStringNotContainsString($absent, $cta);
+        }
         // Dua tombol utama; "Daftar Kunjungan" baru tampil setelah route pendaftaran ada (fase 6, F4A-R15).
         $this->assertSame(Route::has('patient.appointments.create') ? 3 : 2, substr_count($html, ' btn-lg"'));
     }

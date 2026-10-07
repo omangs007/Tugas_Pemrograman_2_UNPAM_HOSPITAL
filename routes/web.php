@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Public\ArticleController;
 use App\Http\Controllers\Public\ClinicController;
+use App\Http\Controllers\Public\ContactController;
 use App\Http\Controllers\Public\DoctorController;
 use App\Http\Controllers\Public\FacilityController;
 use App\Http\Controllers\Public\FaqController;
@@ -54,4 +55,8 @@ Route::get('/galeri/{gallery:slug}', [GalleryController::class, 'show'])->name('
 
 // FAQ (#21): hanya FAQ terbit, dikelompokkan per kategori.
 Route::get('/faq', [FaqController::class, 'index'])->name('faq');
+
+// Kontak dan Lokasi (#22) dan kiriman pesan: throttle `contact` = 3 kiriman per 10 menit per IP (F4B-R6, D-23).
+Route::get('/kontak', [ContactController::class, 'show'])->name('contact');
+Route::post('/kontak', [ContactController::class, 'store'])->middleware('throttle:contact')->name('contact.store');
 Route::get('/kebijakan-privasi', [PageController::class, 'privacy'])->name('privacy');

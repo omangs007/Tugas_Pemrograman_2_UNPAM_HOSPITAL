@@ -168,6 +168,54 @@ class FrontendManifestTest extends TestCase
         $this->assertStringNotContainsString('onerror', strtolower($app));
     }
 
+    public function test_app_script_provides_the_map_embed_fallback_without_a_second_error_listener(): void
+    {
+        $app = $this->read('resources/js/app.js');
+
+        foreach ([
+            'function initMapEmbeds()',
+            '[data-map-embed]',
+            '[data-map-frame]',
+            '[data-map-fallback-text]',
+            'navigator.onLine === false',
+            "addEventListener('load'",
+            '8000',
+            'IntersectionObserver',
+            'startTimer',
+            "classList.add('is-unavailable')",
+            "classList.add('is-loaded')",
+            'Peta tidak dapat dimuat. Alamat dan tombol Petunjuk Arah tetap dapat dipakai.',
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $app, "app.js harus memuat {$needle}");
+        }
+
+        $init = substr($app, (int) strpos($app, 'function init()'));
+        $this->assertStringContainsString('initMapEmbeds();', $init);
+        $this->assertStringContainsString('initGalleryModals();', $init);
+
+        // Ditulis sebelum initGalleryModals() agar potongan kode yang dikunci RawOutputScanTest tidak berubah.
+        $this->assertLessThan(strpos($app, 'function initGalleryModals()'), strpos($app, 'function initMapEmbeds()'));
+
+        $start = (int) strpos($app, 'function initMapEmbeds()');
+        $body = substr($app, $start, (int) strpos($app, 'function initGalleryModals()') - $start);
+        $this->assertStringNotContainsString("'error'", $body, 'initMapEmbeds() tidak boleh memasang listener error');
+
+        $this->assertSame(1, preg_match_all("/addEventListener\\(\\s*'error'/", $app), 'Tidak boleh ada listener error kedua');
+        $this->assertStringNotContainsString('onerror', strtolower($app));
+    }
+
+    public function test_public_styles_define_the_map_embed_classes(): void
+    {
+        $public = $this->read('resources/scss/_public.scss');
+
+        foreach (['.map-embed', '.map-embed-fallback', '--map-height', '260px'] as $needle) {
+            $this->assertStringContainsString($needle, $public, "_public.scss harus memuat {$needle}");
+        }
+
+        $this->assertMatchesRegularExpression('/\.map-embed\.is-unavailable\s+iframe\s*\{[^}]*display:\s*none;/s', $public);
+        $this->assertMatchesRegularExpression('/\.map-embed\.is-loaded\s+\.map-embed-fallback\s*\{[^}]*visibility:\s*hidden;/s', $public);
+    }
+
     public function test_public_styles_define_the_home_page_classes(): void
     {
         $public = $this->read('resources/scss/_public.scss');

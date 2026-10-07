@@ -71,6 +71,7 @@ class RawOutputScanTest extends TestCase
             || str_contains($this->relative($file), 'components/doctor-card')
             || str_contains($this->relative($file), 'components/schedule-table')
             || str_contains($this->relative($file), 'components/availability-badge')
+            || str_contains($this->relative($file), 'components/map-embed')
             || str_contains($this->relative($file), 'components/open-graph'));
 
         $this->assertNotEmpty($files);

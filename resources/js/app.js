@@ -304,6 +304,67 @@ function initBannerCarousel() {
     });
 }
 
+// ---------------------------------------------------------------- Peta tersemat (x-map-embed, F4B-R33)
+// Markup: [data-map-embed] berisi [data-map-fallback] (kotak pengganti statis: teks status [data-map-fallback-text],
+// alamat, tombol Petunjuk Arah) dan, bila ada URL peta, iframe [data-map-frame] yang menumpuk di atasnya. Tanpa
+// JavaScript iframe tetap tampil. Dengan JavaScript: bila peramban offline, iframe disembunyikan dan teks pengganti
+// diganti; selain itu event load iframe menandai peta termuat, dan bila belum termuat dalam 8000 ms sejak peta
+// mendekati viewport (IntersectionObserver; tanpa itu, sejak awal) iframe disembunyikan. Sengaja memakai event load, bukan listener galat baru: hanya ada satu delegasi galat (gambar).
+const MAP_LOAD_TIMEOUT = 8000;
+const MAP_UNAVAILABLE_TEXT = 'Peta tidak dapat dimuat. Alamat dan tombol Petunjuk Arah tetap dapat dipakai.';
+
+function initMapEmbeds() {
+    document.querySelectorAll('[data-map-embed]').forEach((root) => {
+        const frame = root.querySelector('[data-map-frame]');
+
+        if (!frame) {
+            return;
+        }
+
+        const message = root.querySelector('[data-map-fallback-text]');
+        const markUnavailable = () => {
+            root.classList.add('is-unavailable');
+
+            if (message) {
+                message.textContent = MAP_UNAVAILABLE_TEXT;
+            }
+        };
+
+        if (navigator.onLine === false) {
+            markUnavailable();
+
+            return;
+        }
+
+        frame.addEventListener('load', () => {
+            root.classList.add('is-loaded');
+        });
+
+        // Iframe berinfo loading="lazy" baru dimuat mendekati viewport: pewaktu dimulai saat peta hampir terlihat,
+        // bukan saat halaman dimuat, supaya peta di bawah lipatan tidak ditandai gagal sebelum sempat dimuat.
+        const startTimer = () => {
+            window.setTimeout(() => {
+                if (!root.classList.contains('is-loaded')) {
+                    markUnavailable();
+                }
+            }, MAP_LOAD_TIMEOUT);
+        };
+
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                if (entries.some((entry) => entry.isIntersecting)) {
+                    observer.disconnect();
+                    startTimer();
+                }
+            }, { rootMargin: '300px' });
+
+            observer.observe(root);
+        } else {
+            startTimer();
+        }
+    });
+}
+
 // ---------------------------------------------------------------- Galeri layanan (modal + carousel Bootstrap)
 // Markup: modal [data-gallery-modal] berisi .carousel; tombol pemicu membawa data-gallery-index.
 function initGalleryModals() {
@@ -340,6 +401,7 @@ function init() {
     initOffcanvasToggles();
     initGalleryModals();
     initBannerCarousel();
+    initMapEmbeds();
 
     if (document.querySelector('[data-image-input]')) {
         import('./image-preview.js');

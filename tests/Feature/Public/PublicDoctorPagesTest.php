@@ -321,21 +321,6 @@ class PublicDoctorPagesTest extends TestCase
         $this->assertStringNotContainsString('?sesi='.$closed->id.'"', $html);
     }
 
-    public function test_an_empty_schedule_shows_the_empty_state_without_a_contact_link_when_the_route_is_missing(): void
-    {
-        if (Route::has('contact')) {
-            $this->markTestSkipped('Route contact sudah ada (fase 4b): tautan diuji di tes fase tersebut.');
-        }
-
-        $doctor = $this->createDoctor();
-
-        $this->get($this->url($doctor))
-            ->assertOk()
-            ->assertSee('Belum ada jadwal praktik dua minggu ke depan')
-            ->assertDontSee('Hubungi Kami')
-            ->assertDontSee('<table', false);
-    }
-
     public function test_an_empty_schedule_links_to_contact_when_the_route_exists(): void
     {
         $this->fakeRoute('contact', '/_uji/kontak');
