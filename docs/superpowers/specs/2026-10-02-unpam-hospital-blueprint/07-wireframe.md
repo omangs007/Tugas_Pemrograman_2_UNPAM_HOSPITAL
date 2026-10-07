@@ -1918,7 +1918,7 @@ Sidebar yang sama setelah difilter `@can` untuk dua peran lain:
 | | BPJS Kelas 3   0 dari 24  [----------]|  | Sen 12 Okt dr. Sinta M. - Peny. Dalam | |
 | | VIP            2 dari 6   [###-------]|  |   Perubahan jam; 4 booking aktif      | |
 | | Diperbarui: 02 Okt 2026 09.30 WIB     |  | [ Tindak lanjut (3) ]                 | |
-| | (manual, bukan real-time)             |  +---------------------------------------+ |
+| | (diperbarui manual oleh petugas)      |  +---------------------------------------+ |
 | +---------------------------------------+                                            |
 +--------------------------------------------------------------------------------------+
 ```
@@ -1938,7 +1938,7 @@ Kondisi grafik:
 1. **`x-stat-card`** ×3: **Dokter aktif**, **Pasien terdaftar** (profil aktif), **Pendaftaran hari ini** (berdasarkan `session_date`).
 2. **Pendaftaran per status** (enam angka dengan `x-status-badge`) untuk periode yang dipilih pada grafik **[ASUMSI]**.
 3. **Grafik Chart.js**: jumlah pendaftaran per hari berdasarkan **tanggal kunjungan** (`session_date`); filter periode 7/30/90 hari atau rentang kustom (Dari–Sampai, maksimal 366 hari **[ASUMSI]**).
-4. **Ringkasan kamar**: per kategori “N dari M” + bilah progres teks + **“Diperbarui: {waktu}”** (manual, bukan real-time).
+4. **Ringkasan kamar**: per kategori “N dari M” + bilah progres teks + **“Diperbarui: {waktu}”** (diperbarui manual oleh petugas).
 5. **Sesi terdampak**: daftar sesi `needs_review` (tanggal, dokter, poliklinik, sumber, jumlah booking aktif) dengan tombol **Tindak lanjut** → `admin.sessions.review`.
 
 Visibilitas widget menurut izin (00 bagian G):

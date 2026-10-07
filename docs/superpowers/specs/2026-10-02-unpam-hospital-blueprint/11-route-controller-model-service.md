@@ -104,7 +104,7 @@ Prefix `/pasien`, nama `patient.`, middleware `G-PASIEN`. Route statis `baru` le
 Catatan: `patient.appointments.store` mengalirkan galat bisnis (`BookingException`) ke halaman wizard `patient.appointments.create?sesi={id}` (bukan `back()`), karena halaman *review* adalah hasil POST yang tidak bisa dimuat ulang lewat GET (lihat §11.3).
 
 ---
-### 2.3 `routes/admin.php` — dashboard admin (139 route)
+### 2.3 `routes/admin.php` — dashboard admin (139 route pada rancangan awal; total menjadi 106 setelah fase 4b, 17 D-132)
 
 Prefix `/admin`, nama `admin.`. Namespace controller `Admin` kecuali dinyatakan lain. Kolom Middleware menulis **hanya tambahan** setelah `G-ADMIN` (`permission:*` = middleware Spatie; `a|b` berarti salah satu izin cukup). Resource tanpa `show` dideklarasikan `->except(['show'])`; resource tanpa `destroy` memakai arsip/nonaktif (00 C: data yang dirujuk riwayat tidak dihapus). **[ASUMSI]** daftar aksi per resource di bawah, karena 00 hanya menulis "resource" untuk sebagian besar entitas.
 

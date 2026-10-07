@@ -1568,7 +1568,7 @@ Memenuhi F-ADM-25 (halaman 40, tab Pengaturan Website; izin `settings.manage`, h
 20. **[ASUMSI]** Izin `staff.manage`, `settings.manage`, `audit.view` tidak dapat diberikan ke peran selain Super Admin; `dashboard.view` wajib; izin `*.manage` menyertakan `*.view` pasangannya.
 21. **[ASUMSI]** Ekspor CSV: rentang maksimal 366 hari, sel dinetralkan dari injeksi rumus, audit ditulis sebelum streaming dimulai.
 22. **[ASUMSI]** Penghubungan akun: petugas meminta pasien menunjukkan akun di ponsel; profil berhasil dihubungkan mempertahankan data profil walk-in; tidak ada fitur *unlink*.
-23. **[ASUMSI]** Kolom jebakan (*honeypot*) `website` pada form kontak; pesan `new` otomatis menjadi `read` saat dibuka; `messages.manage` juga dimiliki Petugas Pendaftaran (00 G).
+23. Kolom jebakan (*honeypot*) `website` pada form kontak → diputuskan di 17 D-128; pesan `new` otomatis menjadi `read` saat dibuka → diputuskan di 17 D-137. **[ASUMSI]** `messages.manage` juga dimiliki Petugas Pendaftaran (00 G).
 24. Volume email ke pasien → diputuskan di 00 F.8 / 17 K-13 (default): kanal `database` untuk setiap transisi, kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal; K-13 dapat dibalik ke email untuk setiap transisi tanpa mengubah desain.
 25. Verifikasi saat menghubungkan profil walk-in ke akun: default verifikasi identitas di loket, kode verifikasi ke email akun disarankan untuk produksi → rujuk 17 K-14. Persetujuan ulang kebijakan privasi saat `privacy.consent_version` naik → rujuk 17 K-06 (A-19 di 01).
 26. Pelacakan "sudah dihubungi" bagi pasien walk-in yang jadwalnya berubah → rujuk 17 K-15 (default: tidak ada; cukup daftar + telepon pada layar Sesi terdampak).
