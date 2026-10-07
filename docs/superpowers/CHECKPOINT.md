@@ -1,6 +1,6 @@
 # Checkpoint — UNPAM HOSPITAL
 
-**Terakhir diperbarui:** 2026-10-06 (eksekusi fase 4b **dijeda** setelah Task 1; WIP Task 2 di `git stash@{0}`) · **Tag git:** `checkpoint/2026-10-06-fase-4b-task-1` (sebelumnya `checkpoint/2026-10-06-fase-4b-rencana`, `checkpoint/2026-10-06-fase-4a-selesai`, `checkpoint/2026-10-06-fase-4a-eksekusi`, `checkpoint/2026-10-05-fase-4a-rencana`, `checkpoint/2026-10-05-fase-3-selesai`, `checkpoint/2026-10-05-fase-3-eksekusi`, `checkpoint/2026-10-05-fase-3-rencana`, `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
+**Terakhir diperbarui:** 2026-10-07 (eksekusi fase 4b **selesai**, gerbang fase terpenuhi; menunggu keputusan merge pemilik) · **Tag git:** `checkpoint/2026-10-07-fase-4b-eksekusi` (sebelumnya `checkpoint/2026-10-06-fase-4b-task-1`, `checkpoint/2026-10-06-fase-4b-rencana`, `checkpoint/2026-10-06-fase-4a-selesai`, `checkpoint/2026-10-06-fase-4a-eksekusi`, `checkpoint/2026-10-05-fase-4a-rencana`, `checkpoint/2026-10-05-fase-3-selesai`, `checkpoint/2026-10-05-fase-3-eksekusi`, `checkpoint/2026-10-05-fase-3-rencana`, `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
 
 Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah sebelum bekerja.
 
@@ -12,11 +12,11 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Fase 0 — Lingkungan & skeleton | **Selesai**, di-merge ke `master`. Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
 | Fase 1 — Fondasi | **Selesai** dan **sudah di-merge** ke `master` (fast-forward `0b87342`, 2026-10-04; cabang `fase-1-fondasi` dihapus). Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang beserta perbaikannya sudah selesai. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
 | Fase 2 — Master Data | **Eksekusi dan gerbang fase selesai** di cabang `fase-2-master-data`. Semua 16 tugas lulus review. Final review seluruh cabang beserta satu gelombang perbaikan (F1–F5) selesai. `migrate:fresh --seed` dijalankan dengan izin pemilik dan jumlah datanya persis sesuai target. Uji manual Step 19 dijalankan lewat Playwright (laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-05`); dua cacat temuannya (M1 `&nbsp;` editor, M2 panah galeri) sudah diperbaiki di `929c13a`. Hasil akhir: 1845 tes lulus (8479 asersi), Pint PASS, `npm run build` OK, 31 route admin. **Sudah di-merge** ke `master` (fast-forward `51134af`, 2026-10-05; cabang `fase-2-master-data` dihapus; suite pada hasil merge 1845 lulus). Rencana, catatan eksekusi, dan keputusan X1–X14 ada di bagian akhir `docs/superpowers/plans/2026-10-04-fase-2-master-data.md`. |
-| Cabang git | `master` (fase 0 + fase 1 + fase 2 + fase 3 + fase 4a). Cabang `fase-4a-konten-publik` sudah di-merge (fast-forward `a6c9534`..`92173df`) lalu dihapus, begitu pula `fase-3-jadwal-dokter` sebelumnya. Cabang kerja **`fase-4b-fasilitas-kamar-kontak`** dibuat dari `master` (`ab26123`); isinya rencana fase 4b dan commit Task 1 (`01240a3`). **Ada stash:** `stash@{0}` berisi WIP Task 2. Repo tanpa remote. |
+| Cabang git | `master` (fase 0 + fase 1 + fase 2 + fase 3 + fase 4a). Cabang `fase-4a-konten-publik` sudah di-merge (fast-forward `a6c9534`..`92173df`) lalu dihapus, begitu pula `fase-3-jadwal-dokter` sebelumnya. Cabang kerja **`fase-4b-fasilitas-kamar-kontak`** dibuat dari `master` (`ab26123`); isinya rencana, Task 1–11, gelombang perbaikan final, dan catatan eksekusi fase 4b. Stash WIP Task 2 sudah dipulihkan dan di-commit (`d1c27ae`); tidak ada stash. Repo tanpa remote. |
 | Keputusan tertunda pemilik | Butir K di `17-keputusan-konfirmasi.md`: semua punya default; yang terpenting sebelum fase 5 adalah K-07. |
 | Fase 3 — Penjadwalan (Jadwal Dokter) | Rencana disetujui pemilik. **Task 1–16 selesai** lewat subagent-driven-development (Sonnet 5.5), semuanya lolos review. Putaran perbaikan terjadi di Task 3, 11 (juga view Task 10), dan 13. Final review seluruh cabang: **With fixes** (3 Important, tanpa Critical). Satu gelombang perbaikan final (F1–F3, F6, M1, M2; `49f966a`..`606cfbe`) lolos re-review terbatas. `migrate:fresh --seed` sudah dijalankan dengan izin pemilik, dan uji manual Playwright selesai dengan Lighthouse aksesibilitas 100/100/100 setelah perbaikan. **Gerbang fase terpenuhi:** 2933 tes lulus (14113 asersi), Pint PASS, `npm run build` OK, 50 route admin (19 baru). **Sudah di-merge** ke `master` atas persetujuan pemilik (fast-forward `1558f62`, 2026-10-05; cabang `fase-3-jadwal-dokter` dihapus; suite pada hasil merge 2933 lulus). Rencana, catatan eksekusi, dan keputusan E1–E13: bagian akhir `docs/superpowers/plans/2026-10-05-fase-3-penjadwalan.md`. Rinciannya di §3a. |
 | Fase 4a — Konten Publik dan CMS | **Selesai dan sudah di-merge** ke `master` atas pilihan pemilik "1" (fast-forward `92173df`, 2026-10-06; cabang dihapus; suite pada hasil merge 4348 lulus). Rencana disetujui pemilik ("lanjutkan"). Task 1–17 selesai lewat subagent-driven-development (Sonnet 5.5) dan lolos review; putaran perbaikan di Task 9 dan 15. Final review: Dengan perbaikan (1 Important, 0 Critical); gelombang perbaikan F1–F4 (`a57eccf`) lolos re-review. **Gerbang:** 4348 tes lulus (21166 asersi), Pint PASS, `npm run build` OK, 90 route admin. `migrate:fresh --seed` dijalankan dengan izin pemilik; uji manual Playwright 0 Critical/Important dan Lighthouse aksesibilitas 100. Catatan eksekusi dan keputusan E1–E14: bagian akhir `docs/superpowers/plans/2026-10-05-fase-4a-konten-publik.md`. Rinciannya di §3b. |
-| Fase 4b — Fasilitas, Kamar, dan Kontak | **Eksekusi dijeda** (permintaan pemilik). Rencana disetujui pemilik ("sesuai"): `docs/superpowers/plans/2026-10-06-fase-4b-fasilitas-kamar-kontak.md` (11 tugas, F4B-R1–R40). Task 1 selesai dan lolos review (`01240a3`, 4434 tes). Task 2 sudah ditulis lengkap (suite 4494 lulus, Pint bersih), tetapi belum di-commit; tersimpan di `git stash@{0}`. Rinciannya di §3c. |
+| Fase 4b — Fasilitas, Kamar, dan Kontak | **Eksekusi dan gerbang fase selesai**; menunggu keputusan merge pemilik. Rencana disetujui pemilik ("sesuai"): `docs/superpowers/plans/2026-10-06-fase-4b-fasilitas-kamar-kontak.md` (11 tugas, F4B-R1–R40). Task 1–11 selesai lewat subagent-driven-development (Sonnet 5.5) dan lolos review pada percobaan pertama. Final review: **Siap merge** (0 Critical/Important); gelombang perbaikan F1–F2 (`4a4ca50`, `fe3716e`) lolos re-review. **Gerbang:** 5200 tes lulus (26035 asersi), Pint PASS, `npm run build` OK, 106 route admin. `migrate:fresh --seed` dijalankan dengan izin pemilik; uji manual Playwright 0 Critical/Important dan Lighthouse aksesibilitas/SEO 100. Catatan eksekusi dan keputusan E1–E11: bagian akhir rencana. Rinciannya di §3c. |
 
 ### 3a. Status fase 3 (selesai dan di-merge 2026-10-05)
 
@@ -39,36 +39,24 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 - **Uji manual Playwright:** kelompok 1–6 sesuai; Lighthouse aksesibilitas dan SEO 100 untuk lima halaman. Laporan bergambar: `Documents\UNPAM-Uji-Manual-2026-10-06-fase-4a\index.html`.
 - **Merge:** fast-forward ke `master` (`92173df`) atas pilihan pemilik "1"; suite pada hasil merge 4348 lulus (21166 asersi). Cabang `fase-4a-konten-publik`, bahan penyusunan `.superpowers/plan-fase-4a/`, dan workspace SDD fase 4a sudah dihapus; catatan lengkapnya ada di rencana dan riwayat git.
 
-### 3c. Status fase 4b (eksekusi dijeda 2026-10-06)
+### 3c. Status fase 4b (eksekusi selesai 2026-10-07, menunggu merge)
 
-- **Rencana:** `docs/superpowers/plans/2026-10-06-fase-4b-fasilitas-kamar-kontak.md`, sudah di-commit dan menunggu persetujuan pemilik.
-- **Cabang:** `fase-4b-fasilitas-kamar-kontak` (dari `master` `ab26123`). Belum ada kode.
+- **Rencana:** `docs/superpowers/plans/2026-10-06-fase-4b-fasilitas-kamar-kontak.md` (disetujui pemilik). Bagian akhirnya berisi "Catatan Eksekusi": hasil gerbang, final review, gelombang perbaikan, keputusan E1–E11, dan bawaan.
 - **Cakupan:** F-PUB-08/09/15/16 dan F-ADM-09/10/11/24.
-  - Publik #9–#15 dan #22, ditambah blok kamar beranda.
-  - Admin #36 (Fasilitas; Kamar dan Kapasitas dengan pembaruan ketersediaan oleh Petugas) dan kotak pesan kontak.
-  - Skema `facilities`, `room_categories`, `contact_messages`; `x-map-embed`; seeder demo.
-  - Route admin bertambah 16 (total 106).
-- **Bahan penyusunan** di `.superpowers/plan-fase-4b/` (git-ignored): digest, `kerangka.md` (F4B-R1–R40), `tasks/`, `pemeriksaan-k1..k4`, `perbaikan-*`, `progress.md`. **Jangan** jalankan `git clean -fdx`.
-- **Temuan pemeriksa:**
-  - Blocker T7: data tes melebihi `VARCHAR(300)`.
-  - Major:
-    - prasyarat suite di latar depan (T4–T6);
-    - `initMapEmbeds()` dengan iframe lazy (sekarang `IntersectionObserver`);
-    - rekonsiliasi dokumen 05/06;
-    - jumlah salinan LIKE.
-
-  Semuanya diperbaiki.
-
-- **Eksekusi** (`superpowers:subagent-driven-development`, Sonnet 5.5):
-  - Workspace SDD `.superpowers/sdd/2026-10-06-fase-4b-fasilitas-kamar-kontak/` (git-ignored). Isinya ledger `progress.md`, brief `task-N-brief.md`, laporan, paket review, dan instruksi tetap (implementer/reviewer/re-review).
-  - **Task 1 selesai:** `01240a3`, review bersih, suite 4434 lulus.
-  - **Task 2 dijeda:** implementer dihentikan setelah semua berkas ditulis dan suite lulus (`task-2-suite.txt`: 4494 lulus, 21772 asersi; Pint bersih), tetapi sebelum commit dan laporan. Berkasnya (3 model, 3 factory, `tests/Feature/Facilities/`, `tests/Support/InteractsWithFacilities.php`) disimpan di `git stash@{0}`.
+  - Publik: `/fasilitas` (#9), `/fasilitas/{slug}` (#10), `/kamar-rawat-inap` (#11), `/kamar-rawat-inap/{slug}` (#12–#15), `/kontak` (#22, peta `x-map-embed`, form pesan dengan throttle, honeypot, dan `ip_hash`), serta blok kamar di beranda.
+  - Admin #36: Fasilitas; Kamar dan Kapasitas (Petugas Pendaftaran hanya mode ketersediaan); kotak Pesan Kontak (tanpa hapus, audit tanpa data pribadi).
+  - `LikePattern` menggantikan sembilan salinan escape LIKE.
+- **Task 1–11:** selesai (commit `01240a3`..`76ade11`), semuanya lolos review tanpa putaran perbaikan.
+- **Gelombang perbaikan final:** `4a4ca50` (F1 `cover_alt` larik tidak lagi 500 di Facility/RoomCategory/ClinicRequest) dan `fe3716e` (F2 sisa teks blueprint "real-time", asumsi 23, judul 139 route). Re-review terbatas: semuanya ADDRESSED.
+- **Gerbang (diverifikasi koordinator di `fe3716e`):** 5200 tes lulus (26035 asersi, ±28 menit), Pint PASS, `npm run build` OK, 106 route admin, 17 route publik.
+- **DB pengembangan** (di-seed ulang dengan izin pemilik): 4 kategori kamar, 10 fasilitas, 5 pesan kontak, dan 83 media, ditambah data fase 1–4a. `media:prune` membersihkan 116 berkas yatim seed lama. Sisa uji manual: satu pesan uji "Uji Manual Empat B", dan satu pesan demo berstatus Dibaca.
+- **Uji manual Playwright:** kelompok 1–7 sesuai. Lighthouse aksesibilitas dan SEO **100** untuk lima halaman. Laporan bergambar: `Documents\UNPAM-Uji-Manual-2026-10-07-fase-4b\index.html`.
+- **Workspace SDD** `.superpowers/sdd/2026-10-06-fase-4b-fasilitas-kamar-kontak/` dan bahan `.superpowers/plan-fase-4b/` (git-ignored) dihapus setelah merge.
 
 Langkah lanjut:
-1. Nyalakan Apache dan MySQL di `C:\xampp3\xampp-control.exe`, lalu `git stash pop` di cabang `fase-4b-fasilitas-kamar-kontak`.
-2. Kirim agen baru (Sonnet 5.5) dengan brief `task-2-brief.md` untuk memeriksa berkas WIP terhadap brief, menulis `task-2-report.md` (bukti RED boleh dinyatakan tidak tersedia; GREEN dari `task-2-suite.txt`), lalu commit. Suite tidak perlu diulang bila tidak ada perubahan kode.
-3. Review Task 2, lalu lanjutkan Task 3–11 sesuai ledger.
-4. Gerbang Task 11: `migrate:fresh --seed` di DB pengembangan perlu izin eksplisit pemilik, yaitu balasan persis "Ya, jalankan migrate:fresh --seed". Sesudahnya uji manual Playwright dan Lighthouse.
+1. Nyalakan Apache dan MySQL di `C:\xampp3\xampp-control.exe`.
+2. Pemilik memilih penyelesaian cabang. Pola fase sebelumnya: fast-forward ke `master`, jalankan suite pada hasil merge, hapus cabang, lalu buat commit dan tag CHECKPOINT.
+3. Berikutnya fase 5 (akun pasien), dimulai dari penyusunan rencana dengan `superpowers:writing-plans`.
 
 Yang sudah ada di aplikasi:
 - Fase 1: enum, akun & peran (Spatie), audit log, media + sanitasi HTML, pengaturan situs, tema & komponen Blade, layout publik/pasien/auth/admin, login/logout staf, ganti password wajib, header keamanan, `StaffAccountService`, `app:create-super-admin`, `media:prune`, seeder demo staf.
@@ -107,12 +95,7 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
 
 - **Fase 3:** bawaan fase 2 sudah dikerjakan di Task 2, 8, 13, dan 14.
 - **Fase 4a:** bawaan fase 1–3 untuk 4a sudah dikerjakan (`HomeController`, `PageSeeder`, `Page` untuk #4/#6/#8, `EDITOR_REFERENCE_COLUMNS`, perapian `[ Lihat Jadwal ]` di 07).
-- **Fase 4b:**
-  - `map-embed`, fasilitas, kamar, kontak. Tautan "Kontak"/"Kirim Pesan" dan blok kamar beranda muncul otomatis lewat `Route::has()`.
-  - Hapus `ContentSchemaTest::test_the_phase_4b_migrations_are_not_created_yet` saat migration 4b dibuat.
-  - Pertimbangkan partial `_page-content` sebelum menambah halaman berbasis `Page`.
-  - Ekstrak escape LIKE + `applyTo` ke helper `ListFilterRequest` (kini lima salinan).
-  - Minor 4a lain (target sentuh tautan teks, hapus logo mitra, pratinjau draf, perf galeri, dll.): lihat Catatan Eksekusi rencana fase 4a.
+- **Fase 4b:** bawaan 4a untuk 4b sudah dikerjakan (penjaga `ContentSchemaTest` dihapus, `LikePattern` menggantikan salinan escape LIKE, tautan Kontak dan blok kamar muncul lewat `Route::has()`). Minor 4b yang ditunda dan rencana ekstraksi (modal galeri 3 salinan, `saveMedia()`, `attach()` seeder) ada di Catatan Eksekusi rencana fase 4b. Untuk fase 8: redaksi ringkasan kamar di dasbor tetap "diperbarui manual oleh petugas" (F4B-R11).
 - **Minor fase 2 yang ditunda:**
   - Suite ±150 s (seed demo per tes).
   - `errorBag` per media galeri.

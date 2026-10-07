@@ -16820,3 +16820,98 @@ Server lokal hidup (`http://unpam-hospital.test`), data demo baru. Catat hasil p
 Hasil dan temuan dicatat koordinator; tidak ada commit pada langkah ini.
 
 ---
+
+## Catatan Eksekusi (2026-10-06 s.d. 2026-10-07)
+
+Dieksekusi dengan `superpowers:subagent-driven-development`. Semua peran memakai subagent **Sonnet 5.5** (preferensi pemilik): implementer, reviewer per tugas, re-reviewer, final reviewer, implementer gelombang perbaikan final, dan penguji manual Playwright. Eksekusi dimulai 2026-10-06 dan dijeda atas permintaan pemilik setelah Task 1. Implementer Task 2 dihentikan setelah semua berkasnya selesai ditulis, lalu berkasnya disimpan di `git stash`. Eksekusi dilanjutkan 2026-10-07: stash dipulihkan, dan agen baru memverifikasi bahwa kesebelas berkas identik dengan kode brief sebelum commit.
+
+Cabang `fase-4b-fasilitas-kamar-kontak` dibuat dari `master` (`ab26123`). Isinya:
+- satu commit rencana (`e4cdcf8`);
+- satu commit CHECKPOINT jeda (`ec9ab9a`);
+- 15 commit kerja (`01240a3`..`76ade11`);
+- dua commit gelombang perbaikan final (`4a4ca50`, `fe3716e`);
+- commit catatan ini.
+
+**Hasil akhir:**
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `artisan test` | **5200 tes lulus (26035 asersi), ±28 menit**, diverifikasi koordinator di `fe3716e`; basis fase 4a: 4348 |
+| `pint --test` | PASS |
+| `npm run build` | Sukses (T7, T8, T9, T11); tanpa entri Vite baru |
+| `route:list --path=admin` | **106 route** (90 fase 1–4a + 16 baru: `admin.facilities.*` 6, `admin.room-categories.*` 7, `admin.messages.*` 3) |
+| Route publik | 17 route (`facilities.*`, `rooms.*`, `contact`, dan `contact.store` baru) |
+| `migrate:fresh --seed` (Step 13) | OK setelah izin pemilik ("Ya, jalankan migrate:fresh --seed"). Hitungan sesuai brief (lihat tabel di bawah). |
+| MANUAL (Step 14) | Dijalankan lewat Playwright dan Lighthouse; laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-07-fase-4b\index.html`. Hasilnya di bawah. |
+
+Hitungan data setelah Step 13:
+
+| Tabel | Jumlah |
+|---|---|
+| `room_categories` | 4 (kapasitas 58, tersedia 16, satu penuh) |
+| `facilities` | 10 (medis 2, penunjang 3, umum 5) |
+| `contact_messages` | 5 (`new` 2, `read` 1, `replied` 1, `archived` 1; `ip_hash` 64 karakter) |
+| `media` | 83 (cover 36, gallery 12, photo 16, image 3, photos 12, logo 4) |
+| `pages` / `articles` | 15 / 8 |
+
+`media:prune` membersihkan 116 berkas yatim sisa seed lama, sehingga `--dry-run` kini 0/0.
+
+Hasil uji manual (Step 14):
+- **Kelompok 1–7:** sesuai. Tercatat 0 galat JS, 0 pelanggaran CSP, 0 atribut event inline, dan satu pendengar `error`. Satu-satunya domain eksternal adalah iframe Google Maps di `/kontak`.
+- **Lighthouse:** aksesibilitas dan SEO **100** untuk `/fasilitas`, detail fasilitas, `/kamar-rawat-inap`, detail kamar, dan `/kontak`. Best Practices 78 hanya karena HTTP lokal.
+- **Peta:** tetap `is-loaded` lebih dari 10 detik pada empat percobaan. Fallback offline benar.
+- **Temuan:** 0 Critical, 0 Important. Catatan info:
+  - iframe peta yang diblokir saat `navigator.onLine` bernilai true tetap memicu `load`, sehingga fallback tidak muncul. Penyebabnya lintas-origin; alamat dan tombol Petunjuk Arah tetap ada.
+  - Panah carousel beranda 41x44 px (bawaan 4a).
+  - URL cover yang terhapus dijawab 403 Apache, bukan 404.
+  - Berkas `shell.php.jpg` berisi PHP asli tidak dapat diuji karena dihapus antivirus lokal. Varian lain ditolak atau diganti nama menjadi uuid.
+
+Sisa data uji di DB pengembangan: satu pesan uji "Uji Manual Empat B", dan satu pesan demo yang kini berstatus Dibaca.
+
+**Putaran perbaikan per tugas:** tidak ada. Kesebelas tugas lolos review pada percobaan pertama.
+
+**Final review** (seluruh cabang, `ab26123..76ade11`): verdict **Siap merge**, tanpa temuan Critical atau Important. Enam Minor; triase atas semua minor yang ditunda: tidak ada yang wajib diperbaiki sebelum merge. Satu gelombang perbaikan tetap dijalankan untuk butir murah berikut. Re-review terbatas menyatakan keempatnya ADDRESSED tanpa kerusakan baru.
+
+| Butir | Perbaikan |
+|---|---|
+| F1 (`4a4ca50`) | `cover_alt` berupa larik pada edit tanpa cover baru tidak lagi menyebabkan 500 ("Array to string conversion" di callback `after()`). `coverAlt()` di `FacilityRequest`, `RoomCategoryRequest`, dan `ClinicRequest` (warisan fase 2) kini memeriksa `is_string`, mengikuti pola `ArticleRequest`. Ditambah satu tes per Request. |
+| F2a (`fe3716e`) | Sisa frasa "real-time" di 05 dan 07 diselaraskan dengan F4B-R11 / D-129. |
+| F2b (`fe3716e`) | 06 asumsi 23: honeypot dan auto-`read` ditandai sudah diputuskan (D-128, D-137). |
+| F2c (`fe3716e`) | Judul 11 §2.3 kini mencatat total 106 route setelah fase 4b (D-132). |
+
+### Keputusan (rulings) selama eksekusi
+
+| ID | Keputusan | Biaya bila keliru |
+|---|---|---|
+| E1 | Tanpa git worktree; bekerja di checkout utama pada cabang `fase-4b-fasilitas-kamar-kontak` (pola fase 0–4a). | Checkout utama terkunci di cabang ini selama eksekusi. |
+| E2 | Semua subagent, termasuk final review, memakai Sonnet 5.5 (preferensi pemilik). | Final review sedikit kurang tajam; dimitigasi review per tugas dan uji manual. |
+| E3 | Trailer commit subagen mengikuti atribusi harness (`Claude Sonnet 5.5`), sesuai F4B-R38. | Hanya teks trailer. |
+| E4 | Step 13 Task 11 dijalankan koordinator setelah balasan persis pemilik. | Pemilik perlu login ulang. |
+| E5 | Suite penuh dijalankan di latar belakang (`run_in_background`), bukan `Start-Job` + `Wait-Job 1500` dari brief T11, karena batas 10 menit sebuah perintah tool. | Tidak ada. |
+| E6 | Task 2 diterima tanpa bukti RED. Berkas WIP ditulis implementer yang dihentikan saat jeda, lalu finalizer membuktikan 11/11 berkas identik dengan brief; GREEN 60 tes. | Satu tes bisa saja tidak pernah merah. |
+| E7 | Task 3 diterima tanpa RED formal (tes identik dengan brief, suite hijau). Aturan "RED wajib nyata" ditambahkan ke instruksi implementer untuk T4+, dan T4–T10 mencatat RED nyata. | Satu tes T3 bisa saja tidak pernah merah. |
+| E8 | Task 9: label persetujuan `…Privasi@endif` dari brief tidak dapat dikompilasi Blade (`@` menempel pada kata). Diubah menjadi `</a>.@else Kebijakan Privasi.@endif`; keluaran yang dikunci tes tetap sama. | Hanya tanda baca pada cabang tanpa route `privacy`. |
+| E9 | Step 14 didelegasikan ke subagen penguji (dilarang mengubah kode atau menjalankan artisan yang menulis DB) agar konteks koordinator tetap ringan. Koordinator memeriksa ringkasan dan laporannya. | Penguji bisa melewatkan butir. |
+| E10 | Gelombang perbaikan final dijalankan walau verdict "Siap merge": F1 melanggar aturan proyek "input larik tidak boleh 500", dan F2 murah serta mencegah salah arah di fase 8. | Satu putaran kecil yang sebenarnya bisa ditunda. |
+| E11 | Kemungkinan balapan `load` di `initMapEmbeds()` diparkir: tidak teramati di uji manual, status iframe lintas-origin tidak dapat dibaca, dan degradasinya anggun. | Sesekali peta tersembunyi dan diganti alamat serta tombol Petunjuk Arah. |
+
+### Bawaan (carry) untuk rencana fase berikutnya
+
+**Fase 5/6 dan sesudahnya:**
+- Ekstrak modal galeri publik (kini 3 salinan: klinik, fasilitas, kamar) ke `public.partials._gallery-modal`. Ekstrak juga `saveMedia()` (`FacilityController`, `RoomCategoryController`) ke satu trait dan `attach()` seeder (3 salinan) ke satu helper sebelum salinan berikutnya muncul.
+- `ContactMessageController::show` (GET) mengubah `new` menjadi `read` (F4B-R24); prefetch atau crawler staf dapat menandai pesan terbaca.
+- `ip_hash` memakai `sha256(ip . APP_KEY)` sesuai spesifikasi; `hash_hmac` lebih tepat bila kelak diubah (seeder dan tes ikut disesuaikan).
+
+**Fase 8 (dasbor dan pengaturan):** ringkasan kamar di dasbor memakai redaksi "diperbarui manual oleh petugas" (F4B-R11). Pengaturan `map.*` dan `contact.*` lewat admin.
+
+**Minor yang ditunda (tidak memblokir):**
+- Task 1: tes panjang kolom untuk `rate_note`/`facilities.description`, dan `expectException(QueryException)` tanpa errno.
+- Task 2: label tarif berspasi ekor bila `rate_unit` kosong (tidak tercapai).
+- Task 4: angka 20 literal di view galeri (ada `MAX_GALLERY`); logika `$rootUrl` diulang di 3 view.
+- Task 5: audit dan flash ketersediaan ditulis literal; galat `amenities.N` tanpa tautan di ringkasan galat.
+- Task 7: `og:description` kosong pada kombinasi yang tidak tercapai.
+- Task 8: `aria-label` thumbnail memakai alt mentah; `Route::has('rooms.index')` di `_room-summary` kini kode mati; kartu beranda tanpa kalimat kedaluwarsa (sesuai F4B-R31).
+- Task 9: spasi ganda pada cabang tanpa route `privacy`.
+- Task 10: baris seeder dibuat sebelum gambar.
+- Target sentuh panah carousel beranda 41x44 px.
+- Suite kini ±20 menit (5200 tes); implementer menjalankannya di latar belakang.
