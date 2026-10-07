@@ -54,6 +54,7 @@ class RawOutputScanTest extends TestCase
             'public/clinics/show.blade.php: <div class="rich-text clinic-description">{!! $clinic->description !!}</div>',
             'public/facilities/show.blade.php: <div class="rich-text facility-body">{!! $facility->description !!}</div>',
             'public/partials/_page-body.blade.php: <div class="rich-text page-body">{!! $page->body !!}</div>',
+            'public/rooms/show.blade.php: <div class="rich-text room-body">{!! $room->description !!}</div>',
         ], $found);
     }
 

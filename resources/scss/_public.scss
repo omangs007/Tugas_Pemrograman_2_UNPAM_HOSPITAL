@@ -431,3 +431,48 @@ header .navbar-dark {
 .facility-body {
   max-width: 48rem;
 }
+
+// ---------------------------------------------------------------- Kamar rawat inap (#11 s.d. #15, blok beranda F4B-R31)
+.room-card {
+  .card-title a {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      color: $primary;
+      text-decoration: underline;
+    }
+  }
+}
+
+// Panel ringkasan detail kamar menempel di bawah navbar pada layar lebar.
+.room-summary-panel {
+  @include media-breakpoint-up(lg) {
+    position: sticky;
+    top: 5.5rem;
+  }
+}
+
+// Daftar fasilitas kamar: tanpa bullet, ikon centang di depan tiap butir.
+.amenity-list {
+  display: grid;
+  gap: .375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  @include media-breakpoint-up(sm) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bi {
+    margin-right: .375rem;
+    color: $teal-dark;
+  }
+}
+
+// Deskripsi kamar (rich text tersanitasi).
+.room-body {
+  max-width: 48rem;
+}

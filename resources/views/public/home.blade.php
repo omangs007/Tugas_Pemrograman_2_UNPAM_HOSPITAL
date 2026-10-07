@@ -35,6 +35,7 @@
     @include('public.partials._quick-search')
     @include('public.partials._featured-clinics')
     @include('public.partials._featured-doctors')
+    @include('public.partials._room-summary')
     @include('public.partials._latest-articles')
     @include('public.partials._help-cta')
 </x-layouts.public>

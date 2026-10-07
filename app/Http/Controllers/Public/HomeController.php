@@ -11,6 +11,7 @@ use App\Models\Article;
 use App\Models\Banner;
 use App\Models\Clinic;
 use App\Models\Page;
+use App\Models\RoomCategory;
 use App\Models\Specialty;
 use App\Services\Scheduling\AvailabilityFilter;
 use App\Services\Scheduling\DoctorAvailabilityQuery;
@@ -25,7 +26,7 @@ use Illuminate\View\View;
  * Beranda #1 `home` (05 hal. 1, 07 W-02). Teks hero dari `pages.home`; banner hanya yang sedang tayang
  * (F4A-R25); enam layanan aktif pertama, empat dokter pertama beserta sesi terdekat (F4A-R16), dan tiga artikel
  * terbit terbaru. Jadwal dibaca hanya lewat DoctorAvailabilityQuery dan pembangkitan sesi harian dipicu di sini
- * (D-66, F3-R9). Blok kamar menyusul di fase 4b.
+ * (D-66, F3-R9). Blok ketersediaan kamar: kategori aktif pertama, maksimal empat (F4B-R31).
  */
 class HomeController extends Controller
 {
@@ -34,6 +35,8 @@ class HomeController extends Controller
     public const FEATURED_DOCTORS = 4;
 
     public const LATEST_ARTICLES = 3;
+
+    public const FEATURED_ROOMS = 4;
 
     public function index(
         PracticeSessionGenerator $generator,
@@ -78,6 +81,13 @@ class HomeController extends Controller
             ->limit(self::LATEST_ARTICLES)
             ->get();
 
+        // Blok kamar tidak memakai gambar, jadi tanpa eager load `media` (F4B-R31).
+        $rooms = RoomCategory::query()
+            ->active()
+            ->ordered()
+            ->limit(self::FEATURED_ROOMS)
+            ->get();
+
         $specialties = Specialty::query()->active()->ordered()->get(['id', 'name', 'slug']);
         $polyclinics = Clinic::query()->active()->where('type', ClinicType::Poliklinik->value)->ordered()->get(['id', 'name', 'slug']);
 
@@ -99,6 +109,7 @@ class HomeController extends Controller
             'doctors' => $doctors,
             'nextSessions' => $nextSessions,
             'articles' => $articles,
+            'rooms' => $rooms,
             'specialtyOptions' => ['' => 'Semua spesialisasi'] + $specialties->pluck('name', 'slug')->all(),
             'clinicOptions' => ['' => 'Semua poliklinik'] + $polyclinics->pluck('name', 'slug')->all(),
             'windowDays' => max(1, $settings->bookingRules()->windowDays),

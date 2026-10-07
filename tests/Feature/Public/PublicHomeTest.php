@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Tests\Support\InteractsWithContent;
+use Tests\Support\InteractsWithFacilities;
 use Tests\Support\InteractsWithMasterData;
 use Tests\Support\InteractsWithMedia;
 use Tests\Support\InteractsWithSchedules;
@@ -30,6 +31,7 @@ use Tests\TestCase;
 class PublicHomeTest extends TestCase
 {
     use InteractsWithContent;
+    use InteractsWithFacilities;
     use InteractsWithMasterData;
     use InteractsWithMedia;
     use InteractsWithSchedules;
@@ -397,6 +399,106 @@ class PublicHomeTest extends TestCase
         $this->assertStringContainsString('Gizi Uji', $section);
     }
 
+    // --- ketersediaan kamar (F4B-R31) ------------------------------------------------------------
+
+    /** @param  array<string, mixed>  $overrides */
+    private function homeRoom(int $number, array $overrides = []): void
+    {
+        $this->createRoomCategory(array_merge([
+            'name' => "Kamar Beranda {$number}",
+            'slug' => "kamar-beranda-{$number}",
+            'bed_capacity' => 20,
+            'beds_available' => 12,
+            'sample_rate' => 400000,
+            'rate_unit' => 'per malam',
+            'availability_updated_at' => now()->subHours(2),
+            'sort_order' => $number,
+            'is_active' => true,
+        ], $overrides));
+    }
+
+    public function test_the_room_block_is_hidden_without_active_categories(): void
+    {
+        $this->homeRoom(1, ['name' => 'Kamar Nonaktif Uji', 'is_active' => false]);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertDontSee('Ketersediaan Kamar Rawat Inap')
+            ->assertDontSee('id="judul-kamar"', false)
+            ->assertDontSee('Kamar Nonaktif Uji');
+    }
+
+    public function test_the_room_block_shows_the_first_four_active_categories_in_display_order(): void
+    {
+        foreach (range(1, 5) as $number) {
+            $this->homeRoom($number);
+        }
+
+        $this->homeRoom(0, ['name' => 'Kamar Mati Uji', 'slug' => 'kamar-mati-uji', 'is_active' => false]);
+
+        $section = $this->section($this->get('/')->assertOk()->getContent(), 'judul-kamar');
+
+        $this->assertInOrder(['Kamar Beranda 1', 'Kamar Beranda 2', 'Kamar Beranda 3', 'Kamar Beranda 4'], $section);
+        $this->assertSame(4, substr_count($section, 'class="card h-100 room-card"'));
+
+        foreach (['Kamar Beranda 5', 'Kamar Mati Uji'] as $hidden) {
+            $this->assertStringNotContainsString($hidden, $section);
+        }
+
+        $this->assertSame(4, HomeController::FEATURED_ROOMS);
+    }
+
+    public function test_each_room_card_has_the_name_link_the_occupancy_the_badge_and_the_update_label(): void
+    {
+        $this->homeRoom(1);
+        $this->homeRoom(2, ['beds_available' => 0, 'availability_updated_at' => null]);
+
+        $section = $this->section($this->get('/')->assertOk()->getContent(), 'judul-kamar');
+
+        $this->assertStringContainsString('<h2 id="judul-kamar" class="mb-0">Ketersediaan Kamar Rawat Inap</h2>', $section);
+        $this->assertStringContainsString('href="'.route('rooms.show', 'kamar-beranda-1').'">Kamar Beranda 1</a>', $section);
+        $this->assertStringContainsString('12 dari 20 tempat tidur tersedia', $section);
+        $this->assertStringContainsString('<span class="badge text-bg-success"><i class="bi bi-check-circle" aria-hidden="true"></i> Tersedia</span>', $section);
+        $this->assertStringContainsString('Diperbarui manual oleh petugas pada 5 Okt 2026, pukul 08.00 WIB', $section);
+        $this->assertStringContainsString('0 dari 20 tempat tidur tersedia', $section);
+        $this->assertStringContainsString('<span class="badge text-bg-danger"><i class="bi bi-x-circle" aria-hidden="true"></i> Penuh</span>', $section);
+        $this->assertStringContainsString('Belum diperbarui', $section);
+    }
+
+    public function test_the_room_block_has_the_short_notice_and_the_detail_link_without_forbidden_words(): void
+    {
+        $this->homeRoom(1);
+
+        $section = $this->section($this->get('/')->assertOk()->getContent(), 'judul-kamar');
+
+        $this->assertStringContainsString('Diperbarui manual oleh petugas. Hubungi rumah sakit untuk memastikan ketersediaan.', $section);
+        $this->assertStringContainsString('href="'.route('rooms.index').'">Lihat detail kamar</a>', $section);
+        $this->assertDoesNotMatchRegularExpression('/real[- ]?time|langsung|\blive\b/i', strip_tags($section));
+    }
+
+    public function test_the_room_block_sits_between_the_doctors_and_the_latest_articles(): void
+    {
+        $this->createDoctor(['name' => 'Uji Urutan', 'title_prefix' => 'dr.', 'title_suffix' => null]);
+        $this->createArticle(['title' => 'Artikel Urutan Uji']);
+        $this->homeRoom(1);
+
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertInOrder(['id="judul-dokter-kami"', 'id="judul-kamar"', 'id="judul-artikel-terbaru"'], $html);
+    }
+
+    public function test_a_page_with_many_active_categories_renders_in_strict_mode(): void
+    {
+        foreach (range(1, 7) as $number) {
+            $this->homeRoom($number);
+        }
+
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertSame(4, substr_count($html, 'class="card h-100 room-card"'));
+        $this->assertSame(1, substr_count($html, '<h1'));
+    }
+
     // --- CTA bantuan -----------------------------------------------------------------------------
 
     public function test_the_help_block_uses_the_contact_settings(): void
@@ -573,7 +675,7 @@ class PublicHomeTest extends TestCase
 
     public function test_the_home_views_use_escaped_output_and_no_inline_event_handlers(): void
     {
-        foreach (['home', 'partials/_banner-carousel', 'partials/_quick-search', 'partials/_featured-clinics', 'partials/_featured-doctors', 'partials/_latest-articles', 'partials/_help-cta'] as $view) {
+        foreach (['home', 'partials/_banner-carousel', 'partials/_quick-search', 'partials/_featured-clinics', 'partials/_featured-doctors', 'partials/_room-summary', 'partials/_latest-articles', 'partials/_help-cta'] as $view) {
             $source = (string) file_get_contents(resource_path("views/public/{$view}.blade.php"));
 
             $this->assertNotSame('', $source, $view);

@@ -8,6 +8,7 @@ use App\Http\Controllers\Public\FaqController;
 use App\Http\Controllers\Public\GalleryController;
 use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Public\PageController;
+use App\Http\Controllers\Public\RoomCategoryController;
 use App\Http\Controllers\Public\ScheduleController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +34,11 @@ Route::get('/jadwal-dokter', [ScheduleController::class, 'index'])->name('schedu
 // Fasilitas (#9, #10): hanya fasilitas aktif; yang nonaktif 404 untuk semua orang, termasuk staf (F4B-R14, A-42).
 Route::get('/fasilitas', [FacilityController::class, 'index'])->name('facilities.index');
 Route::get('/fasilitas/{facility:slug}', [FacilityController::class, 'show'])->name('facilities.show');
+
+// Kamar rawat inap (#11, #12-#15): hanya kategori aktif; satu route detail untuk keempat slug seed; nonaktif 404
+// untuk semua orang, termasuk staf (F4B-R14, F4B-R30, A-42).
+Route::get('/kamar-rawat-inap', [RoomCategoryController::class, 'index'])->name('rooms.index');
+Route::get('/kamar-rawat-inap/{roomCategory:slug}', [RoomCategoryController::class, 'show'])->name('rooms.show');
 
 // BPJS dan asuransi (#16), panduan pendaftaran (#17), dan kebijakan privasi: isi dari tabel `pages` (F4A-R4).
 Route::get('/bpjs-asuransi', [PageController::class, 'insurance'])->name('insurance');
