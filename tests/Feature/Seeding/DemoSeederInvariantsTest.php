@@ -8,11 +8,14 @@ use App\Models\Article;
 use App\Models\ArticleCategory;
 use App\Models\Banner;
 use App\Models\Clinic;
+use App\Models\ContactMessage;
 use App\Models\Doctor;
+use App\Models\Facility;
 use App\Models\Faq;
 use App\Models\Gallery;
 use App\Models\InsurancePartner;
 use App\Models\Media;
+use App\Models\RoomCategory;
 use App\Models\Specialty;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,8 +58,9 @@ class DemoSeederInvariantsTest extends TestCase
         $this->assertSame(20, DB::table('doctor_specialties')->count());
         $this->assertSame(18, DB::table('doctor_specialties')->where('is_primary', true)->count());
         $this->assertSame(16, Media::query()->where('collection', 'photo')->count());
-        $this->assertSame(22, Media::query()->where('collection', 'cover')->count()); // 16 layanan + 6 artikel (ContentSeeder)
-        $this->assertSame(57, Media::query()->count()); // 32 master + 25 konten: 6 cover artikel, 3 banner, 12 foto album, 4 logo
+        $this->assertSame(36, Media::query()->where('collection', 'cover')->count()); // 16 layanan + 6 artikel + 10 fasilitas + 4 kamar
+        $this->assertSame(12, Media::query()->where('collection', 'gallery')->count()); // 4 fasilitas + 8 kamar (fase 4b)
+        $this->assertSame(83, Media::query()->count()); // 32 master + 25 konten (4a) + 26 fasilitas dan kamar (4b)
         $this->assertSame(16, Doctor::query()->publiclyVisible()->count());
     }
 
@@ -76,6 +80,27 @@ class DemoSeederInvariantsTest extends TestCase
         $this->assertSame(12, Media::query()->where('collection', 'photos')->count());
         $this->assertSame(4, Media::query()->where('collection', 'logo')->count());
         $this->assertSame(15, DB::table('pages')->count());
+    }
+
+    public function test_phase_4b_counts_and_availability_match_the_reference_numbers(): void
+    {
+        $this->seedDemo();
+
+        $this->assertSame(4, RoomCategory::query()->count());
+        $this->assertSame(10, Facility::query()->count());
+        $this->assertSame(5, ContactMessage::query()->count());
+        $this->assertSame(2, ContactMessage::query()->unread()->count());
+        $this->assertSame(10, Media::query()->where('collection', 'cover')->where('model_type', (new Facility)->getMorphClass())->count());
+        $this->assertSame(4, Media::query()->where('collection', 'gallery')->where('model_type', (new Facility)->getMorphClass())->count());
+        $this->assertSame(4, Media::query()->where('collection', 'cover')->where('model_type', (new RoomCategory)->getMorphClass())->count());
+        $this->assertSame(8, Media::query()->where('collection', 'gallery')->where('model_type', (new RoomCategory)->getMorphClass())->count());
+        $this->assertSame(58, (int) RoomCategory::query()->sum('bed_capacity'));
+        $this->assertSame(16, (int) RoomCategory::query()->sum('beds_available'));
+        $this->assertSame(1, RoomCategory::query()->where('beds_available', 0)->count());
+        $this->assertSame([], DB::select('SELECT id FROM room_categories WHERE beds_available > bed_capacity'));
+        $this->assertSame([], DB::select('SELECT id FROM room_categories WHERE availability_updated_at IS NULL OR availability_updated_by IS NULL'));
+        $this->assertSame([], DB::select("SELECT id FROM contact_messages WHERE (status IN ('replied', 'archived')) <> (handled_by IS NOT NULL)"));
+        $this->assertSame([], DB::select('SELECT id FROM contact_messages WHERE CHAR_LENGTH(ip_hash) <> 64'));
     }
 
     public function test_every_doctor_has_exactly_one_primary_specialty_and_archive_state_is_consistent(): void
@@ -178,7 +203,7 @@ class DemoSeederInvariantsTest extends TestCase
             ->expectsOutputToContain('Data demo sudah ada')
             ->assertExitCode(0);
 
-        $this->assertSame([13, 17, 18, 20, 57], [
+        $this->assertSame([13, 17, 18, 20, 83], [
             Specialty::query()->count(),
             Clinic::query()->count(),
             Doctor::query()->count(),
@@ -191,11 +216,11 @@ class DemoSeederInvariantsTest extends TestCase
     {
         $this->seedDemo();
 
-        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder', 'ContentSeeder'] as $seeder) {
+        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder', 'RoomCategorySeeder', 'FacilitySeeder', 'ContentSeeder', 'ContactMessageSeeder'] as $seeder) {
             $this->artisan('db:seed', ['--class' => "Database\\Seeders\\{$seeder}", '--no-interaction' => true])->assertExitCode(0);
         }
 
-        $this->assertSame([13, 17, 18, 20, 57], [
+        $this->assertSame([13, 17, 18, 20, 83], [
             Specialty::query()->count(),
             Clinic::query()->count(),
             Doctor::query()->count(),

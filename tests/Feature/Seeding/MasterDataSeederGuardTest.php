@@ -3,8 +3,11 @@
 namespace Tests\Feature\Seeding;
 
 use Database\Seeders\ClinicSeeder;
+use Database\Seeders\ContactMessageSeeder;
 use Database\Seeders\ContentSeeder;
 use Database\Seeders\DoctorSeeder;
+use Database\Seeders\FacilitySeeder;
+use Database\Seeders\RoomCategorySeeder;
 use Database\Seeders\SpecialtySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +30,9 @@ class MasterDataSeederGuardTest extends TestCase
             'ClinicSeeder' => [ClinicSeeder::class],
             'DoctorSeeder' => [DoctorSeeder::class],
             'ContentSeeder' => [ContentSeeder::class],
+            'RoomCategorySeeder' => [RoomCategorySeeder::class],
+            'FacilitySeeder' => [FacilitySeeder::class],
+            'ContactMessageSeeder' => [ContactMessageSeeder::class],
         ];
     }
 
@@ -49,7 +55,7 @@ class MasterDataSeederGuardTest extends TestCase
         $this->assertStringContainsString('DILARANG di APP_ENV=production', $thrown->getMessage());
         $written = 0;
 
-        foreach (['specialties', 'clinics', 'doctors', 'article_categories', 'articles', 'banners', 'galleries', 'faqs', 'insurance_partners', 'media'] as $table) {
+        foreach (['specialties', 'clinics', 'doctors', 'article_categories', 'articles', 'banners', 'galleries', 'faqs', 'insurance_partners', 'room_categories', 'facilities', 'contact_messages', 'media'] as $table) {
             $written += DB::table($table)->count();
         }
 
