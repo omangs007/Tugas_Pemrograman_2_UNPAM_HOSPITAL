@@ -6,6 +6,7 @@ use App\Enums\ArticleStatus;
 use App\Models\Concerns\HasMedia;
 use App\Models\Concerns\HasUniqueSlug;
 use App\Models\Concerns\SanitizesRichText;
+use App\Support\LikePattern;
 use Database\Factories\ArticleFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -89,7 +90,7 @@ class Article extends Model
             return;
         }
 
-        $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term).'%';
+        $like = LikePattern::contains($term);
 
         $query->where(function (Builder $inner) use ($like): void {
             $inner->where($this->qualifyColumn('title'), 'like', $like)

@@ -128,6 +128,12 @@ return [
             ['label' => 'FAQ', 'route' => 'admin.faqs.index', 'permission' => 'content.manage', 'active' => ['admin.faqs.*']],
             ['label' => 'Mitra Asuransi', 'route' => 'admin.insurance-partners.index', 'permission' => 'content.manage', 'active' => ['admin.insurance-partners.*']],
         ],
+        // Halaman #36 (F4B-R28). Tab ke route yang belum ada otomatis tersembunyi. "Kamar dan Kapasitas" juga terbuka
+        // bagi pemegang `rooms.update-availability` (Petugas Pendaftaran, D-12).
+        'facilities' => [
+            ['label' => 'Kamar dan Kapasitas', 'route' => 'admin.room-categories.index', 'permission' => 'facilities.manage|rooms.update-availability', 'active' => ['admin.room-categories.*']],
+            ['label' => 'Fasilitas', 'route' => 'admin.facilities.index', 'permission' => 'facilities.manage', 'active' => ['admin.facilities.*']],
+        ],
     ],
 
 ];

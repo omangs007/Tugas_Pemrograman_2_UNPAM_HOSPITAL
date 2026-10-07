@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Http\Requests\ListFilterRequest;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -40,7 +41,7 @@ class BannerIndexRequest extends ListFilterRequest
         $model = $query->getModel();
 
         if (isset($filters['q'])) {
-            $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filters['q']).'%';
+            $like = LikePattern::contains($filters['q']);
             $query->where($model->qualifyColumn('title'), 'like', $like);
         }
 

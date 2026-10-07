@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Http\Requests\ListFilterRequest;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -42,7 +43,7 @@ class MasterDataIndexRequest extends ListFilterRequest
         $model = $query->getModel();
 
         if (isset($filters['q'])) {
-            $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filters['q']).'%';
+            $like = LikePattern::contains($filters['q']);
 
             $query->where(function (Builder $inner) use ($searchColumns, $like, $model): void {
                 foreach ($searchColumns as $column) {

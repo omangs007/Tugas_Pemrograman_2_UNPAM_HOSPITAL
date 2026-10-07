@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ArticleCategoryRequest;
 use App\Http\Requests\ListFilterRequest;
 use App\Models\ArticleCategory;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,7 @@ class ArticleCategoryController extends Controller
 
         $categories = ArticleCategory::query()
             ->withCount('articles')
-            ->when($term !== null, fn (Builder $query): Builder => $query->where('name', 'like', $this->like($term)))
+            ->when($term !== null, fn (Builder $query): Builder => $query->where('name', 'like', LikePattern::contains($term)))
             ->ordered()
             ->paginate($request->perPage());
 
@@ -74,13 +75,5 @@ class ArticleCategoryController extends Controller
 
         return redirect()->route('admin.article-categories.index')
             ->with('success', __('messages.deleted', ['entity' => __('messages.entities.article_category')]));
-    }
-
-    /**
-     * Pola LIKE dengan karakter `\`, `%`, dan `_` di-escape agar kata kunci diperlakukan sebagai teks biasa.
-     */
-    private function like(string $term): string
-    {
-        return '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term).'%';
     }
 }

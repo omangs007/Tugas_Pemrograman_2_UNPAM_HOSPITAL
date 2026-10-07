@@ -63,10 +63,16 @@ class ContentEditorImagesTest extends TestCase
         Storage::disk('public')->assertMissing($media->directory.'/'.$media->file_name);
     }
 
-    public function test_the_reference_columns_include_pages_and_articles(): void
+    public function test_the_reference_columns_include_every_rich_text_table(): void
     {
         $this->assertSame(
-            ['clinics' => ['description'], 'pages' => ['body'], 'articles' => ['body']],
+            [
+                'clinics' => ['description'],
+                'pages' => ['body'],
+                'articles' => ['body'],
+                'facilities' => ['description'],
+                'room_categories' => ['description'],
+            ],
             MediaService::EDITOR_REFERENCE_COLUMNS,
         );
     }

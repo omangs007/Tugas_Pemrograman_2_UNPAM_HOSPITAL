@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Http\Requests\ListFilterRequest;
 use App\Models\Faq;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
@@ -63,7 +64,7 @@ class FaqIndexRequest extends ListFilterRequest
         $model = $query->getModel();
 
         if (isset($filters['q'])) {
-            $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filters['q']).'%';
+            $like = LikePattern::contains($filters['q']);
             $query->where($model->qualifyColumn('question'), 'like', $like);
         }
 

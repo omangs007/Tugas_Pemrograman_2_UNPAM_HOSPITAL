@@ -14,7 +14,8 @@ use Illuminate\Support\Str;
 
 /**
  * Jejak audit otomatis untuk model master sederhana (11 §5.9, F2-R19): `specialty.*` dan `clinic.*`, serta konten
- * fase 4a (F4A-R8): `page.*`, `banner.*`, `article.*`, `article_category.*`, `gallery.*`, `faq.*`, `insurance_partner.*`.
+ * fase 4a (F4A-R8): `page.*`, `banner.*`, `article.*`, `article_category.*`, `gallery.*`, `faq.*`, `insurance_partner.*`;
+ * serta fase 4b (F4B-R25): `facility.*` dan `room_category.*`. `ContactMessage` tidak diobservasi.
  * Aksi = snake_case nama kelas + "." + peristiwa. Pelaku: staf yang login, selain itu sistem.
  * `Doctor` sengaja tidak diobservasi (DoctorService mencatat `doctor.*` sendiri).
  */

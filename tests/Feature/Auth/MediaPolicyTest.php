@@ -6,10 +6,13 @@ use App\Models\Article;
 use App\Models\Banner;
 use App\Models\Clinic;
 use App\Models\Doctor;
+use App\Models\Facility;
 use App\Models\Gallery;
 use App\Models\InsurancePartner;
 use App\Models\Media;
 use App\Models\Page;
+use App\Models\PatientProfile;
+use App\Models\RoomCategory;
 use App\Models\Specialty;
 use App\Models\User;
 use App\Policies\MediaPolicy;
@@ -53,7 +56,13 @@ class MediaPolicyTest extends TestCase
             'foto album galeri' => [Gallery::class, 'photos', $contentOnly],
             'logo mitra asuransi' => [InsurancePartner::class, 'logo', $contentOnly],
             'logo situs (tanpa pemilik)' => [null, 'logo', $superOnly],
-            'tipe pemilik yang belum dipetakan' => ['App\Models\Facility', 'cover', $superOnly],
+            'cover fasilitas' => [Facility::class, 'cover', $contentOnly],
+            'galeri fasilitas' => [Facility::class, 'gallery', $contentOnly],
+            'gambar editor fasilitas' => [Facility::class, 'editor', $contentOnly],
+            'cover kategori kamar' => [RoomCategory::class, 'cover', $contentOnly],
+            'galeri kategori kamar' => [RoomCategory::class, 'gallery', $contentOnly],
+            'gambar editor kategori kamar' => [RoomCategory::class, 'editor', $contentOnly],
+            'tipe pemilik yang belum dipetakan' => [PatientProfile::class, 'cover', $superOnly],
             'koleksi tanpa pemilik selain logo dan editor' => [null, 'photo', $superOnly],
         ];
     }
@@ -101,6 +110,28 @@ class MediaPolicyTest extends TestCase
             $this->assertTrue(Gate::forUser($this->userFor('super-admin'))->allows('reorder', $media), "super-admin {$collection}");
             $this->assertFalse(Gate::forUser($officer)->allows('reorder', $media), "petugas {$collection}");
             $this->assertFalse(Gate::forUser($patient)->allows('reorder', $media), "pasien {$collection}");
+        }
+    }
+
+    public function test_facility_and_room_media_are_managed_by_facility_managers_not_by_availability_updaters(): void
+    {
+        $content = $this->userFor('content-admin');
+        $super = $this->userFor('super-admin');
+        $officer = $this->userFor('registration-officer');
+        $patient = $this->userFor('patient');
+
+        $this->assertTrue($officer->can('rooms.update-availability'), 'Petugas memegang izin ketersediaan kamar.');
+        $this->assertFalse($officer->can('facilities.manage'));
+
+        foreach ([[Facility::class, 'cover'], [Facility::class, 'gallery'], [Facility::class, 'editor'], [RoomCategory::class, 'cover'], [RoomCategory::class, 'gallery'], [RoomCategory::class, 'editor']] as [$type, $collection]) {
+            $media = $this->mediaFor($type, $collection);
+
+            foreach (['update', 'delete', 'reorder'] as $ability) {
+                $this->assertTrue(Gate::forUser($content)->allows($ability, $media), "content-admin {$ability} {$type} {$collection}");
+                $this->assertTrue(Gate::forUser($super)->allows($ability, $media), "super-admin {$ability} {$type} {$collection}");
+                $this->assertFalse(Gate::forUser($officer)->allows($ability, $media), "petugas {$ability} {$type} {$collection}");
+                $this->assertFalse(Gate::forUser($patient)->allows($ability, $media), "pasien {$ability} {$type} {$collection}");
+            }
         }
     }
 

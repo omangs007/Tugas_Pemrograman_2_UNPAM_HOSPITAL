@@ -10,6 +10,7 @@
     'currentMedia' => null,
     'altName' => null,
     'altValue' => null,
+    'placeholder' => null,
 ])
 @php
     $id = $id ?: trim(str_replace(['.', '[', ']'], ['-', '-', ''], $name), '-');
@@ -29,7 +30,7 @@
     <label for="{{ $id }}" class="form-label fw-semibold">{{ $label }}@if ($required) <span class="required-mark" aria-hidden="true">*</span>@endif</label>
     @if ($currentMedia)
         <div class="mb-2" data-current-media>
-            <x-image :media="$currentMedia" :type="$placeholderTypes[$currentMedia->collection] ?? 'gallery'" variant="thumb" :alt="$currentMedia->alt_text" class="image-preview" />
+            <x-image :media="$currentMedia" :type="$placeholder ?? ($placeholderTypes[$currentMedia->collection] ?? 'gallery')" variant="thumb" :alt="$currentMedia->alt_text" class="image-preview" />
             <p class="form-text mb-0">Gambar saat ini</p>
         </div>
     @endif

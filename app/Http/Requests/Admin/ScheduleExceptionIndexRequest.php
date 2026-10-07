@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin;
 use App\Enums\ExceptionType;
 use App\Http\Requests\ListFilterRequest;
 use App\Models\ScheduleException;
+use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rule;
 
@@ -67,7 +68,7 @@ class ScheduleExceptionIndexRequest extends ListFilterRequest
         }
 
         if (isset($filters['q'])) {
-            $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filters['q']).'%';
+            $like = LikePattern::contains($filters['q']);
             $query->where($table.'.reason', 'like', $like);
         }
 

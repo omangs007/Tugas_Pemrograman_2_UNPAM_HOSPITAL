@@ -29,6 +29,9 @@ return [
         'gallery' => 'Album galeri',
         'faq' => 'FAQ',
         'insurance_partner' => 'Mitra asuransi',
+        'facility' => 'Fasilitas',
+        'room_category' => 'Kategori kamar',
+        'contact_message' => 'Pesan kontak',
     ],
 
     // Pesan aturan validasi kustom (12 §3.1); :attribute diganti nama bidang oleh validator.

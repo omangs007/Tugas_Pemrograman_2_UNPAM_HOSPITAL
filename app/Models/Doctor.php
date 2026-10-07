@@ -6,6 +6,7 @@ use App\Enums\DoctorStatus;
 use App\Enums\Gender;
 use App\Models\Concerns\HasMedia;
 use App\Models\Concerns\HasUniqueSlug;
+use App\Support\LikePattern;
 use Database\Factories\DoctorFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -166,7 +167,7 @@ class Doctor extends Model
             return $query;
         }
 
-        $like = '%'.addcslashes($term, '%_\\').'%';
+        $like = LikePattern::contains($term);
 
         return $query->where(function (Builder $inner) use ($like): void {
             $inner->where('doctors.name', 'like', $like)

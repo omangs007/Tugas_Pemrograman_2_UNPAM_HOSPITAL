@@ -8,10 +8,12 @@ use App\Models\Article;
 use App\Models\Banner;
 use App\Models\Clinic;
 use App\Models\Doctor;
+use App\Models\Facility;
 use App\Models\Gallery;
 use App\Models\InsurancePartner;
 use App\Models\Media;
 use App\Models\Page;
+use App\Models\RoomCategory;
 use App\Models\Specialty;
 use App\Models\User;
 
@@ -20,9 +22,11 @@ use App\Models\User;
  *
  * - Doctor => `doctors.manage`; Clinic dan Specialty => `clinics.manage`.
  * - Page, Article, Banner, Gallery, dan InsurancePartner => `content.manage` (F4A-R9).
+ * - Facility dan RoomCategory => `facilities.manage` (F4B-R21). `rooms.update-availability` hanya untuk aksi
+ *   ketersediaan, bukan untuk gambar kamar.
  * - `model_type` NULL: koleksi `logo` => `settings.manage`; koleksi `editor` => pengunggah sendiri atau
  *   salah satu dari `content.manage`/`clinics.manage`/`facilities.manage`; koleksi lain ditolak.
- * - `model_type` lain belum dipetakan sehingga ditolak (fase 4b menambah Facility dan RoomCategory).
+ * - `model_type` lain (mis. PatientProfile) ditolak.
  *
  * Hanya akun staf. Super Admin lolos lewat Gate::before sebelum sampai ke sini.
  */
@@ -70,6 +74,7 @@ final class MediaPolicy
             Doctor::class => $user->can('doctors.manage'),
             Clinic::class, Specialty::class => $user->can('clinics.manage'),
             Page::class, Article::class, Banner::class, Gallery::class, InsurancePartner::class => $user->can('content.manage'),
+            Facility::class, RoomCategory::class => $user->can('facilities.manage'),
             default => false,
         };
     }

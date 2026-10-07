@@ -6,10 +6,12 @@ use App\Models\Article;
 use App\Models\ArticleCategory;
 use App\Models\Banner;
 use App\Models\Clinic;
+use App\Models\Facility;
 use App\Models\Faq;
 use App\Models\Gallery;
 use App\Models\InsurancePartner;
 use App\Models\Page;
+use App\Models\RoomCategory;
 use App\Models\Specialty;
 use App\Models\User;
 use App\Observers\AuditObserver;
@@ -65,6 +67,11 @@ class AppServiceProvider extends ServiceProvider
         Gallery::observe(AuditObserver::class);
         Faq::observe(AuditObserver::class);
         InsurancePartner::observe(AuditObserver::class);
+
+        // Audit otomatis fasilitas dan kategori kamar fase 4b (F4B-R25). ContactMessage sengaja tidak diobservasi:
+        // nama pengirim tidak boleh masuk deskripsi audit; perubahan statusnya dicatat eksplisit oleh controller.
+        Facility::observe(AuditObserver::class);
+        RoomCategory::observe(AuditObserver::class);
 
         // Pengaturan situs tersedia di semua layout sebagai $site (SettingsService).
         View::composer(['components.layouts.*'], function ($view): void {
