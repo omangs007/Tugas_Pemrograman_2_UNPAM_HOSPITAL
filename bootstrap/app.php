@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureAccountType;
 use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\SecurityHeaders;
 use App\Models\User;
+use App\Support\BookingRedirect;
 use App\Support\SafeRedirect;
 use App\Support\SensitiveInput;
 use Illuminate\Foundation\Application;
@@ -90,6 +91,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(fn (Request $request, Throwable $e): bool => $request->expectsJson()
             || $request->routeIs('admin.dashboard.chart')
             || ($request->routeIs('admin.media.*') && ! $e instanceof ValidationException));
+
+        // BookingException dan InvalidTransitionException (F6-R7, F6-R10): aturan bisnis yang ditolak, bukan galat sistem.
+        // HTML: redirect ke langkah yang tepat (tidak pernah back()) membawa input lama tanpa field sensitif; JSON: 422.
+        $exceptions->render(function (BookingException $e, Request $request) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage(), 'code' => $e->errorCode], 422);
+            }
+
+            return redirect()->to(BookingRedirect::after($e, $request))
+                ->withInput($request->except(SensitiveInput::FIELDS))
+                ->with('error', $e->getMessage());
+        });
 
         // 403 / 419 / 429 berbahasa Indonesia (11 §11.3 + F1-R6). AuthorizationException sudah menjadi 403 dan
         // TokenMismatchException menjadi 419 sebelum callback ini dipanggil; ThrottleRequestsException adalah 429.
