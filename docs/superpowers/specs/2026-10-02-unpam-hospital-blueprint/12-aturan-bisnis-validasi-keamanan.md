@@ -991,7 +991,7 @@ Parameter `pengguna`, `aksi`, `objek` (filter audit) dan `rentang` (V-44) belum 
 
 | Lapis | Mekanisme | Contoh |
 |---|---|---|
-| 1. Tipe akun | Middleware `account:patient` / `account:staff`, `active`, `password.changed` | Pasien membuka `/admin` → 403; staf membuka wizard → 403 |
+| 1. Tipe akun | Middleware `account:patient` / `account:staff`, `active`, `password.changed` | Pasien membuka `/admin` → 403; staf membuka wizard → dialihkan 302 ke `admin.dashboard` (permintaan JSON: 403; D-142) |
 | 2. Izin route | Middleware `permission:*` (Spatie) dan `Gate::before` untuk `super-admin` | `permission:appointments.manage` pada `admin.appointments.transition` |
 | 3. Policy per model | `AppointmentPolicy`, `PatientProfilePolicy`, `MediaPolicy`, dst. | `AppointmentPolicy::view`: pemilik atau `appointments.view`. Super Admin melewati Policy (`Gate::before`), sehingga aturan mutlak ditegakkan di service/Form Request |
 | 4. Form Request | `authorize()` memanggil Policy/izin yang sama | `TransitionAppointmentRequest::authorize()` |

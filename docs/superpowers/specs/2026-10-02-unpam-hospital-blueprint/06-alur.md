@@ -340,7 +340,7 @@ flowchart TD
     D -->|"Belum login"| E["Middleware auth menyimpan url.intended, redirect ke /masuk"]
     E --> F["Masuk, atau daftar akun baru lalu otomatis masuk"]
     F --> G["redirect intended kembali ke query sesi"]
-    D -->|"Akun staf"| H["403: halaman khusus akun pasien"]
+    D -->|"Akun staf"| H["Dialihkan 302 ke admin.dashboard (JSON: 403; D-142)"]
     D -->|"Akun pasien"| I
     G --> I["Wizard memuat sesi lewat DoctorAvailabilityQuery"]
     I --> J{"Sesi masih tersedia?"}
@@ -371,14 +371,14 @@ flowchart TD
 |---|---|---|
 | Query `poli`/`dokter`/`sesi` tidak valid atau tidak ditemukan | Redirect ke langkah 1 | "Poliklinik, dokter, atau sesi yang dipilih tidak tersedia. Silakan pilih kembali." |
 | Dokter dipilih tanpa poliklinik | Redirect ke langkah 1 | "Pilih poliklinik terlebih dahulu." |
-| Akun staf membuka wizard | 403 | "Anda tidak memiliki izin untuk mengakses halaman ini." |
+| Akun staf membuka wizard | Dialihkan 302 ke `admin.dashboard` (permintaan JSON: 403; D-142) | — |
 | Jenis pembayaran belum dipilih | Kembali ke langkah 4 | "Jenis pembayaran wajib dipilih." |
 | BPJS dipilih tetapi nomor kosong/bukan 13 digit | Kembali ke langkah 4 | "Nomor BPJS wajib diisi untuk pembayaran BPJS." / "Nomor BPJS harus terdiri dari 13 digit angka." |
 | Nomor BPJS diisi padahal pembayaran bukan BPJS | Kembali ke langkah 4 | "Nomor BPJS hanya boleh diisi bila jenis pembayaran adalah BPJS." |
 | Asuransi dipilih tanpa mitra | Kembali ke langkah 4 | "Mitra asuransi wajib dipilih untuk pembayaran asuransi." |
 | Keluhan lebih dari 500 karakter | Kembali ke langkah 4 | "Keluhan maksimal 500 karakter." |
 | Tombol Konfirmasi ditekan dua kali / dua tab | `Cache::lock` gagal | "Permintaan Anda sedang diproses. Mohon tunggu sebentar dan jangan menekan tombol berulang kali." |
-| Throttle `booking` terlampaui (10/menit) | 429 | "Terlalu banyak percobaan pendaftaran. Silakan coba lagi dalam :detik detik." |
+| Throttle `booking` terlampaui (10/menit) | Redirect 302 ke `create?sesi=` dengan flash dan header `Retry-After` (D-23, D-153) | "Terlalu banyak percobaan. Silakan coba lagi dalam :detik detik." |
 | Lock wait timeout (errno 1205) atau deadlock (errno 1213) masih terjadi setelah `attempts: 3` | `BookingException` `SYSTEM_BUSY`; tidak ada data tersimpan sebagian; redirect ke `patient.appointments.create` dengan query dan `withInput()` | "Sistem sedang sibuk, silakan coba lagi beberapa saat." |
 | Sesi/CSRF kedaluwarsa | 419 | "Sesi Anda telah berakhir. Muat ulang halaman, lalu coba lagi." |
 

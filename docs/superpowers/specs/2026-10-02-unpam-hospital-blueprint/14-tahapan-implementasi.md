@@ -358,7 +358,7 @@ Fase ini sebaiknya dibagi menjadi **dua rencana implementasi**: **4a** (halaman 
 - `PAS-02`–`PAS-04`, `PAS-08` (booking/bukti/notifikasi orang lain → 404, 00 BR-54/BR-81), `SEK-12` (BPJS/polis terenkripsi di DB), `SEK-13` (QR tanpa data sensitif), `SEK-15` (escape output), `VAL-03` (pesan validasi wizard), `NTF-01`, `NTF-02`, `NTF-07` (kanal notifikasi per K-13), `BKG-21` (`SYSTEM_BUSY`), `VAL-08` (alur `review`/`store` tanpa `back()`), `PAS-10` (filter `jadwal_berubah`).
 - `AKS-02` diperluas untuk #29–#30.
 
-**Keputusan terkait (17).** K-13 (volume email: default (b)), K-17 (font PDF bukti: default (a) DejaVu Sans).
+**Keputusan terkait (17).** K-13 (volume email: (b), diputuskan pemilik 2026-10-08, D-159), K-17 (font PDF bukti: (a) DejaVu Sans, diputuskan pemilik 2026-10-08, D-163).
 
 **Risiko dan mitigasi.**
 

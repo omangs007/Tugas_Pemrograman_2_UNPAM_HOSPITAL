@@ -312,3 +312,40 @@ Percobaan masuk dibatasi 5 per menit per email dan alamat IP, pendaftaran akun 5
 & $PHP artisan test                                       # seluruh suite
 npm run build                                             # gaya kartu auth lebar (.auth-card-wide) ikut dibundel
 ```
+
+## Fase 6 — Mesin booking, wizard pendaftaran, riwayat, dan bukti
+
+Yang tersedia:
+- **Wizard pendaftaran** di <http://unpam-hospital.test/pasien/pendaftaran/baru> dalam lima langkah (Poliklinik, Dokter, Tanggal & Sesi, Data Pendaftaran, Konfirmasi). Tombol "Daftar" di jadwal dan kartu dokter publik membawa `?sesi=ID` langsung ke langkah 4; tamu diminta masuk lebih dulu dan kembali ke URL yang sama. Jenis pembayaran: Umum, BPJS (13 digit; nomor yang tersimpan di profil dapat dipakai ulang tanpa diketik lagi), atau Asuransi. Wizard berfungsi penuh tanpa JavaScript.
+- **Kode booking** `UPH-XXXX-XXXX` dan **nomor antrean** `{kode poli}-{nnn}` diberikan saat pendaftaran berhasil dikirim. Status awal "Menunggu konfirmasi" (atau "Dikonfirmasi" bila pengaturan `booking.auto_confirm` aktif). Menekan tombol kirim berulang kali atau membuka dua tab tidak menggandakan pendaftaran.
+- **Riwayat** di `/pasien/pendaftaran` (filter status, rentang tanggal, dan jadwal berubah), **detail** dengan riwayat status dan kode QR, **pembatalan** oleh pasien hingga 120 menit sebelum sesi (pengaturan `booking.cancel_cutoff_minutes`; sesudahnya pasien menghubungi rumah sakit), serta **bukti pendaftaran** yang dapat dicetak (A5) dan diunduh sebagai PDF.
+- **Dashboard** menampilkan hingga lima kunjungan mendatang, banner "Jadwal … pendaftaran Anda berubah" dan pemberitahuan yang belum dibaca; header publik memuat dropdown **Akun Saya** (Dashboard, Riwayat Pendaftaran, Profil dan Akun, Keluar).
+- **Notifikasi**: setiap perubahan status tercatat di dashboard; email (lokal masuk log) hanya untuk dikonfirmasi, dibatalkan, dan perubahan jadwal (koreksi check-in tidak mengirim email). Dikirim sinkron setelah transaksi berhasil; kegagalan kirim hanya dicatat dan tidak membatalkan pendaftaran.
+- **Aturan**: pendaftaran online ditutup 60 menit sebelum sesi dimulai, jendela 30 hari ke depan, maksimal 3 pendaftaran aktif per pasien, satu pendaftaran aktif per sesi, dan sesi pada hari yang sama tidak boleh tumpang tindih; semua angka berasal dari pengaturan situs (`website_settings`).
+- Belum ada (menyusul fase 7): layar petugas untuk pendaftaran, antrean, walk-in, dan bukti admin; perubahan jadwal yang memicu notifikasi dari layar Sesi Terdampak; penandaan tidak hadir otomatis.
+
+### Mencoba di lokal
+
+Masuk sebagai `pasien@unpamhospital.test` (password `Demo12345`, lihat "Akun pasien demo"). Sesi praktik dibangkitkan otomatis saat halaman jadwal atau wizard dibuka (atau jalankan `& $PHP artisan sessions:generate`). Fase 6 tidak menambah seeder: pendaftaran dibuat lewat wizard. Untuk memeriksa email notifikasi, buka log harian (`storage\logs\laravel-YYYY-MM-DD.log`; `MAIL_MAILER=log`) setelah pendaftaran dikonfirmasi atau dibatalkan. PDF bukti memakai font DejaVu Sans bawaan dompdf; berkas cache font ditulis ke `storage\fonts` (diabaikan git).
+
+### Keterbatasan fase 6
+
+- Notifikasi dikirim sinkron (tanpa antrean); antrean dirancang di fase 7.
+- Notifikasi perubahan jadwal baru dapat dipicu setelah layar Sesi Terdampak (fase 7); kelas dan tampilannya sudah ada dan diuji langsung.
+- Pembatalan oleh petugas, check-in, penyelesaian, dan penandaan tidak hadir sudah diatur oleh `AppointmentStatusService` tetapi belum punya layar (fase 7).
+- Pemutusan pendaftaran ganda mengandalkan kunci database (`active_flag` UNIQUE) dan kunci aplikasi per akun (`Cache::lock`); dengan `CACHE_STORE=array` kunci aplikasi hanya berlaku dalam satu proses, sedangkan kunci database tetap berlaku.
+
+### Aturan keamanan yang berlaku
+
+Kode booking milik pasien lain, kode berformat salah, dan notifikasi milik pasien lain selalu menjawab 404 yang sama dengan kode yang tidak ada. Nomor BPJS dan polis tidak pernah ditampilkan lengkap (hanya `•••••••••` dan empat digit terakhir), tidak masuk PDF, notifikasi, audit, log, atau data formulir yang dipulihkan setelah galat; kode QR hanya memuat kode booking. Staf yang membuka halaman pendaftaran pasien dialihkan ke dashboard admin. Pendaftaran dibatasi 10 permintaan per menit per akun.
+
+### Pemeriksaan cepat (fase 6)
+
+```powershell
+& $PHP artisan route:list --except-vendor --path=pasien   # 13 route portal (dashboard, profil, 8 pendaftaran, 1 notifikasi)
+& $PHP artisan route:list --path=admin                    # tetap 106 route admin
+& $PHP artisan route:list --except-vendor --json          # 150 route aplikasi
+& $PHP artisan test --filter=Concurrency                  # tes konkurensi booking (butuh MariaDB berjalan)
+& $PHP artisan test                                       # seluruh suite
+npm run build                                             # skrip cetak bukti dan blok pembayaran wizard ikut dibundel
+```
