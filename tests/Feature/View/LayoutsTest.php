@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Tests\Support\InteractsWithPatients;
 use Tests\Support\InteractsWithStaff;
 use Tests\TestCase;
@@ -209,6 +210,82 @@ class LayoutsTest extends TestCase
 
         $this->get('/_uji/publik-penuh')->assertSee('<title>&lt;b&gt;Utuh&lt;/b&gt;</title>', false);
         $this->get('/_uji/publik-biasa')->assertSee('<title>Judul Biasa Uji — '.config('app.name').'</title>', false);
+    }
+
+    // --- dropdown "Akun Saya" (F6-R30) ---------------------------------------------------------
+
+    public function test_patients_get_an_account_dropdown_with_the_escaped_name_links_and_logout(): void
+    {
+        $this->page('/_uji/publik', '<x-layouts.public title="Halaman Uji"><p>Isi</p></x-layouts.public>');
+        $patient = $this->createPatient(['name' => '<i>Siti</i>'], ['full_name' => '<i>Siti</i>']);
+
+        $html = $this->actingAs($patient)->get('/_uji/publik')->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'data-account-menu'));
+        $this->assertSame(1, substr_count($html, 'aria-labelledby="akun-saya-menu"'));
+        $this->assertStringContainsString('<span class="visually-hidden">Akun Saya: </span>&lt;i&gt;Siti&lt;/i&gt;', $html);
+        $this->assertStringNotContainsString('<i>Siti</i>', $html);
+
+        $this->assertSame(1, preg_match('#<ul class="dropdown-menu dropdown-menu-end" aria-labelledby="akun-saya-menu">(.*?)</ul>#s', $html, $menu));
+
+        foreach ([['Dashboard', 'patient.dashboard'], ['Riwayat Pendaftaran', 'patient.appointments.index'], ['Profil dan Akun', 'patient.profile.edit']] as [$label, $name]) {
+            $this->assertStringContainsString('<a class="dropdown-item" href="'.route($name).'">'.$label.'</a>', $menu[1]);
+        }
+
+        $this->assertStringContainsString('action="'.route('logout').'"', $menu[1]);
+        $this->assertStringContainsString('>Keluar</button>', $menu[1]);
+    }
+
+    public function test_the_account_dropdown_name_is_truncated_to_twenty_four_characters(): void
+    {
+        $this->page('/_uji/publik', '<x-layouts.public title="Halaman Uji"><p>Isi</p></x-layouts.public>');
+        $name = str_repeat('Anggraini ', 6);
+
+        $html = $this->actingAs($this->createPatient(['name' => $name], ['full_name' => $name]))->get('/_uji/publik')->assertOk()->getContent();
+
+        $this->assertStringContainsString(Str::limit($name, 24), $html);
+        $this->assertStringNotContainsString($name, $html);
+    }
+
+    public function test_the_offcanvas_lists_the_same_account_links_and_each_logout_form_appears_exactly_twice(): void
+    {
+        $this->page('/_uji/publik', '<x-layouts.public title="Halaman Uji"><p>Isi</p></x-layouts.public>');
+
+        $html = $this->actingAs($this->createPatient())->get('/_uji/publik')->assertOk()->getContent();
+
+        $this->assertSame(1, preg_match('#data-account-links>(.*?)</form>#s', $html, $links));
+
+        foreach (['patient.dashboard', 'patient.appointments.index', 'patient.profile.edit'] as $name) {
+            $this->assertStringContainsString('href="'.route($name).'"', $links[1]);
+        }
+
+        // Satu form keluar di dropdown desktop dan satu di offcanvas; tombol "Keluar" lama tidak diduplikasi.
+        $this->assertSame(2, substr_count($html, 'action="'.route('logout').'"'));
+    }
+
+    public function test_staff_and_guests_do_not_get_the_account_dropdown(): void
+    {
+        $this->page('/_uji/publik', '<x-layouts.public title="Halaman Uji"><p>Isi</p></x-layouts.public>');
+
+        $this->get('/_uji/publik')->assertOk()
+            ->assertDontSee('data-account-menu', false)
+            ->assertSee('>Masuk<', false);
+
+        $this->actingAs($this->createStaff('content-admin'))->get('/_uji/publik')->assertOk()
+            ->assertDontSee('data-account-menu', false)
+            ->assertDontSee('data-account-links', false)
+            ->assertSee('Buka Panel Admin')
+            ->assertSee('action="'.route('admin.logout').'"', false);
+    }
+
+    public function test_the_compact_mobile_bar_keeps_a_single_account_shortcut_for_patients(): void
+    {
+        $this->page('/_uji/publik', '<x-layouts.public title="Halaman Uji"><p>Isi</p></x-layouts.public>');
+
+        $html = $this->actingAs($this->createPatient())->get('/_uji/publik')->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, '<a class="btn btn-outline-light btn-sm" href="'.route('patient.dashboard').'">Akun Saya</a>'));
+        $this->assertSame(0, substr_count($html, '<a class="btn btn-outline-primary" href="'.route('patient.dashboard').'">Akun Saya</a>'));
     }
 
     // --- layout pasien -----------------------------------------------------------------------

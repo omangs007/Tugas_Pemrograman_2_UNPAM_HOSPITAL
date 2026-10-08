@@ -103,6 +103,7 @@ class PatientDashboardTest extends TestCase
         $response->assertSee('aria-label="Menu portal pasien"', false)
             ->assertSee('aria-current="page"', false)
             ->assertSee('action="'.route('logout').'"', false)
+            ->assertSee('data-account-menu', false)
             ->assertSee('Akun Saya')
             ->assertDontSee('>Masuk<', false);
     }

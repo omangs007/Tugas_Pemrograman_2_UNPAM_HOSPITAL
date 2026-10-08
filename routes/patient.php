@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Patient\AppointmentController;
 use App\Http\Controllers\Patient\DashboardController;
+use App\Http\Controllers\Patient\NotificationController;
 use App\Http\Controllers\Patient\PasswordController;
 use App\Http\Controllers\Patient\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,10 @@ Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/profil', [ProfileController::class, 'edit'])->name('profile.edit');
 Route::put('/profil', [ProfileController::class, 'update'])->name('profile.update');
 Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
+
+// Tandai notifikasi database milik sendiri sebagai dibaca lalu arahkan ke detail pendaftaran atau dashboard
+// (F6-R29). `id` wajib UUID; notifikasi milik pengguna lain menjawab 404.
+Route::post('/notifikasi/{id}/baca', [NotificationController::class, 'read'])->name('notifications.read')->whereUuid('id');
 
 // Pendaftaran kunjungan (#29, F6-R3): langkah 1 sampai 4 = GET /baru (query poli, dokter, tanggal, sesi).
 Route::prefix('pendaftaran')->name('appointments.')->controller(AppointmentController::class)->group(function (): void {
