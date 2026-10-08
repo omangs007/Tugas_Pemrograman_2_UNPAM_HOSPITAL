@@ -399,7 +399,7 @@ class FrontendManifestTest extends TestCase
     {
         $shared = $this->read('resources/scss/_shared.scss');
 
-        foreach (['.table-cards', 'td[data-label]::before', '.skip-link', ':focus-visible', '2.75rem', '.auth-card', 'prefers-reduced-motion'] as $needle) {
+        foreach (['.table-cards', 'td[data-label]::before', '.skip-link', ':focus-visible', '2.75rem', '.auth-card', '.auth-card-wide', '35rem', 'prefers-reduced-motion'] as $needle) {
             $this->assertStringContainsString($needle, $shared);
         }
 

@@ -156,6 +156,11 @@ textarea.form-control {
   }
 }
 
+// Variasi lebar untuk formulir panjang, mis. registrasi pasien (F5-R23).
+.auth-card-wide {
+  max-width: 35rem;
+}
+
 // ---------------------------------------------------------------- Gambar
 .auth-brand {
   display: inline-block;

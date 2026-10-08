@@ -1,4 +1,4 @@
-@props(['title', 'subtitle' => null])
+@props(['title', 'subtitle' => null, 'heading' => null, 'wide' => false])
 @php
     $siteName = $site->string('site.name', config('app.name'));
     $logoUrl = $site->logoUrl();
@@ -18,7 +18,7 @@
     <a class="skip-link" href="#konten-utama">Lewati ke konten utama</a>
 
     <div class="container py-4 py-md-5">
-        <div class="auth-card mx-auto">
+        <div @class(['auth-card', 'auth-card-wide' => $wide, 'mx-auto'])>
             <div class="text-center mb-4">
                 <a class="auth-brand" href="{{ route('home') }}">
                     <img class="auth-logo" src="{{ $logoUrl }}" data-fallback="{{ $logoFallback }}" alt="{{ $siteName }}" height="64">
@@ -26,7 +26,7 @@
             </div>
 
             <main id="konten-utama" tabindex="-1">
-                <h1 class="h3 mb-1">{{ $title }}</h1>
+                <h1 class="h3 mb-1">{{ $heading ?? $title }}</h1>
                 @if (filled($subtitle))
                     <p class="text-body-secondary">{{ $subtitle }}</p>
                 @endif

@@ -65,6 +65,35 @@ class LayoutsTest extends TestCase
             ->assertSee('Kolom email wajib diisi.');
     }
 
+    public function test_auth_layout_heading_prop_sets_the_h1_but_not_the_document_title(): void
+    {
+        $this->page('/_uji/auth', '<x-layouts.auth title="Masuk" heading="Masuk ke Akun Pasien"><p>Isi</p></x-layouts.auth>');
+
+        $response = $this->get('/_uji/auth')->assertOk();
+
+        $response->assertSee('<title>Masuk — '.config('app.name').'</title>', false)
+            ->assertSee('<h1 class="h3 mb-1">Masuk ke Akun Pasien</h1>', false);
+        $this->assertSame(1, $this->h1Count($response->getContent()));
+    }
+
+    public function test_auth_layout_without_heading_uses_the_title_for_the_h1(): void
+    {
+        $this->page('/_uji/auth', '<x-layouts.auth title="Masuk Uji"><p>Isi</p></x-layouts.auth>');
+
+        $this->get('/_uji/auth')->assertOk()->assertSee('<h1 class="h3 mb-1">Masuk Uji</h1>', false);
+    }
+
+    public function test_auth_layout_wide_prop_adds_the_wide_card_class_and_the_default_does_not(): void
+    {
+        $this->page('/_uji/auth-lebar', '<x-layouts.auth title="Daftar Uji" :wide="true"><p>Isi</p></x-layouts.auth>');
+        $this->page('/_uji/auth-biasa', '<x-layouts.auth title="Masuk Uji"><p>Isi</p></x-layouts.auth>');
+
+        $this->get('/_uji/auth-lebar')->assertOk()->assertSee('class="auth-card auth-card-wide mx-auto"', false);
+        $this->get('/_uji/auth-biasa')->assertOk()
+            ->assertSee('class="auth-card mx-auto"', false)
+            ->assertDontSee('auth-card-wide', false);
+    }
+
     public function test_layouts_read_site_settings_through_the_view_composer(): void
     {
         $this->seed(SettingsSeeder::class);
