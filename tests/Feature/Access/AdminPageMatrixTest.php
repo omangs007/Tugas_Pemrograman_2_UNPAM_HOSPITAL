@@ -7,7 +7,6 @@ use App\Models\Media;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\InteractsWithContent;
 use Tests\Support\InteractsWithFacilities;
@@ -523,7 +522,7 @@ class AdminPageMatrixTest extends TestCase
     private function dashboardFor(string $actor): string
     {
         if ($actor === 'patient') {
-            return Route::has('patient.dashboard') ? route('patient.dashboard') : route('home');
+            return route('patient.dashboard');
         }
 
         return route('admin.dashboard');

@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -28,8 +27,7 @@ class EnsureAccountIsActive
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        // Cadangan F1-R2: `login` belum ada sampai fase 5.
-        $loginRoute = $isStaff ? 'admin.login' : (Route::has('login') ? 'login' : 'home');
+        $loginRoute = $isStaff ? 'admin.login' : 'login';
 
         return redirect()->route($loginRoute)
             ->with('error', 'Akun Anda dinonaktifkan. Silakan hubungi administrator rumah sakit.');

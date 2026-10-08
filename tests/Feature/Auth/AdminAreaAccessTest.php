@@ -59,8 +59,6 @@ class AdminAreaAccessTest extends TestCase
 
     public function test_patient_deactivated_during_a_running_session_is_logged_out_and_sent_to_login(): void
     {
-        Route::middleware('web')->get('/_uji/masuk', fn () => 'masuk')->name('login');
-        Route::getRoutes()->refreshNameLookups();
         $patient = User::factory()->patient()->create();
         $this->actingAs($patient)->get('/_uji/area-pasien')->assertOk();
 

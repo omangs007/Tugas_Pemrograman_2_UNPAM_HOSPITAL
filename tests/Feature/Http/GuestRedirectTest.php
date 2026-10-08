@@ -24,25 +24,16 @@ class GuestRedirectTest extends TestCase
         $this->get('/admin')->assertRedirect(route('admin.login'));
     }
 
-    public function test_guest_on_a_protected_non_admin_route_goes_home_while_login_route_does_not_exist(): void
+    public function test_guest_on_a_protected_non_admin_route_goes_to_the_patient_login(): void
     {
         $this->protectedRoute();
-
-        // Cadangan F1-R2: hapus tes ini bersama cadangan di fase 5 (route `login` tersedia).
-        if (! Route::has('login')) {
-            $this->get('/_uji/terlindungi')->assertRedirect(route('home'));
-        } else {
-            $this->get('/_uji/terlindungi')->assertRedirect(route('login'));
-        }
-    }
-
-    public function test_guest_on_a_protected_non_admin_route_goes_to_login_once_that_route_exists(): void
-    {
-        $this->protectedRoute();
-        Route::middleware('web')->get('/_uji/masuk', fn () => 'masuk')->name('login');
-        Route::getRoutes()->refreshNameLookups();
 
         $this->get('/_uji/terlindungi')->assertRedirect(route('login'));
+    }
+
+    public function test_guest_on_the_patient_area_goes_to_the_patient_login(): void
+    {
+        $this->get('/pasien')->assertRedirect(route('login'));
     }
 
     public function test_staff_on_the_guest_only_admin_login_page_goes_to_the_admin_dashboard(): void
@@ -52,23 +43,24 @@ class GuestRedirectTest extends TestCase
             ->assertRedirect(route('admin.dashboard'));
     }
 
-    public function test_patient_on_the_guest_only_admin_login_page_goes_home_while_patient_dashboard_does_not_exist(): void
+    public function test_patient_on_the_guest_only_admin_login_page_goes_to_the_patient_dashboard(): void
     {
-        // Cadangan F1-R2: hapus cabang ini di fase 5.
-        $expected = Route::has('patient.dashboard') ? route('patient.dashboard') : route('home');
-
-        $this->actingAs(User::factory()->patient()->create())
-            ->get('/admin/login')
-            ->assertRedirect($expected);
-    }
-
-    public function test_patient_on_a_guest_only_page_goes_to_the_patient_dashboard_once_it_exists(): void
-    {
-        Route::middleware('web')->get('/_uji/pasien', fn () => 'pasien')->name('patient.dashboard');
-        Route::getRoutes()->refreshNameLookups();
-
         $this->actingAs(User::factory()->patient()->create())
             ->get('/admin/login')
             ->assertRedirect(route('patient.dashboard'));
+    }
+
+    public function test_patient_on_the_guest_only_patient_login_page_goes_to_the_patient_dashboard(): void
+    {
+        $this->actingAs(User::factory()->patient()->create())
+            ->get('/masuk')
+            ->assertRedirect(route('patient.dashboard'));
+    }
+
+    public function test_staff_on_the_guest_only_patient_login_page_goes_to_the_admin_dashboard(): void
+    {
+        $this->actingAs($this->createStaff('content-admin'))
+            ->get('/masuk')
+            ->assertRedirect(route('admin.dashboard'));
     }
 }

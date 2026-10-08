@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Public\ArticleController;
 use App\Http\Controllers\Public\ClinicController;
 use App\Http\Controllers\Public\ContactController;
@@ -60,3 +61,11 @@ Route::get('/faq', [FaqController::class, 'index'])->name('faq');
 Route::get('/kontak', [ContactController::class, 'show'])->name('contact');
 Route::post('/kontak', [ContactController::class, 'store'])->middleware('throttle:contact')->name('contact.store');
 Route::get('/kebijakan-privasi', [PageController::class, 'privacy'])->name('privacy');
+
+// Auth pasien (#23–#26, 11 §2.1)
+Route::middleware('guest')->group(function (): void {
+    Route::get('/masuk', [LoginController::class, 'create'])->name('login');
+    Route::post('/masuk', [LoginController::class, 'store'])->middleware('throttle:login')->name('login.store');
+});
+// Logout di luar grup `guest` supaya akun yang sedang login bisa keluar (F5-R8).
+Route::post('/keluar', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');

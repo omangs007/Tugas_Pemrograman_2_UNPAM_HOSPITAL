@@ -2,18 +2,19 @@
 
 namespace Tests\Feature\View;
 
-use App\Models\User;
 use App\Services\Settings\SettingsService;
 use Database\Seeders\SettingsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
+use Tests\Support\InteractsWithPatients;
 use Tests\Support\InteractsWithStaff;
 use Tests\TestCase;
 
 class LayoutsTest extends TestCase
 {
+    use InteractsWithPatients;
     use InteractsWithStaff;
     use RefreshDatabase;
 
@@ -159,14 +160,12 @@ class LayoutsTest extends TestCase
 
         $this->get('/_uji/publik')->assertSee(route('home'), false);
 
-        // Cadangan F1-R2: berlaku selama route fase berikutnya belum ada (dihapus bersama cadangan di fase 5).
-        if (! Route::has('login') && ! Route::has('patient.appointments.create')) {
-            $this->get('/_uji/publik')
-                ->assertDontSee('>Masuk<', false)
-                ->assertDontSee('Daftar Kunjungan');
-        }
+        // `login` kini route asli (fase 5): "Masuk" selalu tampil bagi tamu; "Daftar Kunjungan" menunggu route fase 6.
+        $this->get('/_uji/publik')
+            ->assertSee('>Masuk<', false)
+            ->assertSee('href="'.route('login').'"', false)
+            ->assertDontSee('Daftar Kunjungan');
 
-        Route::middleware('web')->get('/_uji/masuk', fn () => 'masuk')->name('login');
         Route::middleware('web')->get('/_uji/daftar-kunjungan', fn () => 'daftar')->name('patient.appointments.create');
         Route::getRoutes()->refreshNameLookups();
 
@@ -236,38 +235,39 @@ class LayoutsTest extends TestCase
         $this->assertSame(1, $this->h1Count($response->getContent()));
     }
 
-    public function test_patient_layout_omits_portal_navigation_until_patient_routes_exist(): void
+    public function test_patient_layout_shows_no_logout_form_to_guests(): void
     {
         $this->page('/_uji/pasien', '<x-layouts.patient title="Portal Uji"><p>Isi portal</p></x-layouts.patient>');
 
-        // Berlaku selama route portal pasien belum ada (fase 5 menghapus cabang ini).
-        if (! Route::has('patient.dashboard') && ! Route::has('logout')) {
-            $this->get('/_uji/pasien')
-                ->assertOk()
-                ->assertDontSee('aria-label="Menu portal pasien"', false)
-                ->assertDontSee('Riwayat Pendaftaran');
-        }
+        $this->get('/_uji/pasien')
+            ->assertOk()
+            ->assertSee('aria-label="Menu portal pasien"', false)
+            ->assertDontSee('action="'.route('logout').'"', false);
     }
 
-    public function test_patient_layout_shows_portal_navigation_with_current_item_and_logout_when_routes_exist(): void
+    public function test_patient_layout_shows_portal_navigation_with_current_item_and_logout_on_the_real_dashboard(): void
     {
-        Route::middleware('web')->get('/_uji/pasien-dashboard', fn () => Blade::render('<x-layouts.patient title="Dashboard Uji"><p>Dasbor</p></x-layouts.patient>'))->name('patient.dashboard');
-        Route::middleware('web')->get('/_uji/pasien-riwayat', fn () => 'riwayat')->name('patient.appointments.index');
-        Route::middleware('web')->get('/_uji/pasien-baru', fn () => 'baru')->name('patient.appointments.create');
-        Route::middleware('web')->post('/_uji/keluar', fn () => 'keluar')->name('logout');
-        Route::getRoutes()->refreshNameLookups();
-
-        $this->get('/_uji/pasien-dashboard')
+        $this->actingAs($this->createPatient())
+            ->get(route('patient.dashboard'))
             ->assertOk()
             ->assertSee('aria-label="Menu portal pasien"', false)
             ->assertSee('Dashboard')
-            ->assertSee('Riwayat Pendaftaran')
-            ->assertSee('Daftar Kunjungan')
             ->assertSee('aria-current="page"', false)
-            ->assertDontSee('action="'.route('logout').'"', false);
+            ->assertSee('action="'.route('logout').'"', false)
+            ->assertDontSee('Riwayat Pendaftaran')
+            ->assertDontSee('Daftar Kunjungan');
+    }
 
-        $this->actingAs(User::factory()->patient()->create())
-            ->get('/_uji/pasien-dashboard')
-            ->assertSee('action="'.route('logout').'"', false);
+    public function test_patient_layout_adds_the_phase_6_menu_items_once_their_routes_exist(): void
+    {
+        Route::middleware('web')->get('/_uji/pasien-riwayat', fn () => 'riwayat')->name('patient.appointments.index');
+        Route::middleware('web')->get('/_uji/pasien-baru', fn () => 'baru')->name('patient.appointments.create');
+        Route::getRoutes()->refreshNameLookups();
+
+        $this->actingAs($this->createPatient())
+            ->get(route('patient.dashboard'))
+            ->assertOk()
+            ->assertSee('Riwayat Pendaftaran')
+            ->assertSee('Daftar Kunjungan');
     }
 }

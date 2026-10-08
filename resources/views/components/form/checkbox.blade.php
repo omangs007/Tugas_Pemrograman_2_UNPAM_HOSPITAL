@@ -34,8 +34,10 @@
         $selected = collect($selected)->filter(fn ($item) => is_scalar($item))->map(fn ($item) => (string) $item)->all();
         $isChecked = in_array((string) $value, $selected, true) || (! $hasOldInput && (bool) $checked);
     } else {
+        // Nilai lama non-skalar (mis. `remember[]=1`) dianggap tidak tercentang; konversi larik ke string memicu galat.
+        $oldValue = old($key, $withHidden ? '0' : null);
         $isChecked = $hasOldInput
-            ? (string) old($key, $withHidden ? '0' : null) === (string) $value
+            ? is_scalar($oldValue) && (string) $oldValue === (string) $value
             : (bool) $checked;
     }
     $describedBy = trim(($help ? $id.'-help' : '').' '.($error !== '' && ($renderError || $isArray) ? $errorId : ''));

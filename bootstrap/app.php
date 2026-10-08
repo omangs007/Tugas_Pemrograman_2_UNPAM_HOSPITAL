@@ -24,7 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function (): void {
-            // Grup pasien (routes/patient.php) ditambahkan pada fase 5.
+            // Grup pasien G-PASIEN (11 §1, §3.1): /pasien, nama patient.*.
+            Route::middleware(['web', 'auth', 'account:patient', 'active'])
+                ->prefix('pasien')
+                ->name('patient.')
+                ->group(base_path('routes/patient.php'));
 
             // Parameter admin berbasis id harus numerik (11 §1 aturan 2). Tidak memakai Route::pattern global
             // karena nama {doctor}, {clinic}, dst. juga dipakai route publik berbasis slug.
@@ -54,16 +58,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(SecurityHeaders::class);
 
         // Tamu yang membuka halaman ber-`auth`: /admin* ⇒ login admin; selain itu ⇒ login pasien.
-        // Cadangan F1-R2: `login` belum ada sampai fase 5, jadi arahkan ke beranda.
         $middleware->redirectGuestsTo(function (Request $request): string {
             if ($request->is('admin', 'admin/*')) {
                 return route('admin.login');
             }
 
-            return Route::has('login') ? route('login') : route('home');
+            return route('login');
         });
 
-        // Pengguna login yang membuka halaman ber-`guest`: arahkan sesuai tipe akun (cadangan F1-R2).
+        // Pengguna login yang membuka halaman ber-`guest`: arahkan sesuai tipe akun.
         $middleware->redirectUsersTo(function (Request $request): string {
             $user = $request->user();
 
@@ -71,7 +74,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return route('admin.dashboard');
             }
 
-            return Route::has('patient.dashboard') ? route('patient.dashboard') : route('home');
+            return route('patient.dashboard');
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
