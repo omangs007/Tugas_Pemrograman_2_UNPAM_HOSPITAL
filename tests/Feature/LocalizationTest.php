@@ -34,6 +34,39 @@ class LocalizationTest extends TestCase
     {
         $this->assertSame('Email atau password salah.', __('auth.failed'));
         $this->assertSame(__('passwords.sent'), __('passwords.user'));
+
+        // F5-R16: throttle broker (60 detik) sengaja sama dengan `sent` agar tidak membocorkan email terdaftar.
+        $this->assertSame(__('passwords.sent'), __('passwords.throttled'));
+        $this->assertSame('Jika email terdaftar, tautan untuk mengatur ulang password telah dikirim. Periksa kotak masuk Anda.', __('passwords.sent'));
+        $this->assertSame('Password berhasil diubah. Silakan masuk dengan password baru.', __('passwords.reset'));
+        $this->assertSame('Tautan pengaturan ulang password tidak valid atau sudah kedaluwarsa. Silakan ajukan permintaan baru.', __('passwords.token'));
+    }
+
+    public function test_json_translations_cover_the_password_reset_notification_and_the_mail_template(): void
+    {
+        $raw = (string) file_get_contents(lang_path('id.json'));
+        $this->assertStringEndsWith("}\n", $raw);
+
+        /** @var array<string, string> $decoded */
+        $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+
+        // F5-R17: T2 menerjemahkan templat mail bawaan, T5 menambah teks notifikasi reset password.
+        $expected = [
+            'Hello!' => 'Halo!',
+            'Whoops!' => 'Maaf!',
+            'Regards,' => 'Salam,',
+            'All rights reserved.' => 'Hak cipta dilindungi.',
+            'Reset Password Notification' => 'Atur Ulang Password',
+            'You are receiving this email because we received a password reset request for your account.' => 'Anda menerima email ini karena ada permintaan untuk mengatur ulang password akun Anda.',
+            'Reset Password' => 'Atur Ulang Password',
+            'This password reset link will expire in :count minutes.' => 'Tautan ini berlaku selama :count menit.',
+            'If you did not request a password reset, no further action is required.' => 'Jika Anda tidak meminta pengaturan ulang password, abaikan email ini.',
+        ];
+
+        foreach ($expected as $key => $value) {
+            $this->assertSame($value, $decoded[$key] ?? null, "Kunci '{$key}' di lang/id.json.");
+            $this->assertSame(str_replace(':count', '60', $value), __($key, ['count' => 60]));
+        }
     }
 
     /** @return array<string, array{string}> */

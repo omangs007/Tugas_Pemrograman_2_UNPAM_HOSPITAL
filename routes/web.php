@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Public\ArticleController;
 use App\Http\Controllers\Public\ClinicController;
@@ -72,3 +74,16 @@ Route::middleware('guest')->group(function (): void {
 });
 // Logout di luar grup `guest` supaya akun yang sedang login bisa keluar (F5-R8).
 Route::post('/keluar', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
+
+// Reset password pasien (#25, #26): permintaan tautan dan form reset. `password.email` dan `password.update` berbagi
+// limiter `password-reset` (3 per 10 menit per email+IP; F5-R15, D-23). Tautan hanya dikirim lewat email.
+Route::middleware('guest')->group(function (): void {
+    Route::get('/lupa-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('/lupa-password', [PasswordResetLinkController::class, 'store'])
+        ->middleware('throttle:password-reset')
+        ->name('password.email');
+    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])
+        ->middleware('throttle:password-reset')
+        ->name('password.update');
+});
