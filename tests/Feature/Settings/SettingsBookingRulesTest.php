@@ -2,29 +2,49 @@
 
 namespace Tests\Feature\Settings;
 
+use App\Models\PatientProfile;
+use App\Models\PracticeSession;
 use App\Models\WebsiteSetting;
+use App\Services\Booking\BookingData;
 use App\Services\Booking\BookingRules;
 use App\Services\Settings\SettingsService;
+use App\Support\Actor;
+use Carbon\CarbonImmutable;
 use Database\Seeders\SettingsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use ReflectionClass;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class SettingsBookingRulesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_booking_rules_is_a_final_readonly_snapshot_without_assert_bookable_in_phase_three(): void
+    public function test_booking_rules_is_a_final_readonly_snapshot_with_the_assert_bookable_rule_method(): void
     {
         $class = new ReflectionClass(BookingRules::class);
 
         $this->assertTrue($class->isFinal());
         $this->assertTrue($class->isReadOnly());
-        $this->assertFalse($class->hasMethod('assertBookable'));
+        $this->assertTrue($class->hasMethod('assertBookable'), 'assertBookable() ditambahkan fase 6 (F6-R11).');
         $this->assertSame(
             ['windowDays', 'onlineCutoffMinutes', 'cancelCutoffMinutes', 'checkinOpenMinutes', 'maxActivePerPatient', 'autoConfirm'],
             array_map(fn ($parameter) => $parameter->getName(), $class->getConstructor()->getParameters()),
         );
+    }
+
+    public function test_assert_bookable_has_the_f6_r11_signature(): void
+    {
+        $method = new ReflectionMethod(BookingRules::class, 'assertBookable');
+
+        $this->assertTrue($method->isPublic());
+        $this->assertFalse($method->isStatic());
+        $this->assertSame(['profile', 'session', 'data', 'actor', 'now'], array_map(fn ($parameter) => $parameter->getName(), $method->getParameters()));
+        $this->assertSame(
+            [PatientProfile::class, PracticeSession::class, BookingData::class, Actor::class, CarbonImmutable::class],
+            array_map(fn ($parameter) => (string) $parameter->getType(), $method->getParameters()),
+        );
+        $this->assertSame('void', (string) $method->getReturnType());
     }
 
     public function test_booking_rules_reads_the_seeded_defaults(): void
