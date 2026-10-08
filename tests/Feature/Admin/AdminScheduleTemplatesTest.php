@@ -609,7 +609,7 @@ class AdminScheduleTemplatesTest extends TestCase
         ]);
         $appointment = $this->bookAppointment($session, AppointmentStatus::Confirmed, ['patient_profile_id' => $patient->id]);
 
-        $html = $this->actingAs($this->createStaff('content-admin'))
+        $html = $this->actingAs($this->createStaff('content-admin', ['name' => 'Admin Konten Uji']))
             ->followingRedirects()
             ->put(route('admin.schedules.update', $schedule), $this->payload(['start_time' => '10:00', 'end_time' => '13:00']))
             ->assertOk()

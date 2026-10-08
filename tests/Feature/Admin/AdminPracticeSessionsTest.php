@@ -328,7 +328,7 @@ class AdminPracticeSessionsTest extends TestCase
         ]);
         $appointment = $this->bookAppointment($session, AppointmentStatus::Confirmed, ['patient_profile_id' => $patient->id]);
         $this->bookAppointment($second, AppointmentStatus::Pending);
-        $admin = $this->createStaff('content-admin');
+        $admin = $this->createStaff('content-admin', ['name' => 'Admin Konten Uji']);
 
         $queries = [];
         DB::listen(function ($query) use (&$queries): void {
@@ -358,7 +358,7 @@ class AdminPracticeSessionsTest extends TestCase
         $patient = PatientProfile::factory()->create(['full_name' => 'Zulkarnain Rahasiawan', 'phone' => '081377770042']);
         $this->bookAppointment($session, AppointmentStatus::Confirmed, ['patient_profile_id' => $patient->id]);
 
-        $html = $this->actingAs($this->createStaff('content-admin'))
+        $html = $this->actingAs($this->createStaff('content-admin', ['name' => 'Admin Konten Uji']))
             ->get(route('admin.sessions.edit', $session))
             ->assertOk()
             ->assertSee('1 dari 20')
