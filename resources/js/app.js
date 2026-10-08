@@ -394,9 +394,57 @@ function initGalleryModals() {
     });
 }
 
+// ---------------------------------------------------------------- Wizard pendaftaran (F6-R17, F6-R21)
+// Judul langkah ([data-wizard-heading], tabindex="-1") menerima fokus saat langkah berganti, kecuali bila ringkasan
+// galat ([data-errors-summary]) sudah memintanya. Wizard berfungsi penuh tanpa berkas ini.
+function focusWizardHeading() {
+    if (document.querySelector('[data-errors-summary]')) {
+        return;
+    }
+
+    const heading = document.querySelector('[data-wizard-heading]');
+
+    if (heading) {
+        heading.focus({ preventScroll: true });
+    }
+}
+
+// Markup: [data-payment-toggle] membungkus radio name="payment_type" dan blok [data-payment-block="bpjs|asuransi"].
+// Tanpa JavaScript semua blok tampil dengan teks bantuan; dengan JavaScript hanya blok yang sesuai pilihan yang tampil
+// dan isian pada blok yang disembunyikan dinonaktifkan agar tidak terkirim (server menolak BPJS pada pembayaran selain BPJS).
+function initPaymentToggles() {
+    document.querySelectorAll('[data-payment-toggle]').forEach((root) => {
+        const radios = root.querySelectorAll('input[type="radio"][name="payment_type"]');
+        const blocks = root.querySelectorAll('[data-payment-block]');
+
+        if (radios.length === 0 || blocks.length === 0) {
+            return;
+        }
+
+        const sync = () => {
+            const chosen = Array.from(radios).find((radio) => radio.checked);
+            const value = chosen ? chosen.value : '';
+
+            blocks.forEach((block) => {
+                const visible = block.dataset.paymentBlock === value;
+
+                block.hidden = !visible;
+                block.querySelectorAll('input, select, textarea').forEach((field) => {
+                    field.disabled = !visible;
+                });
+            });
+        };
+
+        radios.forEach((radio) => radio.addEventListener('change', sync));
+        sync();
+    });
+}
+
 function init() {
     recheckBrokenImages();
     focusErrorsSummary();
+    focusWizardHeading();
+    initPaymentToggles();
     initCharCounters();
     initOffcanvasToggles();
     initGalleryModals();

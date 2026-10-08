@@ -247,6 +247,31 @@ class FrontendManifestTest extends TestCase
         }
     }
 
+    public function test_app_script_toggles_the_wizard_payment_blocks_and_focuses_the_step_heading_without_inline_handlers(): void
+    {
+        $app = $this->read('resources/js/app.js');
+
+        foreach ([
+            '[data-payment-toggle]',
+            '[data-payment-block]',
+            'input[type="radio"][name="payment_type"]',
+            'dataset.paymentBlock',
+            'field.disabled = !visible',
+            '[data-wizard-heading]',
+            '[data-errors-summary]',
+        ] as $needle) {
+            $this->assertStringContainsString($needle, $app, "app.js harus memuat {$needle}");
+        }
+
+        $init = substr($app, (int) strpos($app, 'function init() {'));
+
+        $this->assertStringContainsString('initPaymentToggles();', $init);
+        $this->assertStringContainsString('focusWizardHeading();', $init);
+        $this->assertLessThan(strpos($init, 'focusWizardHeading();'), strpos($init, 'focusErrorsSummary();'), 'Ringkasan galat didahulukan sebelum judul langkah.');
+        $this->assertSame(1, preg_match_all("/addEventListener\\(\\s*'error'/", $app), 'Tidak boleh ada listener error kedua');
+        $this->assertStringNotContainsString('onerror', strtolower($app));
+    }
+
     public function test_scss_entries_follow_the_documented_import_order(): void
     {
         $this->assertImportOrder($this->read('resources/scss/app.scss'), ['variables', 'bootstrap-theme', 'shared', 'public', 'print']);
