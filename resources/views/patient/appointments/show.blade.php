@@ -83,7 +83,8 @@
                     $contactWhatsapp = $actionSettings->whatsappUrl();
                     $cancelAction = route('patient.appointments.cancel', $appointment->booking_code);
                 @endphp
-                {{-- [[AKSI-BUKTI-BERIKUT]] --}}
+                <a class="btn btn-outline-primary" href="{{ route('patient.appointments.proof', $appointment->booking_code) }}"><i class="bi bi-printer" aria-hidden="true"></i> Cetak Bukti</a>
+                <a class="btn btn-outline-primary" href="{{ route('patient.appointments.proof-pdf', $appointment->booking_code) }}"><i class="bi bi-file-earmark-pdf" aria-hidden="true"></i> Unduh PDF</a>
                 @if ($canCancel)
                     <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modal-batal"><i class="bi bi-x-circle" aria-hidden="true"></i> Batalkan Pendaftaran</button>
                 @endif

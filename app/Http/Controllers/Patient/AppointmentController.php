@@ -34,6 +34,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * Pendaftaran kunjungan pasien (#29, F6-R17): langkah 1 sampai 4 adalah satu GET `create` (query `poli`, `dokter`,
@@ -216,6 +217,34 @@ class AppointmentController extends Controller
         return redirect()
             ->route('patient.appointments.show', $appointment->booking_code)
             ->with('success', 'Pendaftaran berhasil dibatalkan. Kuota telah dilepas.');
+    }
+
+    /**
+     * Halaman bukti untuk dicetak (F6-R26). Hanya pemilik (`AppointmentPolicy::view`, selain itu 404); isi tanpa
+     * keluhan, alamat, telepon, tanggal lahir, atau nomor lengkap. QR = kode booking saja (SVG data URI).
+     */
+    public function proof(Appointment $appointment, AppointmentProofService $proof, SettingsService $settings): View
+    {
+        $this->authorize('view', $appointment);
+
+        $appointment->loadMissing(['clinic', 'doctor', 'practiceSession', 'patientProfile', 'insurancePartner']);
+
+        return view('patient.appointments.proof', [
+            'appointment' => $appointment,
+            'qrDataUri' => $proof->qrSvgDataUri($appointment),
+            'siteName' => $settings->string('site.name', (string) config('app.name')),
+            'logoUrl' => $settings->logoUrl(),
+            'checkinMinutes' => $settings->bookingRules()->checkinOpenMinutes,
+            'printedAt' => CarbonImmutable::now(),
+        ]);
+    }
+
+    /** Unduhan PDF bukti (A5 potret, `bukti-{kode}.pdf`); otorisasi sama dengan halaman cetak. */
+    public function proofPdf(Appointment $appointment, AppointmentProofService $proof): SymfonyResponse
+    {
+        $this->authorize('view', $appointment);
+
+        return $proof->pdf($appointment);
     }
 
     // [[METODE-PUBLIK-BERIKUT]] (T8 sampai T10 menambah method publik di atas baris ini: review, store, show, index, cancel, proof, proofPdf)

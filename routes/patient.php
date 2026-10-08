@@ -39,5 +39,7 @@ Route::prefix('pendaftaran')->name('appointments.')->controller(AppointmentContr
         ->group(function (): void {
             Route::get('/', 'show')->name('show');
             Route::post('/batal', 'cancel')->name('cancel');
+            Route::get('/bukti', 'proof')->name('proof');
+            Route::get('/bukti.pdf', 'proofPdf')->name('proof-pdf');
         });
 });

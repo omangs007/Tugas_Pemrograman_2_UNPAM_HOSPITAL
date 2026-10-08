@@ -97,6 +97,21 @@ window.addEventListener('pageshow', () => {
     document.querySelectorAll('[data-table][aria-busy]').forEach((table) => table.removeAttribute('aria-busy'));
 });
 
+// ---------------------------------------------------------------- Cetak bukti pendaftaran (F6-R26)
+// Markup: <button type="button" data-print>. Satu delegasi click; tanpa atribut event inline (CSP script-src 'self').
+document.addEventListener('click', (event) => {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+        return;
+    }
+
+    if (target.closest('[data-print]')) {
+        event.preventDefault();
+        window.print();
+    }
+});
+
 // ---------------------------------------------------------------- Fallback gambar (x-image)
 // Satu listener terdelegasi pada fase capture (00 K); event error pada <img> tidak bubbling.
 function applyImageFallback(img) {

@@ -1,4 +1,15 @@
-// Gaya cetak (bukti pendaftaran, laporan). Navigasi dan kontrol disembunyikan.
+// Gaya cetak: situs publik, portal pasien (bukti pendaftaran, F6-R26), dan panel admin.
+// Halaman bernama `proof` (A5 potret) hanya berlaku untuk elemen `.proof-sheet`, supaya cetak halaman lain
+// (mis. laporan admin) tidak ikut berukuran A5. Peramban tanpa dukungan halaman bernama memakai ukuran bawaan
+// (A4): bukti tetap terbaca.
+@page proof {
+  size: A5 portrait;
+  margin: 10mm;
+}
+
+.proof-sheet {
+  page: proof;
+}
 
 @media print {
   .no-print,
@@ -13,7 +24,11 @@
   .btn,
   nav,
   form[role="search"],
-  .pagination {
+  .pagination,
+  body > header,
+  body > footer,
+  aside,
+  [data-flash] {
     display: none !important;
   }
 
@@ -48,5 +63,24 @@
   tr,
   .card {
     break-inside: avoid;
+  }
+
+  .proof-sheet {
+    border: 1px solid #000 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    font-size: 11pt;
+    padding: 0 !important;
+  }
+
+  .proof-qr {
+    height: 30mm !important;
+    width: 30mm !important;
+  }
+
+  .proof-code {
+    font-size: 18pt !important;
+    white-space: nowrap;
   }
 }
