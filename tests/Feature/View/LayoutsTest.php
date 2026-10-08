@@ -154,24 +154,18 @@ class LayoutsTest extends TestCase
             ->assertSee('info@unpamhospital.test');
     }
 
-    public function test_public_layout_hides_links_to_routes_that_do_not_exist_yet_and_shows_them_when_they_do(): void
+    public function test_public_layout_links_to_the_real_login_and_booking_routes(): void
     {
         $this->page('/_uji/publik', '<x-layouts.public title="Halaman Uji"><p>Isi</p></x-layouts.public>');
 
         $this->get('/_uji/publik')->assertSee(route('home'), false);
 
-        // `login` kini route asli (fase 5): "Masuk" selalu tampil bagi tamu; "Daftar Kunjungan" menunggu route fase 6.
+        // `login` (fase 5) dan `patient.appointments.create` (fase 6) adalah route asli: keduanya selalu tampil bagi tamu.
         $this->get('/_uji/publik')
             ->assertSee('>Masuk<', false)
             ->assertSee('href="'.route('login').'"', false)
-            ->assertDontSee('Daftar Kunjungan');
-
-        Route::middleware('web')->get('/_uji/daftar-kunjungan', fn () => 'daftar')->name('patient.appointments.create');
-        Route::getRoutes()->refreshNameLookups();
-
-        $this->get('/_uji/publik')
-            ->assertSee('>Masuk<', false)
             ->assertSee('Daftar Kunjungan')
+            ->assertSee('href="'.route('patient.appointments.create').'"', false)
             ->assertSee('Daftar Dokter');
     }
 
@@ -254,14 +248,13 @@ class LayoutsTest extends TestCase
             ->assertSee('Dashboard')
             ->assertSee('aria-current="page"', false)
             ->assertSee('action="'.route('logout').'"', false)
-            ->assertDontSee('Riwayat Pendaftaran')
-            ->assertDontSee('Daftar Kunjungan');
+            ->assertSee('Daftar Kunjungan')
+            ->assertDontSee('Riwayat Pendaftaran'); // route `index` baru ada di T9 (T9 membalik asersi ini)
     }
 
-    public function test_patient_layout_adds_the_phase_6_menu_items_once_their_routes_exist(): void
+    public function test_patient_layout_adds_the_history_menu_item_once_its_route_exists(): void
     {
         Route::middleware('web')->get('/_uji/pasien-riwayat', fn () => 'riwayat')->name('patient.appointments.index');
-        Route::middleware('web')->get('/_uji/pasien-baru', fn () => 'baru')->name('patient.appointments.create');
         Route::getRoutes()->refreshNameLookups();
 
         $this->actingAs($this->createPatient())

@@ -154,21 +154,6 @@ class PublicClinicDetailTest extends TestCase
             ->assertSee('Belum ada dokter terjadwal');
     }
 
-    public function test_registration_link_is_hidden_while_its_route_does_not_exist_but_the_schedule_link_is_shown(): void
-    {
-        if (Route::has('patient.appointments.create')) {
-            $this->markTestSkipped('Route patient.appointments.create sudah ada (fase 6): tautan diuji di tes fase 6.');
-        }
-
-        $clinic = $this->createClinic(['is_bookable' => true]);
-
-        $this->get($this->url($clinic))
-            ->assertOk()
-            ->assertDontSee('Daftar Kunjungan')
-            ->assertSee('href="'.route('schedules.index', ['poli' => $clinic->slug]).'"', false)
-            ->assertSee('Jadwal Dokter');
-    }
-
     public function test_registration_and_schedule_links_carry_the_clinic_slug_when_routes_exist(): void
     {
         $this->fakeRoute('patient.appointments.create', '/pasien/pendaftaran/baru');

@@ -12,8 +12,9 @@ use Tests\TestCase;
 
 /**
  * KNS-01 (bagian fase 5), KNS-02 (route `patient.*` berpagar), dan KNS-03 (izin tetap 19): 13 route baru persis
- * kerangka C.1 (nama, URI, method, middleware, action), tidak ada route fase 6 (`patient.appointments.*`,
- * `patient.notifications.*`), tepat empat route di bawah `/pasien`, route admin tetap 106, dan total 141.
+ * kerangka C.1 (nama, URI, method, middleware, action) dan route admin tetap 106. Angka global (total route, jumlah di
+ * bawah `/pasien`, ketiadaan route `patient.appointments.*`) tidak lagi dikunci di sini sejak fase 6 (F6-R4);
+ * `Phase6RoutePermissionTest` mengunci angka akhir.
  */
 class Phase5RoutePermissionTest extends TestCase
 {
@@ -82,7 +83,8 @@ class Phase5RoutePermissionTest extends TestCase
         }
     }
 
-    public function test_there_are_exactly_four_routes_under_pasien_and_they_are_the_portal_routes(): void
+    /** F6-R4: keempat route portal fase 5 tetap berada di bawah `/pasien` (jumlah total dikunci Phase6RoutePermissionTest). */
+    public function test_the_four_phase_5_portal_routes_are_still_under_pasien(): void
     {
         $found = [];
 
@@ -92,29 +94,14 @@ class Phase5RoutePermissionTest extends TestCase
             }
         }
 
-        sort($found);
-
-        $this->assertSame(['patient.dashboard', 'patient.password.update', 'patient.profile.edit', 'patient.profile.update'], $found);
-    }
-
-    /** Route fase 6 sengaja belum ada (F5-R1); `InternalLinkTest` dan `BannerButtonTest` mengunci `/pasien/pendaftaran/baru`. */
-    public function test_phase_6_routes_do_not_exist_yet(): void
-    {
-        foreach (Route::getRoutes()->getRoutes() as $route) {
-            $name = (string) $route->getName();
-
-            $this->assertFalse(str_starts_with($name, 'patient.appointments.'), "{$name} adalah route fase 6.");
-            $this->assertFalse(str_starts_with($name, 'patient.notifications.'), "{$name} adalah route fase 6.");
-        }
-
-        foreach (['patient.appointments.create', 'patient.appointments.index', 'patient.appointments.store', 'patient.notifications.read'] as $name) {
-            $this->assertFalse(Route::has($name), $name);
+        foreach (['patient.dashboard', 'patient.password.update', 'patient.profile.edit', 'patient.profile.update'] as $name) {
+            $this->assertContains($name, $found, $name);
         }
     }
 
     public function test_there_is_no_wildcard_route_under_pasien(): void
     {
-        foreach (['/pasien/pendaftaran/baru', '/pasien/pendaftaran', '/pasien/riwayat', '/pasien/apa-saja', '/pasien/notifikasi/1/dibaca'] as $uri) {
+        foreach (['/pasien/riwayat', '/pasien/apa-saja', '/pasien/pendaftaran/tidak-ada', '/pasien/notifikasi'] as $uri) {
             foreach (['GET', 'POST'] as $method) {
                 try {
                     Route::getRoutes()->match(Request::create($uri, $method));
@@ -139,23 +126,6 @@ class Phase5RoutePermissionTest extends TestCase
 
         // Fase 5 tidak menambah route admin (admin pasien = fase 7, pengaturan = fase 8).
         $this->assertSame(106, $count);
-    }
-
-    /**
-     * Setara `route:list --except-vendor`: route milik aplikasi (aksi `App\…`). Tiga route vendor
-     * (`storage.local`, `storage.local.upload`, `up`) berupa Closure dan tidak dihitung. 128 sebelum fase 5 + 13 = 141.
-     */
-    public function test_the_application_has_one_hundred_and_forty_one_routes_after_phase_5(): void
-    {
-        $count = 0;
-
-        foreach (Route::getRoutes()->getRoutes() as $route) {
-            if (str_starts_with($route->getActionName(), 'App\\')) {
-                $count++;
-            }
-        }
-
-        $this->assertSame(141, $count);
     }
 
     public function test_uris_use_indonesian_segments(): void
@@ -251,7 +221,7 @@ class Phase5RoutePermissionTest extends TestCase
             $checked++;
         }
 
-        $this->assertSame(4, $checked);
+        $this->assertGreaterThanOrEqual(4, $checked, 'Sedikitnya keempat route portal fase 5 harus ikut diperiksa.');
     }
 
     /** F5-R3: grup pasien dimuat sebelum grup admin di `bootstrap/app.php` dan komentar penanda fase 5 sudah diganti. */

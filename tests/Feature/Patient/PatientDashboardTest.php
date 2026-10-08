@@ -4,14 +4,13 @@ namespace Tests\Feature\Patient;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
 use Tests\Support\InteractsWithPatients;
 use Tests\Support\InteractsWithStaff;
 use Tests\TestCase;
 
 /**
- * Dashboard pasien (#27, F5-R22): EMP-04, SEK-15, F5-R13, ERR-02 (sisi pasien). Tombol kunjungan mengikuti
- * keberadaan route fase 6 (`patient.appointments.create`).
+ * Dashboard pasien (#27, F5-R22): EMP-04, SEK-15, F5-R13, ERR-02 (sisi pasien). Tombol kunjungan menuju wizard
+ * (`patient.appointments.create`, ada sejak fase 6).
  */
 class PatientDashboardTest extends TestCase
 {
@@ -57,31 +56,15 @@ class PatientDashboardTest extends TestCase
         $this->assertStringContainsString('081355550001', $profile);
     }
 
-    /** EMP-04: kartu kosong; tombol "Daftar Kunjungan" belum ada karena route fase 6 belum ada. */
-    public function test_empty_state_offers_the_doctor_schedule_while_the_booking_route_does_not_exist(): void
+    /** EMP-04: kartu kosong menawarkan tombol "Daftar Kunjungan" ke wizard (route fase 6), bukan lagi "Lihat Jadwal Dokter". */
+    public function test_empty_state_offers_the_booking_button_to_the_wizard(): void
     {
-        $this->assertFalse(Route::has('patient.appointments.create'));
-
         $response = $this->actingAs($this->createPatient())->get(route('patient.dashboard'))->assertOk();
 
         $visits = $this->section($response->getContent(), 'kunjungan-judul');
         $this->assertStringContainsString('Kunjungan Mendatang', $response->getContent());
         $this->assertStringContainsString('Belum ada pendaftaran', $visits);
         $this->assertStringContainsString('Pendaftaran kunjungan Anda akan tampil di sini.', $visits);
-        $this->assertStringContainsString('<a class="btn btn-outline-primary" href="'.route('schedules.index').'">Lihat Jadwal Dokter</a>', $visits);
-        $this->assertStringNotContainsString('Daftar Kunjungan', $visits);
-    }
-
-    /** EMP-04: tombol "Daftar Kunjungan" muncul begitu route fase 6 terdaftar (route palsu di tes ini). */
-    public function test_empty_state_offers_the_booking_button_once_the_booking_route_exists(): void
-    {
-        Route::middleware('web')->get('/_uji/pasien/pendaftaran/baru', fn () => 'x')->name('patient.appointments.create');
-        Route::getRoutes()->refreshNameLookups();
-
-        $response = $this->actingAs($this->createPatient())->get(route('patient.dashboard'))->assertOk();
-
-        $visits = $this->section($response->getContent(), 'kunjungan-judul');
-        $this->assertStringContainsString('Belum ada pendaftaran', $visits);
         $this->assertStringContainsString('<a class="btn btn-primary" href="'.route('patient.appointments.create').'">Daftar Kunjungan</a>', $visits);
         $this->assertStringNotContainsString('Lihat Jadwal Dokter', $visits);
     }

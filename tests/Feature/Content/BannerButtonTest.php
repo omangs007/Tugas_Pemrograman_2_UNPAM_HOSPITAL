@@ -4,7 +4,6 @@ namespace Tests\Feature\Content;
 
 use App\Models\Banner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -48,15 +47,12 @@ class BannerButtonTest extends TestCase
         $this->assertSame($expected, $banner->hasUsableButton());
     }
 
-    public function test_the_seeded_registration_banner_has_no_button_until_the_patient_route_exists(): void
+    /** F6-R31: route wizard ada sejak fase 6, sehingga tombol banner seed #2 tampil. */
+    public function test_the_seeded_registration_banner_has_a_usable_button_now_that_the_wizard_route_exists(): void
     {
-        if (Route::has('patient.appointments.create')) {
-            $this->markTestSkipped('Route pendaftaran pasien sudah ada (fase 6): tombol banner #2 kini tampil.');
-        }
-
         $banner = new Banner(['title' => 'Daftar Kunjungan Lebih Mudah', 'button_label' => 'Daftar Kunjungan', 'button_url' => '/pasien/pendaftaran/baru']);
 
-        $this->assertFalse($banner->hasUsableButton());
+        $this->assertTrue($banner->hasUsableButton());
     }
 
     public function test_a_stored_banner_gives_the_same_answer_as_an_unsaved_one(): void

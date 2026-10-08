@@ -215,21 +215,6 @@ class PublicScheduleTest extends TestCase
         $this->assertStringContainsString('href="'.route('patient.appointments.create', ['sesi' => $open->id]).'"', $grid);
     }
 
-    public function test_no_cell_is_a_register_link_while_the_registration_route_does_not_exist(): void
-    {
-        if (Route::has('patient.appointments.create')) {
-            $this->markTestSkipped('Route patient.appointments.create sudah ada (fase 6): tautan diuji di tes fase 6.');
-        }
-
-        $doctor = $this->createDoctor();
-        $this->sessionOf($doctor, '2026-10-07');
-
-        $html = $this->get(route('schedules.index'))->assertOk()->getContent();
-
-        $this->assertStringNotContainsString('week-cell-link', $html);
-        $this->assertStringNotContainsString('?sesi=', $html);
-    }
-
     // --- navigasi minggu dan batas jendela (Review Focus 1, F3-R24) -----------------------------
 
     public function test_the_previous_week_is_disabled_on_the_first_week_and_the_next_week_is_a_link(): void

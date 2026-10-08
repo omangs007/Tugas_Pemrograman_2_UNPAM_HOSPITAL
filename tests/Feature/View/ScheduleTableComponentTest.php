@@ -145,20 +145,6 @@ class ScheduleTableComponentTest extends TestCase
         $this->assertStringContainsString('Ditutup', $html);
     }
 
-    public function test_register_button_is_hidden_while_the_registration_route_does_not_exist(): void
-    {
-        if (Route::has('patient.appointments.create')) {
-            $this->markTestSkipped('Route patient.appointments.create sudah ada (fase 6): tombol diuji di tes fase 6.');
-        }
-
-        $this->sessionOf($this->doctor(), '2026-10-06');
-
-        $html = $this->render($this->items());
-
-        $this->assertStringNotContainsString('>Daftar</a>', $html);
-        $this->assertStringContainsString('<span class="small text-body-secondary">Tersedia</span>', $html);
-    }
-
     public function test_leave_holiday_and_cancelled_sessions_show_a_dash_instead_of_the_quota(): void
     {
         $doctor = $this->doctor();

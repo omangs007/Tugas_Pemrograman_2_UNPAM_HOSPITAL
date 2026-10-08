@@ -122,17 +122,6 @@ class DoctorCardNextSessionTest extends TestCase
         $this->assertStringContainsString('Penuh', $this->render($fullDoctor, $full));
     }
 
-    public function test_register_button_is_hidden_while_the_registration_route_does_not_exist(): void
-    {
-        if (Route::has('patient.appointments.create')) {
-            $this->markTestSkipped('Route patient.appointments.create sudah ada (fase 6): tombol diuji di tes fase 6.');
-        }
-
-        $doctor = $this->createDoctor();
-
-        $this->assertStringNotContainsString('>Daftar</a>', $this->render($doctor, $this->nextSessionFor($doctor)));
-    }
-
     public function test_the_card_never_nests_links_even_with_the_register_button(): void
     {
         $this->fakeRegistrationRoute();

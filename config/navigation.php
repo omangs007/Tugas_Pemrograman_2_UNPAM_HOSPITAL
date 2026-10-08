@@ -44,7 +44,7 @@ return [
     // Navigasi portal pasien (05 §3.4). "Keluar" (POST logout) dirender langsung oleh layout.
     'patient' => [
         ['label' => 'Dashboard', 'route' => 'patient.dashboard', 'icon' => 'bi-house-door'],
-        ['label' => 'Daftar Kunjungan', 'route' => 'patient.appointments.create', 'icon' => 'bi-calendar-plus', 'emphasis' => true],
+        ['label' => 'Daftar Kunjungan', 'route' => 'patient.appointments.create', 'icon' => 'bi-calendar-plus', 'emphasis' => true, 'active' => ['patient.appointments.create', 'patient.appointments.review']],
         ['label' => 'Riwayat Pendaftaran', 'route' => 'patient.appointments.index', 'icon' => 'bi-clock-history', 'active' => ['patient.appointments.index', 'patient.appointments.show', 'patient.appointments.proof']],
         ['label' => 'Profil dan Akun', 'route' => 'patient.profile.edit', 'icon' => 'bi-person-gear', 'active' => ['patient.profile.*']],
     ],

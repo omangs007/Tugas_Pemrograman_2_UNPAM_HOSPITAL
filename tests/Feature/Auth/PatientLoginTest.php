@@ -368,8 +368,8 @@ class PatientLoginTest extends TestCase
 
     /**
      * AKS-07 (versi fase 5). Route `patient.profile.edit` baru ada di Task 6 dan `/pasien/pendaftaran/baru` di fase 6,
-     * jadi URL terlindungi yang membawa query diwakili dashboard `/pasien?contoh=utuh`. Tes AKS-07 asli (sesi bookable)
-     * dipasang kembali di fase 6.
+     * jadi URL terlindungi yang membawa query diwakili dashboard `/pasien?contoh=utuh`. Tes AKS-07 asli (sesi bookable,
+     * D-151) ada di `BookingWizardTest::test_aks_07_a_guest_with_a_bookable_session_returns_to_the_wizard_with_the_query_intact`.
      */
     public function test_login_returns_to_the_intended_protected_url_with_its_query_intact(): void
     {

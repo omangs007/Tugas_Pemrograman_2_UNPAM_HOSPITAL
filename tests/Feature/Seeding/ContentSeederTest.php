@@ -164,8 +164,8 @@ class ContentSeederTest extends TestCase
         $this->assertSame(3, Banner::query()->currentlyActive()->count());
         $this->assertTrue($banners[0]->hasUsableButton());
         $this->assertTrue($banners[2]->hasUsableButton());
-        // Route pendaftaran pasien baru ada di fase 6 (F4A-R15); perbarui asersi ini di fase tersebut.
-        $this->assertFalse($banners[1]->hasUsableButton());
+        // Route pendaftaran pasien baru ada sejak fase 6 (F4A-R15, F6-R31): tombol banner #2 kini tampil.
+        $this->assertTrue($banners[1]->hasUsableButton());
     }
 
     public function test_galleries_have_four_labelled_photos_each_in_order(): void

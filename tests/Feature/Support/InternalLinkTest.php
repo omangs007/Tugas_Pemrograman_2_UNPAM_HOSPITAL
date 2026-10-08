@@ -59,13 +59,12 @@ class InternalLinkTest extends TestCase
         $this->assertFalse(InternalLink::exists($path));
     }
 
-    public function test_the_patient_registration_path_is_missing_until_its_route_exists(): void
+    /** F6-R31: route wizard ada sejak fase 6, sehingga tautan banner #2 valid (query ikut dikenali). */
+    public function test_the_patient_registration_path_exists_now_that_the_wizard_route_exists(): void
     {
-        if (Route::has('patient.appointments.create')) {
-            $this->markTestSkipped('Route pendaftaran pasien sudah ada (fase 6): tautan banner #2 kini valid.');
-        }
-
-        $this->assertFalse(InternalLink::exists('/pasien/pendaftaran/baru'));
+        $this->assertTrue(InternalLink::exists('/pasien/pendaftaran/baru'));
+        $this->assertTrue(InternalLink::exists('/pasien/pendaftaran/baru?sesi=12'));
+        $this->assertTrue(InternalLink::exists('/pasien/pendaftaran/baru?poli=poliklinik-anak'));
     }
 
     public function test_a_route_registered_later_is_recognised_including_parameters(): void

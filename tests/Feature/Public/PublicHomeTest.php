@@ -113,8 +113,8 @@ class PublicHomeTest extends TestCase
         foreach (['wa.me', 'IGD:', 'Petunjuk Arah', 'Telepon</a>'] as $absent) {
             $this->assertStringNotContainsString($absent, $cta);
         }
-        // Dua tombol utama; "Daftar Kunjungan" baru tampil setelah route pendaftaran ada (fase 6, F4A-R15).
-        $this->assertSame(Route::has('patient.appointments.create') ? 3 : 2, substr_count($html, ' btn-lg"'));
+        // Tiga tombol utama: Cari Dokter, Jadwal Dokter, dan Daftar Kunjungan (route pendaftaran ada sejak fase 6, F6-R31).
+        $this->assertSame(3, substr_count($html, ' btn-lg"'));
     }
 
     public function test_the_page_is_the_same_for_guests_patients_and_staff(): void

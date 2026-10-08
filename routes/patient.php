@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Patient\AppointmentController;
 use App\Http\Controllers\Patient\DashboardController;
 use App\Http\Controllers\Patient\PasswordController;
 use App\Http\Controllers\Patient\ProfileController;
@@ -11,9 +12,8 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 |
 | Dimuat dari bootstrap/app.php dengan awalan URL /pasien, awalan nama `patient.`, dan middleware
-| `web`, `auth`, `account:patient`, `active` (G-PASIEN, 11 §1, §3.1). Tidak ada route wildcard di bawah /pasien:
-| /pasien/pendaftaran/* dan /pasien/notifikasi/* baru ada di fase 6 (InternalLinkTest dan BannerButtonTest
-| mengunci bahwa /pasien/pendaftaran/baru belum ada).
+| `web`, `auth`, `account:patient`, `active` (G-PASIEN, 11 §1, §3.1). Route statis /pendaftaran/baru, /tinjau, dan
+| / didaftarkan SEBELUM `{appointment:booking_code}` (kerangka 11 §3.4); tidak ada route wildcard lain di bawah /pasien.
 |
 */
 
@@ -25,3 +25,8 @@ Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/profil', [ProfileController::class, 'edit'])->name('profile.edit');
 Route::put('/profil', [ProfileController::class, 'update'])->name('profile.update');
 Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
+
+// Pendaftaran kunjungan (#29, F6-R3): langkah 1 sampai 4 = GET /baru (query poli, dokter, tanggal, sesi).
+Route::prefix('pendaftaran')->name('appointments.')->controller(AppointmentController::class)->group(function (): void {
+    Route::get('/baru', 'create')->name('create');
+});
