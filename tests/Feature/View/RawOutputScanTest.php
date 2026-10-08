@@ -70,6 +70,7 @@ class RawOutputScanTest extends TestCase
         $files = array_filter($this->viewFiles(), fn (string $file): bool => str_contains($this->relative($file), 'public/')
             || str_contains($this->relative($file), 'auth/')
             || str_contains($this->relative($file), 'patient/')
+            || str_contains($this->relative($file), 'pdf/')
             || str_contains($this->relative($file), 'components/layouts/')
             || str_contains($this->relative($file), 'components/doctor-card')
             || str_contains($this->relative($file), 'components/schedule-table')
@@ -91,6 +92,45 @@ class RawOutputScanTest extends TestCase
         $this->assertStringContainsString('[data-gallery-modal]', $app);
         $this->assertStringContainsString('initGalleryModals();', $app);
         $this->assertStringContainsString('data-gallery-index', $app);
+        $this->assertSame(1, preg_match_all("/addEventListener\\(\\s*'error'/", $app));
+    }
+
+    /** @return list<string> */
+    private function phase6Views(): array
+    {
+        return array_values(array_filter($this->viewFiles(), fn (string $file): bool => str_contains($this->relative($file), 'patient/appointments/')
+            || str_contains($this->relative($file), 'pdf/')));
+    }
+
+    public function test_phase_6_views_have_no_inline_script_and_embed_the_qr_only_as_an_image(): void
+    {
+        $files = $this->phase6Views();
+
+        $this->assertNotEmpty($files);
+
+        foreach ($files as $file) {
+            $source = (string) file_get_contents($file);
+            $name = $this->relative($file);
+
+            $this->assertStringNotContainsString('<script', $source, $name);
+            $this->assertStringNotContainsString('javascript:', $source, $name);
+            $this->assertStringNotContainsString('{!!', $source, $name);
+
+            // View yang menyebut QR hanya boleh menanamkannya sebagai gambar data URI, bukan markup SVG mentah.
+            if (preg_match('/qr/i', $source) === 1) {
+                $this->assertStringContainsString('<img', $source, $name);
+                $this->assertStringNotContainsString('<svg', $source, $name);
+            }
+        }
+    }
+
+    public function test_app_script_wires_print_and_payment_toggle_with_delegated_listeners_without_a_second_error_listener(): void
+    {
+        $app = (string) file_get_contents(base_path('resources/js/app.js'));
+
+        $this->assertStringContainsString('[data-print]', $app);
+        $this->assertStringContainsString('window.print()', $app);
+        $this->assertStringContainsString('[data-payment-toggle]', $app);
         $this->assertSame(1, preg_match_all("/addEventListener\\(\\s*'error'/", $app));
     }
 

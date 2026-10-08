@@ -2,13 +2,18 @@
 
 namespace Tests\Feature\Security;
 
+use App\Enums\AppointmentStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\InteractsWithPatients;
+use Tests\Support\InteractsWithSchedules;
 use Tests\TestCase;
 
 class SecurityHeadersTest extends TestCase
 {
+    use InteractsWithPatients;
+    use InteractsWithSchedules;
     use RefreshDatabase;
 
     private const PERMISSIONS_POLICY = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()';
@@ -135,6 +140,61 @@ class SecurityHeadersTest extends TestCase
             ->assertOk()
             ->assertHeaderMissing('Strict-Transport-Security')
             ->assertHeaderMissing('Content-Security-Policy');
+    }
+
+    // --- halaman pasien fase 6 (SEK-07, SEK-13, SEK-15) ----------------------------------------
+
+    /** @return array<string, array{string, bool}> */
+    public static function patientAppointmentPages(): array
+    {
+        return [
+            'wizard' => ['patient.appointments.create', false],
+            'riwayat' => ['patient.appointments.index', false],
+            'detail' => ['patient.appointments.show', true],
+            'bukti cetak' => ['patient.appointments.proof', true],
+            'bukti PDF' => ['patient.appointments.proof-pdf', true],
+        ];
+    }
+
+    /** Halaman berisi data pribadi tidak boleh disimpan cache; HTML tanpa atribut event inline, `javascript:`, atau skrip inline. */
+    #[DataProvider('patientAppointmentPages')]
+    public function test_patient_appointment_pages_are_never_stored_by_caches_and_html_has_no_inline_scripts(string $routeName, bool $needsCode): void
+    {
+        $this->travelTo('2026-10-05 07:00:00');
+        $patient = $this->createPatient();
+        $appointment = $this->bookAppointment($this->createSession(), AppointmentStatus::Confirmed, ['patient_profile_id' => $patient->patientProfile->id]);
+
+        $response = $this->actingAs($patient)->get($needsCode ? route($routeName, ['appointment' => $appointment->booking_code]) : route($routeName))->assertOk();
+
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+
+        if ($routeName === 'patient.appointments.proof-pdf') {
+            return;
+        }
+
+        $html = (string) $response->getContent();
+
+        $this->assertSame(0, preg_match('/\son[a-z]+\s*=/i', $html), "Atribut event inline ditemukan di {$routeName}.");
+        $this->assertStringNotContainsString('javascript:', $html);
+        $this->assertStringNotContainsString('<script>', $html, 'Skrip inline (tanpa src) diblokir CSP produksi.');
+    }
+
+    /** CSP produksi tidak berubah di fase 6; QR bukti berupa `<img>` data URI yang diizinkan `img-src 'self' data:`. */
+    public function test_the_appointment_qr_is_a_data_uri_image_allowed_by_the_unchanged_csp(): void
+    {
+        $this->travelTo('2026-10-05 07:00:00');
+        $patient = $this->createPatient();
+        $appointment = $this->bookAppointment($this->createSession(), AppointmentStatus::Confirmed, ['patient_profile_id' => $patient->patientProfile->id]);
+
+        $this->app['env'] = 'production';
+
+        foreach (['patient.appointments.show', 'patient.appointments.proof'] as $routeName) {
+            $response = $this->actingAs($patient)->get(route($routeName, ['appointment' => $appointment->booking_code]))->assertOk();
+
+            $this->assertSame(self::CSP, $response->headers->get('Content-Security-Policy'), $routeName);
+            $this->assertStringContainsString("img-src 'self' data:", self::CSP);
+            $this->assertMatchesRegularExpression('#<img[^>]+src="data:image/svg\+xml;base64,[A-Za-z0-9+/=]+"#', (string) $response->getContent(), $routeName);
+        }
     }
 
     // --- HTML kompatibel dengan CSP ketat ----------------------------------------------------
