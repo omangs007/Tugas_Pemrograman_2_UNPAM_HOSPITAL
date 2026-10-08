@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Enums\Availability;
 use App\Enums\ClinicType;
 use App\Http\Controllers\Controller;
 use App\Models\Article;
@@ -16,10 +15,8 @@ use App\Models\Specialty;
 use App\Services\Scheduling\AvailabilityFilter;
 use App\Services\Scheduling\DoctorAvailabilityQuery;
 use App\Services\Scheduling\PracticeSessionGenerator;
-use App\Services\Scheduling\SessionAvailability;
 use App\Services\Settings\SettingsService;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /**
@@ -66,13 +63,7 @@ class HomeController extends Controller
             ->get();
 
         $doctors = $query->doctors(new AvailabilityFilter, self::FEATURED_DOCTORS)->getCollection();
-        $nextSessions = [];
-
-        foreach ($doctors as $doctor) {
-            // Data publik hanya memuat spesialisasi aktif (D-56); pivot `is_primary` tetap terbawa.
-            $doctor->setRelation('specialties', $doctor->specialties->filter(fn (Specialty $item): bool => $item->is_active)->values());
-            $nextSessions[$doctor->id] = $this->nextSession($doctor->availabilities);
-        }
+        $nextSessions = $query->prepareCards($doctors);
 
         $articles = Article::query()
             ->published()
@@ -115,19 +106,5 @@ class HomeController extends Controller
             'windowDays' => max(1, $settings->bookingRules()->windowDays),
             'today' => CarbonImmutable::today(),
         ]);
-    }
-
-    /**
-     * Sesi terdekat yang bukan pembatalan; kartu dokter menampilkannya sebagai "Jadwal terdekat" (F3-R25).
-     *
-     * @param  Collection<int, SessionAvailability>  $availabilities
-     */
-    private function nextSession(Collection $availabilities): ?SessionAvailability
-    {
-        $cancellations = [Availability::Leave, Availability::Holiday, Availability::Cancelled];
-
-        return $availabilities->first(
-            fn (SessionAvailability $item): bool => ! in_array($item->availability, $cancellations, true),
-        );
     }
 }

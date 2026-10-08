@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Public;
 
-use App\Enums\Availability;
 use App\Enums\ClinicType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\DoctorIndexRequest;
@@ -15,10 +14,8 @@ use App\Models\Specialty;
 use App\Services\Scheduling\AvailabilityFilter;
 use App\Services\Scheduling\DoctorAvailabilityQuery;
 use App\Services\Scheduling\PracticeSessionGenerator;
-use App\Services\Scheduling\SessionAvailability;
 use App\Services\Settings\SettingsService;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
@@ -84,13 +81,7 @@ class DoctorController extends Controller
             date: $date ?: null,
         ), self::PER_PAGE);
 
-        $nextSessions = [];
-
-        foreach ($doctors as $doctor) {
-            // Data publik hanya memuat spesialisasi aktif (D-56); pivot `is_primary` tetap terbawa.
-            $doctor->setRelation('specialties', $doctor->specialties->filter(fn (Specialty $item): bool => $item->is_active)->values());
-            $nextSessions[$doctor->id] = $this->nextSession($doctor->availabilities, $date !== null);
-        }
+        $nextSessions = $query->prepareCards($doctors, $date !== null);
 
         // Galat inline dibagikan ke semua view (termasuk komponen `x-form.*`), bukan lewat `->withErrors()` yang hanya
         // terlihat oleh view induk dan tidak sampai ke komponen anonim (diverifikasi saat pemeriksaan konsistensi 2).
@@ -143,24 +134,5 @@ class DoctorController extends Controller
             'title' => $title,
             'metaDescription' => Str::limit((string) ($doctor->meta_description ?: $doctor->short_bio), 160, ''),
         ]);
-    }
-
-    /**
-     * Sesi yang diwakili pada kartu: dengan filter tanggal, sesi pertama pada tanggal itu (termasuk Cuti/Libur agar
-     * pengunjung tahu alasannya); tanpa filter, sesi terdekat yang bukan pembatalan (F3-R25).
-     *
-     * @param  Collection<int, SessionAvailability>  $availabilities
-     */
-    private function nextSession(Collection $availabilities, bool $forDate): ?SessionAvailability
-    {
-        if ($forDate) {
-            return $availabilities->first();
-        }
-
-        $cancellations = [Availability::Leave, Availability::Holiday, Availability::Cancelled];
-
-        return $availabilities->first(
-            fn (SessionAvailability $item): bool => ! in_array($item->availability, $cancellations, true),
-        );
     }
 }

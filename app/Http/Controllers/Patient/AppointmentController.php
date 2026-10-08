@@ -294,18 +294,16 @@ class AppointmentController extends Controller
                 }
             });
 
-        $rows = $doctors
-            ->map(function (Doctor $doctor) use ($grouped): array {
-                // Hanya spesialisasi aktif yang tampil di publik (E12, D-56).
-                $doctor->setRelation('specialties', $doctor->specialties->filter(fn ($specialty): bool => (bool) $specialty->is_active)->values());
-                $own = $grouped->get($doctor->id, new Collection);
+        // Satu definisi "sesi terdekat" dan spesialisasi aktif ada di prepareCards() (carry E12, F6-R32).
+        $doctors->each(fn (Doctor $doctor) => $doctor->setRelation('availabilities', $grouped->get($doctor->id, new Collection)->values()));
+        $nearest = $availability->prepareCards($doctors);
 
-                return [
-                    'doctor' => $doctor,
-                    'bookable' => $own->first(fn (SessionAvailability $item): bool => $item->isBookableOnline),
-                    'next' => $own->first(fn (SessionAvailability $item): bool => ! in_array($item->availability, self::CANCELLATIONS, true)),
-                ];
-            })
+        $rows = $doctors
+            ->map(fn (Doctor $doctor): array => [
+                'doctor' => $doctor,
+                'bookable' => $doctor->availabilities->first(fn (SessionAvailability $item): bool => $item->isBookableOnline),
+                'next' => $nearest[$doctor->id] ?? null,
+            ])
             ->sort(fn (array $a, array $b): int => [$a['doctor']->sort_order, $a['doctor']->name] <=> [$b['doctor']->sort_order, $b['doctor']->name])
             ->values();
 

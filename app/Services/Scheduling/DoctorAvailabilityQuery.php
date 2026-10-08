@@ -9,6 +9,7 @@ use App\Enums\DoctorStatus;
 use App\Enums\SessionStatus;
 use App\Models\Doctor;
 use App\Models\PracticeSession;
+use App\Models\Specialty;
 use App\Services\Booking\BookingRules;
 use App\Services\Settings\SettingsService;
 use Carbon\CarbonImmutable;
@@ -110,6 +111,46 @@ final class DoctorAvailabilityQuery
         }
 
         return $page;
+    }
+
+    /**
+     * Menyiapkan dokter hasil `doctors()` untuk kartu publik (beranda dan #6; carry E12 fase 4a, F6-R32): relasi
+     * `specialties` diganti dengan spesialisasi AKTIF saja (D-56; pivot `is_primary` tetap terbawa) dan mengembalikan
+     * sesi yang diwakili kartu tiap dokter, berkunci id dokter (`null` bila tidak ada). Dengan `$forDate` (filter
+     * tanggal #6) sesi yang diwakili ialah sesi pertama pada tanggal itu, termasuk Cuti/Libur agar pengunjung tahu
+     * alasannya; tanpa itu, sesi terdekat yang bukan pembatalan (F3-R25). Relasi `specialties` dan `availabilities`
+     * wajib sudah dimuat; tidak ada kueri.
+     *
+     * @param  iterable<int, Doctor>  $doctors
+     * @return array<int, SessionAvailability|null>
+     */
+    public function prepareCards(iterable $doctors, bool $forDate = false): array
+    {
+        $sessions = [];
+
+        foreach ($doctors as $doctor) {
+            // Data publik hanya memuat spesialisasi aktif (D-56); pivot `is_primary` tetap terbawa.
+            $doctor->setRelation('specialties', $doctor->specialties->filter(fn (Specialty $item): bool => $item->is_active)->values());
+            $sessions[$doctor->id] = $this->representativeSession($doctor->availabilities, $forDate);
+        }
+
+        return $sessions;
+    }
+
+    /**
+     * @param  Collection<int, SessionAvailability>  $availabilities
+     */
+    private function representativeSession(Collection $availabilities, bool $forDate): ?SessionAvailability
+    {
+        if ($forDate) {
+            return $availabilities->first();
+        }
+
+        $cancellations = [Availability::Leave, Availability::Holiday, Availability::Cancelled];
+
+        return $availabilities->first(
+            fn (SessionAvailability $item): bool => ! in_array($item->availability, $cancellations, true),
+        );
     }
 
     /**
