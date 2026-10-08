@@ -21607,3 +21607,108 @@ Hasil dan temuan dicatat koordinator; tidak ada commit pada langkah ini. Sesudah
 5. **Dokumen di luar daftar brief yang ikut diubah (kecil):** `14-tahapan-implementasi.md` (satu baris keputusan terkait K-13/K-17) dan 15 (tiga catatan fase 7). Blueprint 11 tidak disentuh: penyimpangan 11 (§6.2 kunci di service, §6.16 A4, §9.2 `ListFilterRequest`, §10 `ShouldQueue`, §11.2 pengalihan) dicatat sebagai D-155 sampai D-163 dengan nomor bagian, mengikuti pola fase 5 (D-145 mencatat penyimpangan 11 §5.1 tanpa mengedit 11).
 6. **`Phase5RoutePermissionTest`** tidak diubah di sini (F6-R4: T7 yang membuang asersi global). Bila T7 belum membuangnya, suite gagal di Step 10; perbaikannya milik T7.
 7. **Waktu uji.** Semua tes baru memakai `travelTo('2026-10-05 07:00:00')` (Senin) sehingga sesi bawaan factory (besok 08.00) selalu berada di dalam jendela pendaftaran dan di luar batas batal.
+
+## Catatan Eksekusi (2026-10-09)
+
+Dieksekusi dengan `superpowers:subagent-driven-development` dalam dua sesi:
+- **2026-10-08:** Task 1–7, lalu dijeda di tengah Task 8 atas permintaan pemilik. Commit checkpoint `c7d6bb4`; WIP Task 8 disimpan di stash.
+- **2026-10-09:** stash dipulihkan; Task 8–13, final review, gelombang perbaikan, dan gerbang fase diselesaikan.
+
+Semua peran memakai subagent **Sonnet 5.5** (preferensi pemilik): implementer, reviewer per tugas, final reviewer (dua kursi: kode produksi; tes dan dokumen), implementer gelombang perbaikan, re-reviewer, dan penguji manual.
+
+Cabang `fase-6-booking-wizard-bukti` dibuat dari `master` (`7523a49`). Isinya:
+- satu commit rencana (`ce1021b`);
+- 21 commit kerja Task 1–13 (`64abcb2`..`d7a462c`) ditambah commit checkpoint jeda (`c7d6bb4`);
+- tujuh commit gelombang perbaikan final (`99b0535`..`dc927d4`);
+- commit catatan ini.
+
+**Hasil akhir:**
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `artisan test` | **6692 tes lulus, 1 dilewati (38989 asersi), ±20 menit**, diverifikasi koordinator di `dc927d4`. Basis fase 5: 5646. Yang dilewati adalah KON-02c, uji beban opt-in (`KON_STRESS`). Gerbang pertama di `d7a462c`: 6674 lulus + 1 dilewati. |
+| `pint --test` | PASS |
+| `npm run build` | Sukses (T8, T10); tanpa entri Vite baru |
+| `route:list --except-vendor` | **150 route** (141 + 9 baru), **106 admin** (tetap), **13 di `/pasien`**; `throttle:booking` hanya pada `patient.appointments.store` |
+| Step 11 (data pengembangan) | Tanpa migration tertunda. `sessions:generate` membangkitkan 0 sesi baru (222 sesi mendatang sudah ada). `media:prune --dry-run` 0/0. `migrate:fresh --seed` tidak diperlukan. |
+| MANUAL (Step 12) | Chrome DevTools/Playwright + Lighthouse; laporan bergambar `Documents\UNPAM-Uji-Manual-2026-10-09-fase-6\index.html` |
+
+**Hasil uji manual (Step 12):**
+- Kelompok 1–11 sesuai.
+- Lighthouse aksesibilitas **100** untuk langkah 1, langkah 4 (`?sesi=`), detail, dan riwayat, di desktop dan mobile. Best Practices 78 karena HTTP lokal. SEO 66 karena `noindex` disengaja.
+- Temuan:
+  - **I1 (Important):** GET `/pasien/pendaftaran/tinjau` menjawab 405. Diperbaiki di FX9.
+  - **M1:** catatan check-in tampil pada pendaftaran yang sudah dibatalkan. Diperbaiki di FX10.
+  - **M2:** pesan filter rentang terbalik tidak jujur. Diperbaiki di FX11.
+  - **M3–M6:** ditunda (E15).
+- Sisa data uji di DB pengembangan:
+  - akun kedua `pasien2@unpamhospital.test` (P000009, `Demo12345`);
+  - lima pendaftaran milik `pasien@`: `UPH-K1EP-7RGT` (menunggu), `UPH-GT4R-Z12N` (dikonfirmasi lewat `tinker`), serta `UPH-GPEG-D9FV`, `UPH-P6KV-KN9K`, `UPH-KZXM-RT1V` (dibatalkan; yang terakhir punya `schedule_changed_at`).
+
+**Putaran perbaikan per tugas:** Task 1–13 semuanya lolos review pada percobaan pertama, tanpa temuan Critical/Important. Task 8 dikerjakan dua implementer karena jeda:
+- `51a8629` dibuat implementer pertama;
+- implementer kedua memverifikasi commit itu dan draf WIP terhadap brief;
+- implementer kedua membuktikan RED nyata dengan patch sementara (81 gagal), lalu GREEN (165 lulus);
+- commit `fbcf7d8` dan `8c45fd1`.
+
+**Final review** (seluruh cabang `7523a49..d7a462c`, paket diff produksi, tes, dan dokumen terpisah, dua kursi paralel):
+
+| Kursi | Verdict | Temuan |
+|---|---|---|
+| Kode produksi | **With fixes** | 0 Critical. 1 Important: `SYSTEM_BUSY` dan drift kuota tidak tercatat karena `BookingException` ada di `dontReport`. 11 Minor. |
+| Tes dan dokumen | **Yes** | 0 Critical/Important, 10 Minor. Semua ID kasus Review Focus tertutup. |
+
+Satu gelombang perbaikan (FX1–FX11) mencakup temuan final review dan uji manual. Re-review terbatas: semuanya ADDRESSED, tanpa kerusakan baru Critical/Important. Regresi terarah 3095 lulus; suite penuh ulang 6692 lulus.
+
+| Butir | Perbaikan |
+|---|---|
+| FX1 (`99b0535`) | `SanitizedBookingFault::capture()` melaporkan deadlock saat batal, kode booking habis, pelanggaran `chk_sessions_quota`, dan cabang `translate()` dengan SQLSTATE, kode driver, constraint, dan id saja (tanpa bindings, sehingga keluhan tidak masuk log). |
+| FX2 (`29220b6`) | `?sesi=` milik dokter atau poliklinik yang tidak tampil publik dialihkan ke `create` dengan `MESSAGE_INVALID`, sehingga nama tidak bocor. |
+| FX3 (`aec1706`) | Guard `Route::has` yang mati (`BookingRedirect`, `show`) dibuang, begitu pula jangkar dan komentar nomor tugas. `BookingRedirect` memakai `BookingCodeGenerator::isValid()`. Trait tes `RegistersAppointmentRoutes` dihapus. |
+| FX4, FX5 (`7e8dd83`) | Asersi waktu `assertLessThan(0.9)` dibuang (bukti struktural lewat `innodb_lock_wait_timeout`). Tes transisi konkuren memakai sesi besok; KON-05a/b dilewati pada 23.55–00.05. |
+| FX6, FX8 (`5a0fc5e`) | Pesan `CANCEL_CUTOFF_PASSED` dengan telepon kosong memakai "nomor rumah sakit". Nomor BPJS dan polis dengan UTF-8 rusak ditolak validasi, tidak lagi dibuang diam-diam. |
+| FX7 (`0e8a814`) | D-165 dan 15 §6.3 mencatat N/K tes konkurensi yang dikecilkan. Sisa teks "default K-13/K-17" diselaraskan menjadi keputusan final. README mencatat prasyarat `ext-gd`. |
+| FX9, FX10 (`29220b6`) | GET/HEAD non-JSON ke `/pasien/pendaftaran/tinjau` dialihkan 302 ke `create` lewat handler exception (tanpa route baru). Catatan check-in hanya untuk status aktif (detail, bukti, PDF). |
+| FX11 (`dc927d4`) | Pesan rentang tanggal terbalik di riwayat menyebut apa yang benar-benar diabaikan, lewat override di `AppointmentIndexRequest`; `ListFilterRequest` bersama tidak diubah. |
+
+### Keputusan (rulings) selama eksekusi
+
+| ID | Keputusan | Biaya bila keliru |
+|---|---|---|
+| E1 | Tanpa git worktree; checkout utama di cabang kerja (pola fase 0–5). Semua subagent, termasuk final review, memakai Sonnet 5.5 (preferensi pemilik). | Final review sedikit kurang tajam; dimitigasi review per tugas, dua kursi final, dan uji manual. |
+| E2 | Pre-flight R-a: `save_bpjs` menulis audit `patient.updated` (12 §8). | Satu baris audit tambahan. |
+| E3 | Pre-flight R-b: koreksi `checked_in` → `confirmed` tanpa email (06 §18). | Pasien tidak menerima email koreksi. |
+| E4 | Pre-flight R-c: jangkar T7/T8 kanonik; route T9/T10 di dalam grup `{appointment:booking_code}`. | Tidak ada. |
+| E5 | Pre-flight R-d: wizard langkah 2 memakai `prepareCards`, sehingga T12 mengubah controller T7. Tujuannya menghindari salinan ketiga logika jadwal terdekat. | T12 menyentuh controller T7. |
+| E6 | `AppointmentSeeder` dan walk-in ditunda ke fase 7 (butuh `markNoShow`/walk-in/resolve). | DB demo tanpa appointment selama fase 6. |
+| E7 | `AppointmentShowTest` tidak dipindah ke langkah RED formal tersendiri. RED nyata tetap dibuktikan implementer T8. | Kecil. |
+| E8 | Jeda Task 8: WIP disimpan di stash, lalu implementer baru membuktikan RED dengan mencabut implementasi lewat patch sementara (bukan `git stash`). Trailer commit memakai Sonnet 5.5, bukan teks trailer di brief. | Tidak ada. |
+| E9 | Blok `@php` label pembayaran di `proof` dan PDF dibiarkan identik sesuai brief: logika tampilan, bukan logika bisnis. | Tiga tempat diubah bila label pembayaran berubah. |
+| E10 | Step 10 (suite penuh) dijalankan koordinator di latar belakang paralel dengan final review dan uji manual; implementer T13 berhenti di Step 9 ditambah regresi terarah. | Kegagalan suite baru terlihat sesudah review T13. |
+| E11 | Butir yang dikesampingkan reviewer final ("declined to judge") ditinjau satu per satu. Tidak ada tindakan, karena semuanya sudah dicakup keputusan rencana atau kursi lain. Untuk regex polis `^…$`: newline penutup mustahil karena `\s+` dibuang sebelum validasi. | Rendah. |
+| E12 | `ext-gd` dicatat di README, bukan `composer.json`, karena `composer update --lock` butuh resolusi metadata dan menyentuh lock. | Lingkungan tanpa GD baru gagal saat unduhan PDF pertama, bukan saat install. |
+| E13 | Gelombang perbaikan = FX1–FX11; Minor lain ditunda ke fase 7. | Polesan DRY dan performa tertunda satu fase. |
+| E14 | I1 (405) diperbaiki di handler exception, bukan route GET baru, agar tetap 150 route. Satu asersi `Phase6RoutePermissionTest` berubah dari 405 menjadi 302. GET JSON tetap 405. | Satu path literal di handler. |
+| E15 | Temuan uji manual M3 (notifikasi >5 tanpa penanda), M4 (target sentuh tautan inline/komponen fase lama), M5 (tombol "Akun Saya" turun baris di header 360 px, tata letak fase 5), dan M6 (cakupan uji) ditunda. | Polesan mobile tertunda satu fase. |
+| E16 | FX10 memakai `AppointmentStatus::isActive()`, sehingga `checked_in` ikut menampilkan catatan check-in. | Tidak menyesatkan. |
+| E17 | Diparkir sesudah re-review: `QueryException` tak dikenal yang dilempar ulang dari `book()` tetap dilaporkan Laravel dengan bindings (jalur sangat jarang; carry fase 7). `AppointmentNotifier` `report($e)` tanpa data sensitif. Klaim "SESSION_UNAVAILABLE → 404" dibantah, karena `BookingWizardQueryRequest` menolak dokter dan poli nonaktif lebih dulu. Dokumen 11 `ShouldQueue` sudah dicatat sebagai penyimpangan (D-149). | Teks keluhan bisa masuk `laravel.log` pada galat DB tak dikenal. |
+
+### Bawaan (carry) untuk fase berikutnya
+
+**Fase 7 (operasional pendaftaran staf):**
+- `AppointmentSeeder` dan walk-in (E6).
+- Batasi alasan staf/sistem ≤ 255 di Form Request (V-15). Alasan opsional > 255 saat ini menjadi `QueryException`.
+- Metode massal: `DeadlockException` di dalam transaksi luar belum diterjemahkan menjadi `SYSTEM_BUSY`.
+- Arsip dokter tanpa retry pada siklus kunci FK dengan booking (lihat tes carry T6).
+- Sanitasi global `QueryException` (bindings) di handler (E17).
+- Sisi Petugas PAS-04 dan catatan NTF-07/KON-05 di 15.
+
+**Polesan tertunda:**
+- Satukan konstanta samaran `•••••••••` (tiga salinan) dan daftar pembatalan (`Availability::isCancellation()`).
+- `stepClinics` memuat sesi 30 hari hanya untuk penanda.
+- Logika "dapat dibatalkan" dan `app(SettingsService)` di `@php` view detail.
+- Accessor label pembayaran (E9).
+- Penanda sisa notifikasi > 5 dan `role="status"` berlapis di dashboard.
+- Header mobile "Akun Saya" dan target sentuh 360 px (E15).
+- Guard `Route::has('patient.appointments.create')` di view publik lama kini selalu benar.
+- CSP produksi belum diuji di peramban (hanya aktif di produksi).
