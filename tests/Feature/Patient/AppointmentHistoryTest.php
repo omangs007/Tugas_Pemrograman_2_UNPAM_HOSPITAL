@@ -323,9 +323,11 @@ class AppointmentHistoryTest extends TestCase
         $a = $this->book($user, $this->sessionOn('2026-10-13'))->booking_code;
         $c = $this->book($user, $this->sessionOn('2026-10-20'))->booking_code;
 
+        // FX11: pesan menyebut apa yang benar-benar diabaikan (hanya batas `sampai`); `dari` tetap berlaku.
         $this->history($user, ['dari' => '2026-10-20', 'sampai' => '2026-10-13'])
             ->assertOk()
-            ->assertSee(self::WARNING)
+            ->assertSee('Tanggal sampai tidak boleh sebelum tanggal dari: batas sampai diabaikan, tanggal dari tetap berlaku.')
+            ->assertDontSee(self::WARNING)
             ->assertSee($c)
             ->assertDontSee($a);
     }

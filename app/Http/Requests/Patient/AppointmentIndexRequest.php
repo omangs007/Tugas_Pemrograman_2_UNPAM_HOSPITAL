@@ -6,6 +6,7 @@ use App\Enums\AppointmentStatus;
 use App\Http\Requests\ListFilterRequest;
 use App\Models\Appointment;
 use App\Models\PracticeSession;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -42,6 +43,23 @@ class AppointmentIndexRequest extends ListFilterRequest
             'jadwal_berubah.string' => 'Pilihan filter tidak valid.',
             'jadwal_berubah.max' => 'Pilihan filter tidak valid.',
         ]);
+    }
+
+    /**
+     * Rentang terbalik: hanya `sampai` yang gagal dan diabaikan, `dari` tetap berlaku (pola ListFilterRequest, yang
+     * tidak diubah). Pesan menyebut persis apa yang diabaikan; kegagalan lain memakai pesan umum.
+     */
+    protected function failedValidation(Validator $validator): void
+    {
+        $failed = $validator->failed();
+
+        if (array_keys($failed) === ['sampai'] && array_keys($failed['sampai']) === ['AfterOrEqual']) {
+            session()->now('warning', 'Tanggal sampai tidak boleh sebelum tanggal dari: batas sampai diabaikan, tanggal dari tetap berlaku.');
+
+            return;
+        }
+
+        parent::failedValidation($validator);
     }
 
     /**
