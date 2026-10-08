@@ -296,6 +296,8 @@ Rincian lengkap (termasuk Mailpit) ada di blueprint 16 §10.
 - Permintaan tautan reset dan pemakaian tautan reset berbagi satu bucket throttle (`password-reset`, 3 per 10 menit per email dan IP), sehingga permintaan ulang dapat menghabiskan jatah pemakaian tautan.
 - Waktu respons permintaan reset untuk email terdaftar sedikit lebih lambat daripada email tak dikenal (pengiriman email); isi respons identik.
 - Profil tidak menyediakan input nomor BPJS (nomor masuk lewat wizard fase 6); pasien hanya dapat menghapus nomor yang tersimpan.
+- Pemutusan sesi perangkat lain setelah reset atau ganti password bergantung pada `SESSION_DRIVER=database` (bawaan `.env.example`); dengan driver lain sesi di perangkat lain tidak diputus.
+- Token reset yang masih berlaku dicabut saat pasien mengganti password lewat halaman profil; ganti password berjalan dalam satu transaksi bersama pemutusan sesi dan audit.
 
 ### Aturan keamanan yang berlaku
 
@@ -305,7 +307,7 @@ Percobaan masuk dibatasi 5 per menit per email dan alamat IP, pendaftaran akun 5
 
 ```powershell
 & $PHP artisan route:list --except-vendor --path=pasien   # 4 route portal (dashboard, profil, ubah profil, ganti password)
-& $PHP artisan route:list --except-vendor --name=password # password.request, .email, .reset, .update (+ patient.password.update)
+& $PHP artisan route:list --except-vendor --name=password # 7 route: password.request, .email, .reset, .update, patient.password.update, admin.password.edit, admin.password.update
 & $PHP artisan route:list --path=admin                    # tetap 106 route admin
 & $PHP artisan test                                       # seluruh suite
 npm run build                                             # gaya kartu auth lebar (.auth-card-wide) ikut dibundel

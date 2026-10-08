@@ -205,7 +205,7 @@ Notifikasi status/jadwal pada prototipe hanya melalui kanal `database` (setiap t
 | F-NXT-12 | Multi-bahasa | 00 N | Strategi konten terjemahan |
 | F-NXT-13 | Aplikasi mobile | 00 N | API (token) dan kebutuhan produk |
 | F-NXT-14 | Autentikasi dua faktor akun staf (usulan blueprint) | Usulan | Keputusan pemilik; email/aplikasi autentikator |
-| F-NXT-15 | Banyak profil per akun (anggota keluarga) (usulan blueprint) | Usulan, A-08 | **[KONFIRMASI]** K-07 |
+| F-NXT-15 | Banyak profil per akun (anggota keluarga) (usulan blueprint) | Usulan, A-08 | K-07 diputuskan pemilik 2026-10-08: (a) satu akun satu profil (17 §1/D-140) |
 | F-NXT-16 | Layar pemanggilan antrean dan pengingat otomatis (usulan blueprint) | Usulan, A-09 | F-NXT-05 atau SMS; perangkat layar |
 
 ### 4.4 Rincian per fitur lanjutan
@@ -306,7 +306,7 @@ Notifikasi status/jadwal pada prototipe hanya melalui kanal `database` (setiap t
 
 #### F-NXT-15 — Banyak profil per akun / anggota keluarga (usulan)
 
-- **Alasan ditunda:** `patient_profiles.user_id` unik (A-08) agar scoping kepemilikan sederhana. **[KONFIRMASI]** K-07.
+- **Alasan ditunda:** `patient_profiles.user_id` unik (A-08) agar scoping kepemilikan sederhana. K-07 diputuskan pemilik 2026-10-08: (a) satu akun satu profil (17 §1/D-140).
 - **Titik perluasan:** hilangkan UNIQUE pada `user_id`, tambah kolom hubungan; wizard memiliki langkah "Untuk siapa"; kepemilikan tetap diperiksa lewat `user_id`.
 - **Pernyataan UI:** wizard hanya menyebut pendaftaran untuk diri sendiri.
 
@@ -354,7 +354,7 @@ Butir berikut **tidak** dibangun pada tahap prototipe dan tidak dijadwalkan seba
 - **[ASUMSI]** Fitur F-NXT-14, F-NXT-15, dan F-NXT-16 ditambahkan oleh blueprint sebagai usulan pengembangan lanjutan; keputusan ada pada pemilik.
 - Pembatalan pasien sampai 120 menit sebelum sesi dan pesan "hubungi RS" setelah batas dengan tautan `wa.me` (F-PAS-08) mengikuti 00 F.8 dan L (bukan asumsi).
 - Keputusan baru yang tercermin di fitur: penonaktifan/pengarsipan dokter (F-ADM-02 → diputuskan di 00 F.4 / 17 D-01, D-02), edit manual sesi (F-ADM-07 → 00 F.4 / 17 D-03), aturan hapus (F-SYS-21 → 00 C), akses daftar kamar (F-ADM-11 → 00 I.4 / 17 D-12), aturan mutlak Super Admin (F-ADM-26 → 00 G / 17 D-13), volume email (F-PAS-10, F-SYS-19 → 17 K-13), verifikasi penghubungan akun (F-ADM-13 → 17 K-14), pelacakan "sudah dihubungi" (F-ADM-08 → 17 K-15).
-- **[KONFIRMASI]** K-02 (SMTP produksi) dan K-07 (banyak profil per akun) berdampak pada F-NXT-06 dan F-NXT-15 (ID mengikuti 17).
+- **[KONFIRMASI]** K-02 (SMTP produksi) berdampak pada F-NXT-06 (ID mengikuti 17); K-07 (banyak profil per akun) sudah diputuskan pemilik 2026-10-08: (a) satu akun satu profil (17 §1/D-140), sehingga F-NXT-15 tetap usulan.
 
 ## Nama baru yang diusulkan
 

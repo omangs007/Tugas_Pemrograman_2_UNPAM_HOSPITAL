@@ -189,7 +189,7 @@ Format: ID · pernyataan · alasan · dampak bila salah. Asumsi A-01 sampai A-06
 | ID | Pernyataan | Alasan | Dampak bila salah |
 |---|---|---|---|
 | A-07 | Satu rumah sakit, satu lokasi, satu zona waktu (WIB, tanpa perubahan musiman), satu bahasa (Indonesia) | Kebutuhan §3 dan §2 menyebut satu alamat dan satu zona | Multi-cabang butuh tabel lokasi dan penyaringan di hampir semua entitas |
-| A-08 | **Satu akun pasien = satu profil pasien** (`patient_profiles.user_id` unik); pendaftaran untuk anggota keluarga dilakukan lewat loket (profil walk-in) atau akun terpisah | Sesuai K1 dan constraint di 00 E.1; menjaga scoping kepemilikan sederhana | Jika pemilik ingin satu akun banyak profil: ubah constraint, tambah pilihan "untuk siapa" pada wizard (F-NXT-15). **[KONFIRMASI]** K-07 |
+| A-08 | **Satu akun pasien = satu profil pasien** (`patient_profiles.user_id` unik); pendaftaran untuk anggota keluarga dilakukan lewat loket (profil walk-in) atau akun terpisah | Sesuai K1 dan constraint di 00 E.1; menjaga scoping kepemilikan sederhana | Jika pemilik ingin satu akun banyak profil: ubah constraint, tambah pilihan "untuk siapa" pada wizard (F-NXT-15). K-07 sudah diputuskan pemilik 2026-10-08: (a) satu akun satu profil, lihat 17 §1/D-140 |
 | A-09 | Kuota berlaku **per sesi** (bukan per slot waktu); nomor antrean adalah **urutan pendaftaran** pada sesi, bukan jam panggilan | Sesuai model `practice_sessions.quota` dan F.7 | Jika butuh slot per 15 menit: model sesi berubah besar. Pemanggilan antrean tidak dibangun |
 | A-10 | Setiap sesi berada dalam **satu hari kalender** (`end_time > start_time`, tidak melewati tengah malam) | CHECK di 00 E.2; praktik poliklinik rawat jalan | Praktik malam lintas hari harus dipecah dua sesi |
 | A-11 | **Dokter bukan pengguna sistem**: tidak ada login dokter; `doctors` hanya data profil/jadwal | Peran yang diminta hanya tiga (kebutuhan §10) | Fitur klinis di masa depan butuh peran dan tautan `doctors` ↔ `users` |
@@ -261,7 +261,7 @@ Daftar ringkas **[KONFIRMASI]** K-01 sampai K-08 yang muncul di bagian ini; ID, 
 | K-04 | Apakah Petugas Pendaftaran perlu aksi "tampilkan nomor BPJS/polis lengkap" (tercatat di audit)? | Tidak ada; hanya 4 digit terakhir | Memengaruhi alur loket BPJS | Fase 7 |
 | K-05 | Verifikasi nama kategori kamar terhadap ketentuan KRIS terbaru | Nama prototipe "BPJS Kelas 1/2/3", "VIP" | Mengubah data seeder dan teks halaman | Sebelum produksi |
 | K-06 | Telaah hukum teks kebijakan privasi dan persetujuan | Teks contoh | Kepatuhan sebelum produksi | Sebelum produksi |
-| K-07 | Perlukah satu akun memiliki banyak profil (anggota keluarga)? | Satu akun satu profil | Mengubah constraint `patient_profiles.user_id` dan wizard | Fase 5 |
+| K-07 | Perlukah satu akun memiliki banyak profil (anggota keluarga)? | Satu akun satu profil | Mengubah constraint `patient_profiles.user_id` dan wizard | Sudah diputuskan pemilik 2026-10-08: (a) satu akun satu profil (17 §1/D-140) |
 | K-08 | Data kontak resmi (telepon, IGD, WhatsApp, email, jam operasional) | Placeholder | Hanya data pengaturan, tanpa perubahan kode | Sebelum produksi |
 
 ---
