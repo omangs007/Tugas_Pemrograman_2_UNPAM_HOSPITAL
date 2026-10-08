@@ -147,6 +147,9 @@ class SecurityHeadersTest extends TestCase
         return [
             'beranda' => ['/', 200],
             'login admin' => ['/admin/login', 200],
+            'login pasien' => ['/masuk', 200],
+            'registrasi pasien' => ['/daftar', 200],
+            'lupa password' => ['/lupa-password', 200],
             'halaman 404' => ['/tidak-ada', 404],
         ];
     }
