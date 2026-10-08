@@ -257,9 +257,12 @@ final class AppointmentStatusService
             $deadline = $session->starts_at->subMinutes($rules->cancelCutoffMinutes);
 
             if ($now->greaterThan($deadline)) {
+                // Nomor telepon rumah sakit boleh kosong di pengaturan: pesan tetap utuh.
+                $phone = trim($this->settings->string('contact.phone'));
+
                 $this->reject('CANCEL_CUTOFF_PASSED', $appointment, $from, $to, [
                     'minutes' => $rules->cancelCutoffMinutes,
-                    'phone' => $this->settings->string('contact.phone'),
+                    'phone' => $phone === '' ? 'nomor rumah sakit' : $phone,
                 ]);
             }
         }

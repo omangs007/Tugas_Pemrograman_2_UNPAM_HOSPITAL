@@ -358,6 +358,8 @@ class BookingSubmissionTest extends TestCase
             'sesi larik' => [['practice_session_id' => ['1']], 'practice_session_id', $session, ''],
             'save_bpjs tidak valid' => [['payment_type' => 'bpjs', 'bpjs_number' => '0009900000011', 'save_bpjs' => 'abc'], 'save_bpjs', 'Pilihan simpan nomor BPJS tidak valid.', '__SESI__'],
             'keluhan UTF-8 rusak' => [['complaint' => "a\xC3\x28"], 'complaint', 'Keluhan tidak valid.', '__SESI__'],
+            'polis UTF-8 rusak' => [['payment_type' => 'asuransi', 'insurance_partner_id' => '__MITRA__', 'policy_number' => "AB \xC3\x28"], 'policy_number', 'Nomor polis hanya boleh berisi huruf, angka, garis miring, dan tanda hubung.', '__SESI__'],
+            'bpjs UTF-8 rusak' => [['payment_type' => 'bpjs', 'bpjs_number' => "000990000\xC3\x28"], 'bpjs_number', $bpjs, '__SESI__'],
         ];
     }
 

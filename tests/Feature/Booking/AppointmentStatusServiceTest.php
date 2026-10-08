@@ -558,6 +558,21 @@ class AppointmentStatusServiceTest extends TestCase
         $this->assertSame(1, AppointmentStatusHistory::query()->count());
     }
 
+    /** FX6: tanpa nomor telepon rumah sakit pesan tidak boleh berlubang ("di  atau melalui WhatsApp"). */
+    public function test_the_cancel_cutoff_message_names_the_hospital_number_when_the_phone_setting_is_empty(): void
+    {
+        foreach (['', '   '] as $blank) {
+            $this->app->make(SettingsService::class)->setMany(['contact.phone' => $blank]);
+            $late = $this->appointment(AppointmentStatus::Confirmed);
+            $this->at('2026-10-06 07:01:00');
+
+            $e = $this->assertFails('CANCEL_CUTOFF_PASSED', fn () => $this->service->transition($late, AppointmentStatus::Cancelled, $this->ownerOf($late), 'Terlambat'));
+
+            $this->assertStringContainsString('hubungi rumah sakit di nomor rumah sakit atau melalui WhatsApp.', $e->getMessage());
+            $this->assertStringNotContainsString('  ', $e->getMessage());
+        }
+    }
+
     public function test_the_patient_cancel_deadline_follows_the_booking_setting(): void
     {
         $this->app->make(SettingsService::class)->setMany(['booking.cancel_cutoff_minutes' => 60]);

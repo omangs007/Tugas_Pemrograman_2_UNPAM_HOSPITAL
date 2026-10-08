@@ -79,14 +79,16 @@ trait HasBookingRules
         $bpjs = $this->input('bpjs_number');
 
         if (is_string($bpjs)) {
-            $bpjs = preg_replace('/[\s-]+/u', '', $bpjs) ?? '';
+            // `preg_replace` mengembalikan null untuk UTF-8 rusak: nilai mentah dibiarkan sampai validasi (ditolak),
+            // tidak dijadikan kosong secara diam-diam.
+            $bpjs = preg_replace('/[\s-]+/u', '', $bpjs) ?? $bpjs;
             $merge['bpjs_number'] = $bpjs === '' ? null : $bpjs;
         }
 
         $policy = $this->input('policy_number');
 
         if (is_string($policy)) {
-            $policy = preg_replace('/\s+/u', '', $policy) ?? '';
+            $policy = preg_replace('/\s+/u', '', $policy) ?? $policy;
             $merge['policy_number'] = $policy === '' ? null : $policy;
         }
 
