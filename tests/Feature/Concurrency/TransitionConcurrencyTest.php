@@ -19,8 +19,10 @@ use Tests\Support\Concurrency\ConcurrencyTestCase;
 
 /**
  * KON-05 (dua petugas mentransisi appointment yang sama; tiga varian) dan pembuktian `SYSTEM_BUSY`/pengulangan
- * pada AppointmentStatusService::transition() di luar transaksi pembungkus. Sesi KON-05 = HARI INI 00.00-23.59
- * agar jendela check-in terbuka sepanjang hari pada jam asli proses anak (jangan jalankan 23.58-00.02 WIB).
+ * pada AppointmentStatusService::transition() di luar transaksi pembungkus. Proses anak memakai jam dinding asli
+ * (tidak berbagi travelTo). Hanya KON-05a/05b yang butuh jendela check-in: sesinya HARI INI 00.00-23.59, dan kedua
+ * tes itu dilewati (markTestSkipped) pada 23.55-00.05 WIB karena jendela/tanggal bisa berganti di tengah balapan.
+ * Tes lain memakai sesi besok (pembatalan staf tidak bergantung pada jam).
  */
 #[Group('concurrency')]
 class TransitionConcurrencyTest extends ConcurrencyTestCase
@@ -28,13 +30,17 @@ class TransitionConcurrencyTest extends ConcurrencyTestCase
     /**
      * @return array{0: PracticeSession, 1: Appointment}
      */
-    private function scenario(int $appointments = 1): array
+    private function scenario(int $appointments = 1, bool $needsCheckInWindow = false): array
     {
-        $session = $this->makeSession(5, [
+        if ($needsCheckInWindow) {
+            $this->skipAroundMidnight();
+        }
+
+        $session = $this->makeSession(5, $needsCheckInWindow ? [
             'session_date' => today()->toDateString(),
             'start_time' => '00:00:00',
             'end_time' => '23:59:00',
-        ]);
+        ] : []);
 
         $first = null;
 
@@ -44,6 +50,16 @@ class TransitionConcurrencyTest extends ConcurrencyTestCase
         }
 
         return [$session, $first];
+    }
+
+    /** Check-in butuh sesi hari ini pada jam asli proses anak: hindari pergantian hari di tengah balapan. */
+    private function skipAroundMidnight(): void
+    {
+        $minutes = intdiv(now()->setTimezone((string) config('app.timezone'))->secondsSinceMidnight(), 60);
+
+        if ($minutes >= 23 * 60 + 55 || $minutes < 5) {
+            $this->markTestSkipped('Dilewati pada 23.55-00.05: jendela check-in sesi hari ini dan tanggal dapat berganti di tengah balapan.');
+        }
     }
 
     /**
@@ -63,7 +79,7 @@ class TransitionConcurrencyTest extends ConcurrencyTestCase
 
     public function test_kon_05a_two_staff_racing_with_expected_status_one_wins_and_the_other_is_stale(): void
     {
-        [$session, $appointment] = $this->scenario();
+        [$session, $appointment] = $this->scenario(needsCheckInWindow: true);
         $first = $this->makeStaff();
         $second = $this->makeStaff();
         $startAt = $this->barrier(2);
@@ -84,7 +100,7 @@ class TransitionConcurrencyTest extends ConcurrencyTestCase
 
     public function test_kon_05b_two_staff_racing_without_expected_status_get_a_consistent_loser(): void
     {
-        [$session, $appointment] = $this->scenario();
+        [$session, $appointment] = $this->scenario(needsCheckInWindow: true);
         $first = $this->makeStaff();
         $second = $this->makeStaff();
         $startAt = $this->barrier(2);

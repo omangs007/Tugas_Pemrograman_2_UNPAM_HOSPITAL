@@ -199,10 +199,10 @@ class BookingConcurrencyTest extends ConcurrencyTestCase
         $this->beginAndLock($holder, $this->makePatient()->id, $session->id);
         DB::statement('SET SESSION innodb_lock_wait_timeout = 1');
 
-        // precheck() tidak mengunci dan tidak menulis: selesai seketika walau baris sesi sedang terkunci.
-        $startedAt = microtime(true);
+        // precheck() tidak mengunci dan tidak menulis: ia selesai walau baris sesi sedang terkunci. Bukti strukturalnya
+        // ada pada innodb_lock_wait_timeout = 1: precheck yang mengunci akan melempar QueryException 1205 dan tes gagal
+        // (tanpa asersi ambang waktu, yang dapat gagal acak pada DB bersama).
         $this->service()->precheck($profile, PracticeSession::query()->findOrFail($session->id), new BookingData(PaymentType::Umum), $this->actorOf($profile));
-        $this->assertLessThan(0.9, microtime(true) - $startedAt, 'precheck() menunggu kunci: ia tidak boleh mengunci.');
 
         $startedAt = microtime(true);
         $e = $this->bookingFailure($profile, $session->id);
