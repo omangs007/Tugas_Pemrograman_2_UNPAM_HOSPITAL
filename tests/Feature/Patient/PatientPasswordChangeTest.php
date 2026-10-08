@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\InteractsWithPatients;
@@ -169,6 +170,43 @@ class PatientPasswordChangeTest extends TestCase
                 ->orWhere('description', 'like', "%{$secret}%")
                 ->count(), 'Password dan email tidak boleh ada di audit_logs.');
         }
+    }
+
+    public function test_an_outstanding_reset_token_is_revoked_after_a_password_change(): void
+    {
+        $user = $this->patient();
+        $token = Password::broker()->createToken($user);
+        $this->assertSame(1, DB::table('password_reset_tokens')->where('email', $user->email)->count());
+
+        $this->actingAs($user);
+        $this->putPassword($this->validPayload())->assertRedirect(route('patient.profile.edit'));
+
+        $this->assertSame(0, DB::table('password_reset_tokens')->where('email', $user->email)->count());
+        $this->assertFalse(Password::broker()->tokenExists($user->fresh(), $token));
+    }
+
+    public function test_a_failed_audit_rolls_the_password_change_back(): void
+    {
+        $user = $this->patient();
+        $token = Password::broker()->createToken($user);
+        $hash = $user->password;
+        $remember = $user->remember_token;
+        DB::table('sessions')->insert($this->sessionRow('sesi-lain', $user->id));
+
+        AuditLog::creating(function (): void {
+            throw new \RuntimeException('Audit gagal ditulis.');
+        });
+
+        $this->actingAs($user);
+        $this->putPassword($this->validPayload())->assertStatus(500);
+
+        $fresh = $user->fresh();
+        $this->assertSame($hash, $fresh->password);
+        $this->assertSame($remember, $fresh->remember_token);
+        $this->assertSame(1, DB::table('sessions')->where('id', 'sesi-lain')->count());
+        $this->assertSame(1, DB::table('password_reset_tokens')->where('email', $user->email)->count());
+        $this->assertTrue(Password::broker()->tokenExists($fresh, $token));
+        $this->assertSame(0, AuditLog::query()->where('action', 'auth.password_changed')->count());
     }
 
     public function test_an_account_without_a_profile_can_still_change_the_password(): void

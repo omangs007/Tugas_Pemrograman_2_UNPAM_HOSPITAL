@@ -486,6 +486,7 @@ class PatientPasswordResetTest extends TestCase
         return [
             'token kosong' => [['token' => ''] + $ok, 'token', $tokenMessage],
             'token larik' => [['token' => ['x']] + $ok, 'token', $tokenMessage],
+            'token terlalu panjang' => [['token' => str_repeat('a', 256)] + $ok, 'token', $tokenMessage],
             'email kosong' => [['email' => ''] + $ok, 'email', 'Email wajib diisi.'],
             'email tidak valid' => [['email' => 'bukan-email'] + $ok, 'email', 'Format email tidak valid.'],
             'email larik' => [['email' => ['x']] + $ok, 'email', 'Format email tidak valid.'],
@@ -498,6 +499,7 @@ class PatientPasswordResetTest extends TestCase
             'konfirmasi tidak cocok' => [['password_confirmation' => 'Lain12345'] + $ok, 'password', 'Konfirmasi password tidak cocok.'],
             'konfirmasi kosong' => [['password_confirmation' => ''] + $ok, 'password_confirmation', 'Konfirmasi password wajib diisi.'],
             'password larik' => [['password' => ['x'], 'password_confirmation' => ['x']] + $ok, 'password', 'Password tidak valid.'],
+            'konfirmasi larik' => [['password_confirmation' => ['x']] + $ok, 'password', 'Konfirmasi password tidak cocok.'],
         ];
     }
 

@@ -215,6 +215,16 @@ class PatientLoginTest extends TestCase
         $this->assertGuest();
     }
 
+    /** F5-R31: email yang terlalu panjang sekaligus tidak valid hanya memberi satu galat (`bail`). */
+    public function test_an_overlong_and_malformed_email_gives_a_single_max_error(): void
+    {
+        $this->postLogin(str_repeat('a', 256))
+            ->assertSessionHasErrors(['email' => 'Email maksimal 255 karakter.']);
+
+        $this->assertSame(['Email maksimal 255 karakter.'], session('errors')->get('email'));
+        $this->assertGuest();
+    }
+
     /** Review Focus G.2: larik dan nilai liar menghasilkan galat field, bukan 500; halaman dirender ulang dengan wajar. */
     public function test_array_and_wild_values_give_field_errors_without_a_500(): void
     {

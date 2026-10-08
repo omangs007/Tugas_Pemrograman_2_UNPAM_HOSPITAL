@@ -33,7 +33,7 @@ class ResetPasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'token' => ['bail', 'required', 'string'],
+            'token' => ['bail', 'required', 'string', 'max:255'],
             'email' => ['bail', 'required', 'string', 'max:255', 'email:rfc'],
             'password' => PasswordRules::default(),
             'password_confirmation' => ['required'],
@@ -50,6 +50,7 @@ class ResetPasswordRequest extends FormRequest
         return [
             'token.required' => 'Tautan pengaturan ulang password tidak valid. Silakan ajukan permintaan baru.',
             'token.string' => 'Tautan pengaturan ulang password tidak valid. Silakan ajukan permintaan baru.',
+            'token.max' => 'Tautan pengaturan ulang password tidak valid. Silakan ajukan permintaan baru.',
             'email.required' => 'Email wajib diisi.',
             'email.string' => 'Format email tidak valid.',
             'email.max' => 'Email maksimal 255 karakter.',
