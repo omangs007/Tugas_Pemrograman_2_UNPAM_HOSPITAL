@@ -7,8 +7,8 @@ namespace App\Support;
 use App\Exceptions\BookingException;
 use App\Models\Appointment;
 use App\Models\PracticeSession;
+use App\Services\Booking\BookingCodeGenerator;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 
 /**
  * Tujuan pengalihan setelah `BookingException` (F6-R10): tidak pernah `back()`, karena halaman tinjau adalah hasil
@@ -17,8 +17,6 @@ use Illuminate\Support\Facades\Route;
  */
 final class BookingRedirect
 {
-    private const CODE_PATTERN = '/^UPH-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$/';
-
     public static function after(BookingException $e, Request $request): string
     {
         $routeName = $request->route()?->getName();
@@ -70,21 +68,17 @@ final class BookingRedirect
 
     private static function history(): string
     {
-        return Route::has('patient.appointments.index')
-            ? route('patient.appointments.index')
-            : route('patient.dashboard');
+        return route('patient.appointments.index');
     }
 
     /** Detail pendaftaran berkode valid; `null` bila kode bukan string berpola UPH-XXXX-XXXX. */
     private static function appointment(mixed $code): ?string
     {
-        if (! is_string($code) || preg_match(self::CODE_PATTERN, $code) !== 1) {
+        if (! is_string($code) || ! BookingCodeGenerator::isValid($code)) {
             return null;
         }
 
-        return Route::has('patient.appointments.show')
-            ? route('patient.appointments.show', ['appointment' => $code])
-            : route('patient.dashboard');
+        return route('patient.appointments.show', ['appointment' => $code]);
     }
 
     private static function routeCode(Request $request): ?string

@@ -41,7 +41,6 @@ use RuntimeException;
 use Tests\Support\InteractsWithPatients;
 use Tests\Support\InteractsWithSchedules;
 use Tests\Support\InteractsWithStaff;
-use Tests\Support\RegistersAppointmentRoutes;
 use Tests\TestCase;
 
 /**
@@ -60,7 +59,6 @@ class BookingServiceTest extends TestCase
     use InteractsWithSchedules;
     use InteractsWithStaff;
     use RefreshDatabase;
-    use RegistersAppointmentRoutes;
 
     protected function setUp(): void
     {
@@ -70,7 +68,6 @@ class BookingServiceTest extends TestCase
         $this->travelTo('2026-10-08 09:30:00');
         app()->setLocale('id');
         $this->seed(SettingsSeeder::class);
-        $this->ensureAppointmentShowRoute();
     }
 
     // ------------------------------------------------------------------ pembantu

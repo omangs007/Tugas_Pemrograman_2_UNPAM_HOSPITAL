@@ -16,8 +16,8 @@ use Tests\Support\InteractsWithSchedules;
 use Tests\TestCase;
 
 /**
- * F6-R10: tujuan pengalihan per kode `BookingException` (tidak pernah back()). Route `show` (T8) dan `index` (T9)
- * didaftarkan sebagai route palsu hanya bila route asli belum ada, sehingga tes tetap valid sesudah T8/T9.
+ * F6-R10: tujuan pengalihan per kode `BookingException` (tidak pernah back()). Route `show` dan `index` asli
+ * dipakai apa adanya.
  */
 class BookingRedirectTest extends TestCase
 {
@@ -32,16 +32,6 @@ class BookingRedirectTest extends TestCase
         parent::setUp();
 
         $this->travelTo('2026-10-05 07:00:00');
-
-        if (! Route::has('patient.appointments.show')) {
-            Route::middleware('web')->get('/_uji/pasien/pendaftaran/{appointment}', fn () => 'x')->name('patient.appointments.show');
-        }
-
-        if (! Route::has('patient.appointments.index')) {
-            Route::middleware('web')->get('/_uji/pasien/pendaftaran', fn () => 'x')->name('patient.appointments.index');
-        }
-
-        Route::getRoutes()->refreshNameLookups();
     }
 
     /**
@@ -164,7 +154,7 @@ class BookingRedirectTest extends TestCase
         $request = $this->requestOn($routeName, ['practice_session_id' => (string) $session->id]);
         $expected = route('patient.appointments.create', ['poli' => $clinic->slug, 'dokter' => $doctor->slug]);
 
-        foreach ([[], ['appointment_code' => '<script>'], ['appointment_code' => ['UPH-7K3M-9QWA']], ['appointment_code' => 'uph-7k3m-9qwa'], ['appointment_code' => 'UPH-7K3M-9QWI']] as $context) {
+        foreach ([[], ['appointment_code' => '<script>'], ['appointment_code' => ['UPH-7K3M-9QWA']], ['appointment_code' => 'uph-7k3m-9qwa'], ['appointment_code' => 'UPH-7K3M-9QWI'], ['appointment_code' => 'UPH-7K3M-9QWA'."\n"]] as $context) {
             $exception = BookingException::make(BookingException::DUPLICATE_BOOKING, [], $context);
 
             $this->assertSame($expected, BookingRedirect::after($exception, $request), json_encode($context));

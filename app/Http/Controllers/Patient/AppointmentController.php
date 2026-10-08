@@ -38,7 +38,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 /**
  * Pendaftaran kunjungan pasien (#29, F6-R17): langkah 1 sampai 4 adalah satu GET `create` (query `poli`, `dokter`,
- * `tanggal`, `sesi`); langkah 5 (tinjau) dan simpan menyusul di T8. Sumber jadwal SATU-SATUNYA adalah
+ * `tanggal`, `sesi`); langkah 5 (tinjau), simpan, detail, riwayat, batal, dan bukti ada di method berikutnya. Sumber jadwal SATU-SATUNYA adalah
  * DoctorAvailabilityQuery (JDW-12); aturan F.5 lengkap tetap di precheck/book.
  */
 class AppointmentController extends Controller
@@ -255,8 +255,6 @@ class AppointmentController extends Controller
 
         return $proof->pdf($appointment);
     }
-
-    // [[METODE-PUBLIK-BERIKUT]] (T8 sampai T10 menambah method publik di atas baris ini: review, store, show, index, cancel, proof, proofPdf)
 
     // --- langkah wizard ----------------------------------------------------------------------
 

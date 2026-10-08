@@ -23,7 +23,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\Support\InteractsWithPatients;
 use Tests\Support\InteractsWithSchedules;
-use Tests\Support\RegistersAppointmentRoutes;
 use Tests\TestCase;
 
 /**
@@ -37,7 +36,6 @@ class AppointmentNotificationsTest extends TestCase
     use InteractsWithPatients;
     use InteractsWithSchedules;
     use RefreshDatabase;
-    use RegistersAppointmentRoutes;
 
     protected function setUp(): void
     {
@@ -46,7 +44,6 @@ class AppointmentNotificationsTest extends TestCase
         $this->travelTo('2026-10-08 09:30:00');
         app()->setLocale('id');
         $this->seed(SettingsSeeder::class);
-        $this->ensureAppointmentShowRoute();
     }
 
     // ------------------------------------------------------------------ pembantu

@@ -17,7 +17,7 @@ use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Bukti pendaftaran (00 F.10, F6-R26/F6-R27). T8: isi QR dan QR SVG untuk halaman; T10 menambah QR PNG dan PDF.
+ * Bukti pendaftaran (00 F.10, F6-R26/F6-R27): isi QR, QR SVG untuk halaman, serta QR PNG dan PDF.
  * Otorisasi (AppointmentPolicy::view) dijalankan pemanggil SEBELUM service ini dipanggil.
  */
 final class AppointmentProofService

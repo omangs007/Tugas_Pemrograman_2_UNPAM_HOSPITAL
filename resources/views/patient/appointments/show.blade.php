@@ -5,7 +5,7 @@
 <x-layouts.patient title="Detail Pendaftaran">
     <x-slot:breadcrumb>
         <x-breadcrumb home="patient.dashboard" :items="[
-            ['label' => 'Riwayat Pendaftaran', 'url' => Route::has('patient.appointments.index') ? route('patient.appointments.index') : null],
+            ['label' => 'Riwayat Pendaftaran', 'url' => route('patient.appointments.index')],
             ['label' => $appointment->booking_code],
         ]" />
     </x-slot:breadcrumb>
