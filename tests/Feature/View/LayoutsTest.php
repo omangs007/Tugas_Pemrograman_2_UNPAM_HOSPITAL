@@ -249,18 +249,21 @@ class LayoutsTest extends TestCase
             ->assertSee('aria-current="page"', false)
             ->assertSee('action="'.route('logout').'"', false)
             ->assertSee('Daftar Kunjungan')
-            ->assertDontSee('Riwayat Pendaftaran'); // route `index` baru ada di T9 (T9 membalik asersi ini)
+            ->assertSee('Riwayat Pendaftaran');
     }
 
-    public function test_patient_layout_adds_the_history_menu_item_once_its_route_exists(): void
+    public function test_patient_layout_links_to_the_real_history_page_and_marks_it_current_there(): void
     {
-        Route::middleware('web')->get('/_uji/pasien-riwayat', fn () => 'riwayat')->name('patient.appointments.index');
-        Route::getRoutes()->refreshNameLookups();
+        $patient = $this->createPatient();
 
-        $this->actingAs($this->createPatient())
+        $this->actingAs($patient)
             ->get(route('patient.dashboard'))
             ->assertOk()
             ->assertSee('Riwayat Pendaftaran')
-            ->assertSee('Daftar Kunjungan');
+            ->assertSee('href="'.route('patient.appointments.index').'"', false);
+
+        $html = $this->actingAs($patient)->get(route('patient.appointments.index'))->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('#href="'.preg_quote(route('patient.appointments.index'), '#').'"\s+aria-current="page"#', $html);
     }
 }

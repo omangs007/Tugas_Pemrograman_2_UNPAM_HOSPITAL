@@ -73,9 +73,70 @@
             </ol>
 
             <div class="d-flex flex-wrap gap-2 mt-4" data-appointment-actions>
-                {{-- [[AKSI-DETAIL-BERIKUT]] --}}
+                @php
+                    $actionSettings = app(\App\Services\Settings\SettingsService::class);
+                    $cancelCutoff = $actionSettings->bookingRules()->cancelCutoffMinutes;
+                    $canCancel = in_array($appointment->status, [\App\Enums\AppointmentStatus::Pending, \App\Enums\AppointmentStatus::Confirmed], true)
+                        && $appointment->isCancellableByPatient(now(), $cancelCutoff);
+                    $cancelBlocked = $appointment->status->isActive() && ! $canCancel;
+                    $contactPhone = $actionSettings->string('contact.phone');
+                    $contactWhatsapp = $actionSettings->whatsappUrl();
+                    $cancelAction = route('patient.appointments.cancel', $appointment->booking_code);
+                @endphp
+                {{-- [[AKSI-BUKTI-BERIKUT]] --}}
+                @if ($canCancel)
+                    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modal-batal"><i class="bi bi-x-circle" aria-hidden="true"></i> Batalkan Pendaftaran</button>
+                @endif
                 <a class="btn btn-outline-secondary" href="{{ route('patient.dashboard') }}">Ke Dashboard</a>
             </div>
+
+            @if ($canCancel)
+                <noscript>
+                    <form method="POST" action="{{ $cancelAction }}" class="card card-body mt-3">
+                        @csrf
+                        <p class="fw-semibold mb-2">Batalkan pendaftaran {{ $appointment->booking_code }}?</p>
+                        <p class="mb-2">Kuota akan dilepas dan nomor antrean Anda tidak dapat dipakai kembali.</p>
+                        <x-form.textarea name="cancel_reason" id="noscript-batal-alasan" label="Alasan (opsional)" rows="3" maxlength="255" />
+                        <div>
+                            <button type="submit" class="btn btn-danger">Batalkan Pendaftaran</button>
+                        </div>
+                    </form>
+                </noscript>
+            @endif
+
+            @if ($cancelBlocked)
+                <p class="mt-3 mb-0 text-body-secondary" data-cancel-blocked>
+                    Batas pembatalan online telah lewat. Untuk membatalkan atau mengubah pendaftaran, hubungi rumah sakit{{ $contactPhone !== '' ? ' di '.$contactPhone : '' }} atau melalui
+                    @if ($contactWhatsapp)
+                        <a href="{{ $contactWhatsapp }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>.
+                    @else
+                        WhatsApp.
+                    @endif
+                </p>
+            @endif
         </div>
     </div>
+    @if ($canCancel)
+        <div class="modal fade" id="modal-batal" tabindex="-1" aria-labelledby="modal-batal-judul" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="POST" action="{{ $cancelAction }}">
+                        @csrf
+                        <div class="modal-header">
+                            <h2 class="modal-title h5" id="modal-batal-judul">Batalkan pendaftaran {{ $appointment->booking_code }}?</h2>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Kuota akan dilepas dan nomor antrean Anda tidak dapat dipakai kembali.</p>
+                            <x-form.textarea name="cancel_reason" id="modal-batal-alasan" label="Alasan (opsional)" rows="3" maxlength="255" />
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Tidak, kembali</button>
+                            <x-loading-button variant="danger" loading-text="Membatalkan…">Ya, batalkan</x-loading-button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
 </x-layouts.patient>

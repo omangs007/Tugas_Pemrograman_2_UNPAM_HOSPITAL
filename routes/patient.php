@@ -31,11 +31,13 @@ Route::prefix('pendaftaran')->name('appointments.')->controller(AppointmentContr
     Route::get('/baru', 'create')->name('create');
     Route::post('/tinjau', 'review')->name('review');
     Route::post('/', 'store')->middleware('throttle:booking')->name('store');
+    Route::get('/', 'index')->name('index');
 
     // Route berparameter SESUDAH route statis; kode booking berpola Crockford, selain itu 404 (BR-54, kerangka 11 ?3.4).
     Route::prefix('{appointment:booking_code}')
         ->where(['appointment' => 'UPH-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}'])
         ->group(function (): void {
             Route::get('/', 'show')->name('show');
+            Route::post('/batal', 'cancel')->name('cancel');
         });
 });

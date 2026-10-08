@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Patient;
 
+use App\Enums\AppointmentStatus;
 use App\Enums\Availability;
 use App\Enums\ClinicType;
 use App\Enums\PaymentType;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Patient\AppointmentIndexRequest;
 use App\Http\Requests\Patient\BookingWizardQueryRequest;
+use App\Http\Requests\Patient\CancelAppointmentRequest;
 use App\Http\Requests\Patient\ReviewAppointmentRequest;
 use App\Http\Requests\Patient\StoreAppointmentRequest;
 use App\Models\Appointment;
@@ -16,6 +19,7 @@ use App\Models\InsurancePartner;
 use App\Models\PatientProfile;
 use App\Models\PracticeSession;
 use App\Services\Booking\AppointmentProofService;
+use App\Services\Booking\AppointmentStatusService;
 use App\Services\Booking\BookingData;
 use App\Services\Booking\BookingService;
 use App\Services\Scheduling\AvailabilityFilter;
@@ -171,6 +175,47 @@ class AppointmentController extends Controller
         }
 
         return array_filter($fields, fn (?string $value): bool => $value !== null && $value !== '');
+    }
+
+    /**
+     * Riwayat pendaftaran milik pasien (#30, F6-R23): satu daftar, filter status/tanggal/jadwal berubah,
+     * paginasi 10, terbaru dulu. Hanya `Appointment::forPatient()`; relasi tampilan dimuat sekaligus.
+     */
+    public function index(AppointmentIndexRequest $request): View
+    {
+        $profile = $request->user()->loadMissing('patientProfile')->patientProfile;
+
+        abort_if($profile === null, 404);
+
+        $appointments = $request
+            ->applyTo(Appointment::query()->forPatient($profile)->with(['clinic', 'doctor', 'practiceSession']))
+            ->paginate($request->perPage(10));
+
+        return view('patient.appointments.index', [
+            'appointments' => $appointments,
+            'filters' => $request->activeFilters(),
+            'statusOptions' => AppointmentStatus::options(),
+        ]);
+    }
+
+    /**
+     * Batalkan pendaftaran (V-12, BR-73..BR-81). Otorisasi (pemilik, 404 bila bukan) ada di
+     * `CancelAppointmentRequest`; status, batas waktu, kuota, riwayat, audit, dan notifikasi di
+     * `AppointmentStatusService::transition()`. Galat bisnis (`InvalidTransitionException`) ditangani handler
+     * `BookingException` (redirect ke detail + flash `error`).
+     */
+    public function cancel(CancelAppointmentRequest $request, Appointment $appointment, AppointmentStatusService $statuses): RedirectResponse
+    {
+        $statuses->transition(
+            $appointment,
+            AppointmentStatus::Cancelled,
+            Actor::patient($request->user()),
+            $request->validated('cancel_reason'),
+        );
+
+        return redirect()
+            ->route('patient.appointments.show', $appointment->booking_code)
+            ->with('success', 'Pendaftaran berhasil dibatalkan. Kuota telah dilepas.');
     }
 
     // [[METODE-PUBLIK-BERIKUT]] (T8 sampai T10 menambah method publik di atas baris ini: review, store, show, index, cancel, proof, proofPdf)
