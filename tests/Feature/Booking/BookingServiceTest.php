@@ -8,6 +8,7 @@ use App\Enums\BookingChannel;
 use App\Enums\PaymentType;
 use App\Enums\SessionStatus;
 use App\Exceptions\BookingException;
+use App\Exceptions\SanitizedBookingFault;
 use App\Models\Appointment;
 use App\Models\AppointmentStatusHistory;
 use App\Models\AuditLog;
@@ -727,9 +728,10 @@ class BookingServiceTest extends TestCase
             $locked->booked_count = $locked->quota + 1;
             $locked->last_queue_number = $locked->quota + 1;
         });
+        Exceptions::fake();
 
         try {
-            $this->bookAs($user, $session);
+            $this->bookAs($user, $session, new BookingData(PaymentType::Umum, complaint: 'KELUHAN-RAHASIA-QUOTA'));
             $this->fail('Pelanggaran CHECK kuota seharusnya menjadi BookingException.');
         } catch (BookingException $e) {
             $this->assertSame(BookingException::QUOTA_FULL, $e->errorCode);
@@ -742,6 +744,41 @@ class BookingServiceTest extends TestCase
         }
 
         $this->assertSame($before, $this->snapshot($session->id));
+        // FX1: drift pencacah tidak boleh senyap di log (BookingException berada di dontReport).
+        Exceptions::assertReportedCount(1);
+        Exceptions::assertReported(fn (SanitizedBookingFault $e): bool => str_contains($e->getMessage(), 'QUOTA_DRIFT')
+            && str_contains($e->getMessage(), 'chk_sessions_quota')
+            && str_contains($e->getMessage(), 'sesi='.$session->id)
+            && ! str_contains($e->getMessage(), 'KELUHAN-RAHASIA-QUOTA')
+            && $e->getPrevious() === null);
+    }
+
+    public function test_exhausting_the_booking_code_attempts_is_reported_as_system_busy(): void
+    {
+        $session = $this->makeSession();
+        $this->bookAppointment($session);
+        $user = $this->createPatient();
+        // Setiap kode dianggap sudah dipakai: pemeriksaan `where booking_code = ?` dibuang dari kueri Appointment.
+        Appointment::addGlobalScope('semua-kode-terpakai', function ($builder): void {
+            $query = $builder->getQuery();
+
+            if (count($query->wheres) === 1 && ($query->wheres[0]['column'] ?? null) === 'booking_code') {
+                $query->wheres = [];
+                $query->setBindings([], 'where');
+            }
+        });
+        Exceptions::fake();
+
+        try {
+            $this->bookAs($user, $session);
+            $this->fail('Kode booking yang habis percobaan seharusnya SYSTEM_BUSY.');
+        } catch (BookingException $e) {
+            $this->assertSame(BookingException::SYSTEM_BUSY, $e->errorCode);
+        }
+
+        Exceptions::assertReportedCount(1);
+        Exceptions::assertReported(fn (SanitizedBookingFault $e): bool => str_contains($e->getMessage(), 'kode booking habis percobaan')
+            && str_contains($e->getMessage(), 'sesi='.$session->id));
     }
 
     public function test_other_check_violations_are_not_mapped_and_surface_as_system_errors(): void
@@ -836,7 +873,9 @@ class BookingServiceTest extends TestCase
         $this->assertSame(BookingService::UNIQUE_ROUNDS, $calls);
         $this->assertSame($before, $this->snapshot($session->id));
         Exceptions::assertReportedCount(1);
-        Exceptions::assertReported(UniqueConstraintViolationException::class);
+        Exceptions::assertReported(fn (SanitizedBookingFault $e): bool => str_contains($e->getMessage(), 'tabrakan kode/antrean')
+            && str_contains($e->getMessage(), 'constraint=appointments_booking_code_unique')
+            && $e->getPrevious() === null);
     }
 
     // ------------------------------------------------------------------ urutan kunci (Review Focus 1)

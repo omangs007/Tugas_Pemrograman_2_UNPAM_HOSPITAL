@@ -7,6 +7,7 @@ namespace App\Services\Booking;
 use App\Enums\AppointmentStatus;
 use App\Exceptions\BookingException;
 use App\Exceptions\InvalidTransitionException;
+use App\Exceptions\SanitizedBookingFault;
 use App\Models\Appointment;
 use App\Models\AppointmentStatusHistory;
 use App\Models\PatientProfile;
@@ -92,6 +93,8 @@ final class AppointmentStatusService
             );
         } catch (QueryException $e) {
             if (app(ConcurrencyErrorDetector::class)->causedByConcurrencyError($e)) {
+                SanitizedBookingFault::capture('SYSTEM_BUSY (transisi status)', $e, ['practice_session_id' => $sessionId, 'patient_profile_id' => $profileId]);
+
                 throw BookingException::make(BookingException::SYSTEM_BUSY, [], [], $e);
             }
 

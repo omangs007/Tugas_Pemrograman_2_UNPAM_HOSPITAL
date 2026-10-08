@@ -4,6 +4,7 @@ namespace Tests\Feature\Concurrency;
 
 use App\Enums\PaymentType;
 use App\Exceptions\BookingException;
+use App\Exceptions\SanitizedBookingFault;
 use App\Models\Appointment;
 use App\Models\PatientProfile;
 use App\Models\PracticeSession;
@@ -14,6 +15,7 @@ use App\Services\Booking\BookingService;
 use App\Support\Actor;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -363,6 +365,32 @@ class BookingConcurrencyTest extends ConcurrencyTestCase
         $this->assertSame(3, $fault->hits, 'attempts: 3 berarti tepat tiga percobaan.');
         $this->assertNoPartialWrites($session);
         Notification::assertNothingSent();
+    }
+
+    #[DataProvider('concurrencyErrors')]
+    public function test_a_persistent_concurrency_error_is_reported_without_sensitive_data(int $errno, string $sqlState, string $message): void
+    {
+        Notification::fake();
+        $session = $this->makeSession(3);
+        $profile = $this->makePatient();
+        $this->injectFault('insert into `appointments`', $errno, $sqlState, $message);
+        Exceptions::fake();
+
+        try {
+            $this->service()->book($profile, $session->id, new BookingData(PaymentType::Umum, complaint: 'KELUHAN-RAHASIA-KON'), $this->actorOf($profile));
+            $this->fail('BookingException tidak dilempar.');
+        } catch (BookingException $e) {
+            $this->assertSame('SYSTEM_BUSY', $e->errorCode);
+        }
+
+        Exceptions::assertReportedCount(1);
+        Exceptions::assertReported(fn (SanitizedBookingFault $e): bool => str_contains($e->getMessage(), 'SYSTEM_BUSY')
+            && str_contains($e->getMessage(), 'driver='.$errno)
+            && str_contains($e->getMessage(), 'sesi='.$session->id)
+            && str_contains($e->getMessage(), 'profil='.$profile->id)
+            && ! str_contains($e->getMessage(), 'KELUHAN-RAHASIA-KON')
+            && ! str_contains($e->getMessage(), 'insert into')
+            && $e->getPrevious() === null);
     }
 
     #[DataProvider('concurrencyErrors')]

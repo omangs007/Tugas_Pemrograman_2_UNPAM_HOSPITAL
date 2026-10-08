@@ -5,6 +5,7 @@ namespace Tests\Feature\Concurrency;
 use App\Enums\AppointmentStatus;
 use App\Exceptions\BookingException;
 use App\Exceptions\InvalidTransitionException;
+use App\Exceptions\SanitizedBookingFault;
 use App\Models\Appointment;
 use App\Models\AppointmentStatusHistory;
 use App\Models\PracticeSession;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Services\Booking\AppointmentStatusService;
 use App\Support\Actor;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\Concurrency\ConcurrencyTestCase;
 
@@ -231,6 +233,7 @@ class TransitionConcurrencyTest extends ConcurrencyTestCase
             '40001',
             'SQLSTATE[40001]: Serialization failure: 1213 Deadlock found when trying to get lock; try restarting transaction',
         );
+        Exceptions::fake();
 
         try {
             $service->transition($appointment, AppointmentStatus::Cancelled, Actor::staff($staff), 'Dibatalkan petugas uji');
@@ -238,6 +241,14 @@ class TransitionConcurrencyTest extends ConcurrencyTestCase
         } catch (BookingException $e) {
             $this->assertSame('SYSTEM_BUSY', $e->errorCode);
         }
+
+        // FX1: SYSTEM_BUSY pada pembatalan/transisi tercatat di log (tersanitasi, tanpa bindings).
+        Exceptions::assertReportedCount(1);
+        Exceptions::assertReported(fn (SanitizedBookingFault $e): bool => str_contains($e->getMessage(), 'transisi status')
+            && str_contains($e->getMessage(), 'driver=1213')
+            && str_contains($e->getMessage(), 'sesi='.$session->id)
+            && ! str_contains($e->getMessage(), 'update `appointments`')
+            && $e->getPrevious() === null);
 
         $this->assertSame(3, $fault->hits);
         $this->assertSame(AppointmentStatus::Confirmed, $appointment->fresh()->status);

@@ -7,6 +7,7 @@ namespace App\Services\Booking;
 use App\Enums\AppointmentStatus;
 use App\Enums\PaymentType;
 use App\Exceptions\BookingException;
+use App\Exceptions\SanitizedBookingFault;
 use App\Models\Appointment;
 use App\Models\AppointmentStatusHistory;
 use App\Models\PatientProfile;
@@ -82,6 +83,7 @@ final class BookingService
         // Dibaca di luar transaksi: pembacaan pertama di dalam transaksi harus kunci profil (F6-R13).
         $rules = $this->settings->bookingRules();
 
+        $ids = ['practice_session_id' => $practiceSessionId, 'patient_profile_id' => (int) $profile->getKey()];
         $round = 0;
 
         while (true) {
@@ -97,9 +99,9 @@ final class BookingService
                     continue;
                 }
 
-                throw $this->translate($e, $actor);
+                throw $this->translate($e, $actor, $ids);
             } catch (QueryException|DeadlockException $e) {
-                throw $this->translate($e, $actor);
+                throw $this->translate($e, $actor, $ids);
             }
 
             return Appointment::query()
@@ -160,7 +162,7 @@ final class BookingService
         $status = ($actor->isStaff() || $rules->autoConfirm) ? AppointmentStatus::Confirmed : AppointmentStatus::Pending;
         $channel = $actor->channel();
         $queueNumber = (int) $session->last_queue_number + 1;
-        $code = $this->uniqueCode();
+        $code = $this->uniqueCode((int) $session->getKey(), (int) $locked->getKey());
 
         // 5) Kuota dan antrean (nomor antrean tidak pernah dipakai ulang).
         $session->forceFill([
@@ -247,7 +249,7 @@ final class BookingService
      * Kode booking yang belum dipakai, diperiksa di bawah kunci. Tabrakan yang lolos (balapan antar-sesi) tetap
      * ditangkap UNIQUE dan diulang oleh loop luar.
      */
-    private function uniqueCode(): string
+    private function uniqueCode(int $sessionId, int $profileId): string
     {
         for ($attempt = 0; $attempt < self::CODE_ATTEMPTS; $attempt++) {
             $code = BookingCodeGenerator::generate();
@@ -256,6 +258,8 @@ final class BookingService
                 return $code;
             }
         }
+
+        SanitizedBookingFault::capture('SYSTEM_BUSY (kode booking habis percobaan)', null, ['practice_session_id' => $sessionId, 'patient_profile_id' => $profileId]);
 
         throw BookingException::make(BookingException::SYSTEM_BUSY);
     }
@@ -285,9 +289,11 @@ final class BookingService
 
     /**
      * Mengubah galat DB menjadi BookingException; mengembalikan galat aslinya bila bukan kasus yang dikenal
-     * (galat sistem 500 yang tercatat).
+     * (galat sistem 500 yang tercatat). Kegagalan sistem dilaporkan dalam bentuk tersanitasi (tanpa bindings).
+     *
+     * @param  array{practice_session_id: int, patient_profile_id: int}  $ids
      */
-    private function translate(QueryException|DeadlockException $e, Actor $actor): Throwable
+    private function translate(QueryException|DeadlockException $e, Actor $actor, array $ids): Throwable
     {
         if ($e instanceof UniqueConstraintViolationException) {
             $index = $this->violatedIndex($e);
@@ -302,7 +308,7 @@ final class BookingService
 
             if ($index === self::INDEX_BOOKING_CODE || $index === self::INDEX_QUEUE_NUMBER) {
                 // Tabrakan berulang tidak seharusnya terjadi: catat dan minta pengguna mencoba lagi.
-                report($e);
+                SanitizedBookingFault::capture('SYSTEM_BUSY (tabrakan kode/antrean)', $e, $ids);
 
                 return BookingException::make(BookingException::SYSTEM_BUSY, previous: $e);
             }
@@ -311,11 +317,14 @@ final class BookingService
         }
 
         if ($e instanceof QueryException && $this->isQuotaCheckViolation($e)) {
+            // Hanya terpicu bila pencacah booked_count menyimpang dari kenyataan: catat agar kerusakan data terlihat.
+            SanitizedBookingFault::capture('QUOTA_DRIFT (chk_sessions_quota)', $e, $ids);
+
             return BookingException::make(BookingException::QUOTA_FULL, previous: $e);
         }
 
         if ($this->isConcurrencyFailure($e)) {
-            report($e);
+            SanitizedBookingFault::capture('SYSTEM_BUSY (deadlock/lock wait)', $e, $ids);
 
             return BookingException::make(BookingException::SYSTEM_BUSY, previous: $e);
         }
