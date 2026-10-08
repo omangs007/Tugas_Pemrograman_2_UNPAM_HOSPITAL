@@ -76,7 +76,7 @@ Fitur "inti" artinya **dibangun dan harus berfungsi tanpa integrasi eksternal** 
 | F-PAS-07 | **Riwayat dan detail pendaftaran**: kode booking, nomor antrean (`ANK-007`), jadwal, status, riwayat perubahan status | §5B-30, §8 | 30 | `appointments`, `appointment_status_histories` | Pasien (data sendiri) |
 | F-PAS-08 | **Pembatalan pendaftaran** sampai `booking.cancel_cutoff_minutes` (120 menit) sebelum sesi; setelah batas, pasien diarahkan menghubungi RS (telepon/tautan `wa.me`) | §8, §9 | 30 | `appointments`, `practice_sessions` | Pasien pemilik |
 | F-PAS-09 | **Bukti pendaftaran**: halaman cetak (CSS print) dan PDF, berisi kode booking + QR (hanya kode), nomor pasien, poliklinik, dokter, jadwal, antrean, pembayaran (4 digit terakhir), status, instruksi check-in | §8, §9 | 30 | `appointments`, `patient_profiles`, `website_settings` | Pasien pemilik; staf `appointments.view` |
-| F-PAS-10 | **Notifikasi pasien**: kanal `database` untuk setiap transisi status dan perubahan jadwal, kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (default K-13); tandai dibaca | §9 | 27, 30 | `notifications` | Pasien (data sendiri) |
+| F-PAS-10 | **Notifikasi pasien**: kanal `database` untuk setiap transisi status dan perubahan jadwal, kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (K-13 (b), diputuskan pemilik 2026-10-08); tandai dibaca | §9 | 27, 30 | `notifications` | Pasien (data sendiri) |
 
 ### 2.4 Admin (`F-ADM`)
 
@@ -134,7 +134,7 @@ Fitur "inti" artinya **dibangun dan harus berfungsi tanpa integrasi eksternal** 
 | F-SYS-16 | **Kondisi antarmuka wajib**: loading, data kosong, berhasil, gagal pada setiap layar data; status = teks + ikon + warna | §4, §16 | semua | — | — |
 | F-SYS-17 | **Offline-first**: semua aset (CSS, JS, font, ikon, Chart.js, Quill) dibundel lokal; placeholder lokal; peta opsional dengan fallback alamat teks | §2, §13, §16 | semua | — | — |
 | F-SYS-18 | **Lokalisasi**: bahasa antarmuka Indonesia, `lang/id/*`, zona waktu `Asia/Jakarta`, format tanggal/uang Indonesia | §2 | semua | — | — |
-| F-SYS-19 | **Notifikasi dan mail lokal**: `AppointmentStatusChangedNotification` dan `AppointmentScheduleChangedNotification`; kanal `database` untuk setiap transisi, kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (00 F.8; default K-13); mail ke log atau Mailpit | §9, §12 | 27, 30 | `notifications` | — |
+| F-SYS-19 | **Notifikasi dan mail lokal**: `AppointmentStatusChangedNotification` dan `AppointmentScheduleChangedNotification`; kanal `database` untuk setiap transisi, kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (00 F.8; K-13 (b), diputuskan pemilik 2026-10-08); mail ke log atau Mailpit | §9, §12 | 27, 30 | `notifications` | — |
 | F-SYS-20 | **Pengujian otomatis** pada MariaDB: akses per peran, kuota konkurensi, aturan booking, constraint, validasi unggahan | §16 | — | — | — |
 | F-SYS-21 | **Aturan penghapusan dan penonaktifan data** (00 C): data yang dirujuk riwayat booking tidak dihapus permanen (FK `RESTRICT`); tombol hapus diganti "Nonaktifkan" bila dirujuk; `doctors`, `users`, `patient_profiles`, `appointments`, `appointment_status_histories`, `pages`, `contact_messages`, `website_settings`, dan `audit_logs` tidak punya aksi hapus | §11, §12 | 33–40 | semua tabel | Mengikuti izin entitas (lihat [04](04-peran-hak-akses.md) bagian 5) |
 
@@ -185,7 +185,7 @@ Fitur "inti" artinya **dibangun dan harus berfungsi tanpa integrasi eksternal** 
 | Teks UI yang diperbolehkan | "Hubungi kami via WhatsApp" | — (tidak ditampilkan) |
 | Teks UI yang **dilarang** | "Kami akan mengirim pengingat via WhatsApp", "Notifikasi WhatsApp otomatis", "Terhubung WhatsApp" | — |
 
-Notifikasi status/jadwal pada prototipe hanya melalui kanal `database` (setiap transisi; tampil di dashboard pasien) dan `mail` (hanya `confirmed`, `cancelled`, dan perubahan jadwal; default K-13; lokal masuk log). Antarmuka tidak boleh mengatakan pasien akan menerima pesan WhatsApp.
+Notifikasi status/jadwal pada prototipe hanya melalui kanal `database` (setiap transisi; tampil di dashboard pasien) dan `mail` (hanya `confirmed`, `cancelled`, dan perubahan jadwal; K-13 (b), diputuskan pemilik 2026-10-08; lokal masuk log). Antarmuka tidak boleh mengatakan pasien akan menerima pesan WhatsApp.
 
 ### 4.3 Ringkasan fitur lanjutan
 

@@ -513,6 +513,8 @@ Seluruh varian diakhiri dengan pemeriksaan invarian I1, I2, I4, I8 ([13 §11](13
 | `KON-04` | Pembatalan bersamaan dengan booking | 1 batal + 5 pesan | K = 1, sudah terisi 1 | Setelah semua selesai: appointment non-batal ≤ K; `booked_count` = jumlah non-batal (I1); antrean unik dan tidak dipakai ulang; berhasil memesan ≤ 1 |
 | `KON-05` | Dua petugas mentransisi appointment sama | 2 | `confirmed` → `checked_in` vs `confirmed` → `cancelled` | Tepat satu menang, yang lain ditolak (transisi tidak sah setelah penguncian); `booked_count` konsisten; riwayat tidak ganda (fase 6: dua transisi staf lewat `AppointmentStatusService::transition()`; layar petugas = fase 7) |
 
+Catatan implementasi fase 6: N dan K pada tes nyata dikecilkan dari tabel di atas karena boot tiap proses PHP di Windows memakan waktu (D-165). Angka nyata (spesifikasi dalam kurung): `KON-02a` N=8, K=3 (20, 5); `KON-02b` N=6, K=1 (10, 1); `KON-03` N=6, K=10 (8, 10); `KON-04` 2 pembatalan + 5 pemesan, K=2 (1 + 5, K=1); `KON-02c` tetap N=50, K=10. Invarian yang diverifikasi tidak berubah.
+
 Alur `KON-02a` (juga dipakai KON-02b/02c/03 dengan parameter berbeda):
 
 ```php

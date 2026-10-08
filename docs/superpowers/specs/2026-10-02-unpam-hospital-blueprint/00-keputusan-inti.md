@@ -330,7 +330,7 @@ DB::transaction(function () use ($patientId, $sessionId, $data, $actor) {
 | `pending`/`confirmed` → `no_show` | Petugas (aksi massal per sesi) atau `php artisan appointments:mark-no-show` | Setelah `end_time` sesi lewat. Perintah tanpa `--date` memproses **semua** sesi yang waktu selesainya sudah lewat hingga saat ini; dengan `--date=YYYY-MM-DD` hanya tanggal itu. |
 
 - `completed`, `cancelled`, `no_show` = **final**.
-- Setiap transisi: isi kolom waktu terkait, tulis `appointment_status_histories`, tulis `audit_logs` (aksi staf/sistem), kirim notifikasi ke pasien berakun: kanal `database` untuk **setiap** transisi; kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (`schedule_changed_at`) — default K-13 di bagian 17 (mail lokal masuk log). Pasien walk-in tanpa akun dihubungi petugas lewat telepon yang tercatat.
+- Setiap transisi: isi kolom waktu terkait, tulis `appointment_status_histories`, tulis `audit_logs` (aksi staf/sistem), kirim notifikasi ke pasien berakun: kanal `database` untuk **setiap** transisi; kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (`schedule_changed_at`) — K-13 (b), diputuskan pemilik 2026-10-08, di bagian 17 (mail lokal masuk log). Pasien walk-in tanpa akun dihubungi petugas lewat telepon yang tercatat.
 
 ### F.9 Walk-in dan penghubungan akun
 - Walk-in: petugas mencari profil (nama/no. pasien/telepon/tanggal lahir) atau membuat profil baru (persetujuan privasi lisan dicentang petugas) → memilih sesi via `DoctorAvailabilityQuery` → `BookingService::book()` dengan kanal `loket`, status awal `confirmed`.

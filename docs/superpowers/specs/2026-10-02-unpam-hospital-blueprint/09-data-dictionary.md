@@ -263,7 +263,7 @@ Total **37 tabel** wajib (00 bagian E) + `migrations` (tabel internal Laravel, d
 
 ### 2.10 `notifications` (bawaan Laravel)
 
-**Tujuan.** Notifikasi dalam aplikasi (kanal `database`) untuk pasien berakun: `AppointmentStatusChangedNotification`, `AppointmentScheduleChangedNotification`. Kanal `database` mencatat **setiap** transisi status; kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (00 F.8; default K-13 di 17), sehingga tabel ini tetap memuat semua transisi. Banner "belum dibaca" tampil di dashboard pasien.
+**Tujuan.** Notifikasi dalam aplikasi (kanal `database`) untuk pasien berakun: `AppointmentStatusChangedNotification`, `AppointmentScheduleChangedNotification`. Kanal `database` mencatat **setiap** transisi status; kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (00 F.8; K-13 (b), diputuskan pemilik 2026-10-08, di 17), sehingga tabel ini tetap memuat semua transisi. Banner "belum dibaca" tampil di dashboard pasien.
 
 | Kolom | Tipe MariaDB | Null | Default | Keterangan |
 |---|---|---|---|---|

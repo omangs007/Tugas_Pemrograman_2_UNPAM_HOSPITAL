@@ -334,6 +334,7 @@ Masuk sebagai `pasien@unpamhospital.test` (password `Demo12345`, lihat "Akun pas
 - Notifikasi perubahan jadwal baru dapat dipicu setelah layar Sesi Terdampak (fase 7); kelas dan tampilannya sudah ada dan diuji langsung.
 - Pembatalan oleh petugas, check-in, penyelesaian, dan penandaan tidak hadir sudah diatur oleh `AppointmentStatusService` tetapi belum punya layar (fase 7).
 - Pemutusan pendaftaran ganda mengandalkan kunci database (`active_flag` UNIQUE) dan kunci aplikasi per akun (`Cache::lock`); dengan `CACHE_STORE=array` kunci aplikasi hanya berlaku dalam satu proses, sedangkan kunci database tetap berlaku.
+- Prasyarat produksi: ekstensi PHP `ext-gd` harus aktif (QR PNG pada PDF bukti pendaftaran); `composer.json` tidak mendeklarasikannya, jadi periksa `php -m` di server.
 
 ### Aturan keamanan yang berlaku
 

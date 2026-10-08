@@ -362,7 +362,7 @@ flowchart TD
    3. `INSERT appointment_status_histories` (`from_status = NULL`, `to_status`, `actor_type = patient`; bila auto-confirm, `reason` = "Konfirmasi otomatis");
    4. `audit_logs`: `appointment.created`;
    5. bila `save_bpjs` dicentang dan pembayaran BPJS: `patient_profiles.bpjs_number` (terenkripsi) + `bpjs_number_last4` diperbarui;
-   6. setelah commit (`DB::afterCommit`): notifikasi ke pasien kanal `database`; kanal `mail` hanya bila status awal `confirmed` (auto-confirm), sesuai 00 F.8 dan default K-13. Kegagalan kirim notifikasi **tidak** menggagalkan pendaftaran (ditangkap dan dicatat ke log).
+   6. setelah commit (`DB::afterCommit`): notifikasi ke pasien kanal `database`; kanal `mail` hanya bila status awal `confirmed` (auto-confirm), sesuai 00 F.8 dan K-13 (b), diputuskan pemilik 2026-10-08. Kegagalan kirim notifikasi **tidak** menggagalkan pendaftaran (ditangkap dan dicatat ke log).
 7. **Terbitkan bukti** — redirect ke `patient.appointments.show` dengan flash "Pendaftaran berhasil. Simpan kode booking Anda: UPH-XXXX-XXXX." Halaman memuat kode booking, QR (SVG; hanya berisi kode booking), nomor antrean `ANK-007`, jadwal, status, dan tombol "Cetak bukti" (`patient.appointments.proof`, CSS print) serta "Unduh PDF" (`patient.appointments.proof-pdf`, dompdf). Akses bukti dibatasi `AppointmentPolicy::view` (pemilik atau staf `appointments.view`).
 
 ### 3.E Cabang galat tahap wizard (di luar `BookingException`)
@@ -696,7 +696,7 @@ Seluruh transisi lewat `AppointmentStatusService::transition(Appointment, Appoin
 
 Catatan penerapan:
 
-- Setiap transisi sukses mengisi kolom waktu terkait, menulis `appointment_status_histories` (`from_status`, `to_status`, `actor_type`, `actor_user_id`, `reason`), menulis `audit_logs` (`appointment.status_changed`) untuk aksi staf/sistem (aksi pasien juga dicatat), dan mengirim notifikasi ke pasien berakun: kanal `database` untuk **setiap** transisi, kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (`schedule_changed_at`); default K-13 di 17, mail lokal masuk log. Pasien walk-in tanpa akun dihubungi petugas lewat telepon yang tercatat di profil.
+- Setiap transisi sukses mengisi kolom waktu terkait, menulis `appointment_status_histories` (`from_status`, `to_status`, `actor_type`, `actor_user_id`, `reason`), menulis `audit_logs` (`appointment.status_changed`) untuk aksi staf/sistem (aksi pasien juga dicatat), dan mengirim notifikasi ke pasien berakun: kanal `database` untuk **setiap** transisi, kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (`schedule_changed_at`); K-13 (b), diputuskan pemilik 2026-10-08, di 17, mail lokal masuk log. Pasien walk-in tanpa akun dihubungi petugas lewat telepon yang tercatat di profil.
 - Pada T9, "Sistem" disediakan secara teknis (`ActorType::system`) tetapi **tidak ada pemicu otomatis pembatalan** di prototipe; pembatalan akibat resolusi sesi (`cancel`) dicatat sebagai `staff` sesuai 00 F.4.
 - Transisi di luar tabel (mis. `checked_in → cancelled`, `pending → completed`, apa pun dari status final) ditolak dengan `INVALID_TRANSITION`/`ALREADY_FINAL`. Untuk membatalkan pendaftaran yang sudah check-in, petugas terlebih dahulu mengoreksinya ke `confirmed` (T7) lalu membatalkannya (T9).
 - Pencegahan transisi ganda: UI menyertakan `expected_status` (status saat halaman dimuat); bila berbeda dengan status di bawah kunci → `STALE_STATUS` **[ASUMSI]**.
@@ -1458,7 +1458,7 @@ stateDiagram-v2
 
 ## 18. Indeks Notifikasi dan Pemicunya
 
-Notifikasi hanya dikirim kepada **pasien berakun**. Kanal `database` dipakai untuk **setiap** transisi status dan perubahan jadwal; kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (`schedule_changed_at`) sesuai 00 F.8 dan default K-13 di 17 (mail lokal masuk `storage/logs/laravel-YYYY-MM-DD.log` atau Mailpit). Isi notifikasi tidak memuat nomor BPJS/polis, keluhan, alamat, atau telepon. Pengiriman dijalankan setelah commit (`DB::afterCommit`); kegagalan kirim ditangkap dan dicatat ke log tanpa membatalkan transaksi. Banner notifikasi belum dibaca tampil di `patient.dashboard`; tombol "Tandai dibaca" memakai `patient.notifications.read`.
+Notifikasi hanya dikirim kepada **pasien berakun**. Kanal `database` dipakai untuk **setiap** transisi status dan perubahan jadwal; kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal (`schedule_changed_at`) sesuai 00 F.8 dan K-13 (b), diputuskan pemilik 2026-10-08, di 17 (mail lokal masuk `storage/logs/laravel-YYYY-MM-DD.log` atau Mailpit). Isi notifikasi tidak memuat nomor BPJS/polis, keluhan, alamat, atau telepon. Pengiriman dijalankan setelah commit (`DB::afterCommit`); kegagalan kirim ditangkap dan dicatat ke log tanpa membatalkan transaksi. Banner notifikasi belum dibaca tampil di `patient.dashboard`; tombol "Tandai dibaca" memakai `patient.notifications.read`.
 
 | Peristiwa | Penerima | Kelas notifikasi | Kanal | Alur |
 |---|---|---|---|:-:|
@@ -1569,7 +1569,7 @@ Memenuhi F-ADM-25 (halaman 40, tab Pengaturan Website; izin `settings.manage`, h
 21. **[ASUMSI]** Ekspor CSV: rentang maksimal 366 hari, sel dinetralkan dari injeksi rumus, audit ditulis sebelum streaming dimulai.
 22. **[ASUMSI]** Penghubungan akun: petugas meminta pasien menunjukkan akun di ponsel; profil berhasil dihubungkan mempertahankan data profil walk-in; tidak ada fitur *unlink*.
 23. Kolom jebakan (*honeypot*) `website` pada form kontak → diputuskan di 17 D-128; pesan `new` otomatis menjadi `read` saat dibuka → diputuskan di 17 D-137. **[ASUMSI]** `messages.manage` juga dimiliki Petugas Pendaftaran (00 G).
-24. Volume email ke pasien → diputuskan di 00 F.8 / 17 K-13 (default): kanal `database` untuk setiap transisi, kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal; K-13 dapat dibalik ke email untuk setiap transisi tanpa mengubah desain.
+24. Volume email ke pasien → diputuskan pemilik 2026-10-08 (17 K-13 (b), D-159; 00 F.8): kanal `database` untuk setiap transisi, kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal; bila pemilik membalik keputusan ini, email untuk setiap transisi dapat diaktifkan tanpa mengubah desain.
 25. Verifikasi saat menghubungkan profil walk-in ke akun: default verifikasi identitas di loket, kode verifikasi ke email akun disarankan untuk produksi → rujuk 17 K-14. Persetujuan ulang kebijakan privasi saat `privacy.consent_version` naik → rujuk 17 K-06 (A-19 di 01).
 26. Pelacakan "sudah dihubungi" bagi pasien walk-in yang jadwalnya berubah → rujuk 17 K-15 (default: tidak ada; cukup daftar + telepon pada layar Sesi terdampak).
 27. **[ASUMSI]** Profil pasien: perubahan email meminta password saat ini; ganti password pasien menghapus baris `sessions` lain milik akun (Alur 19).

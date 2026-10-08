@@ -717,7 +717,7 @@ Nama kunci mengikuti `barryvdh/laravel-dompdf` ^3 (setara opsi Dompdf `isRemoteE
 14. **[ASUMSI]** `errors/layout.blade.php` tidak membaca database sehingga halaman 500/503 tetap tampil saat DB bermasalah.
 15. **[ASUMSI]** Peran `RolePolicy` didaftarkan manual (`Gate::policy`) karena `Role` bukan di `App\Models`.
 16. **[ASUMSI]** Path instalasi XAMPP pada mesin pengembang ini adalah `C:\xampp3` (PHP: `C:\xampp3\php\php.exe`; MariaDB: `C:\xampp3\mysql\bin`); `scripts/backup.ps1` dan `restore.ps1` menerima path XAMPP sebagai parameter (default `C:\xampp3`) agar di mesin lain dapat diganti `C:\xampp`.
-17. Font identitas di PDF bukti pendaftaran (lihat §7.5) = keputusan K-17 di 17; default (a): DejaVu Sans bawaan dompdf (opsi (b): memasang TTF Plus Jakarta Sans hanya mengubah konfigurasi dompdf dan berkas font lokal).
+17. Font identitas di PDF bukti pendaftaran (lihat §7.5) = keputusan K-17 di 17: (a) DejaVu Sans bawaan dompdf, diputuskan pemilik 2026-10-08 (D-163); opsi (b): memasang TTF Plus Jakarta Sans hanya mengubah konfigurasi dompdf dan berkas font lokal).
 18. Notifikasi pasien mengikuti 00 F.8/K-13: kanal `database` untuk setiap transisi, kanal `mail` hanya untuk `confirmed`, `cancelled`, dan perubahan jadwal; `PatientWelcomeNotification` (mail saja) mengikuti K-22 default (a).
 
 ## Nama baru yang diusulkan
