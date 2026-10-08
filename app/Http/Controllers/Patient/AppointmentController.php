@@ -4,21 +4,31 @@ namespace App\Http\Controllers\Patient;
 
 use App\Enums\Availability;
 use App\Enums\ClinicType;
+use App\Enums\PaymentType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Patient\BookingWizardQueryRequest;
+use App\Http\Requests\Patient\ReviewAppointmentRequest;
+use App\Http\Requests\Patient\StoreAppointmentRequest;
 use App\Models\Appointment;
 use App\Models\Clinic;
 use App\Models\Doctor;
 use App\Models\InsurancePartner;
 use App\Models\PatientProfile;
 use App\Models\PracticeSession;
+use App\Services\Booking\AppointmentProofService;
+use App\Services\Booking\BookingData;
+use App\Services\Booking\BookingService;
 use App\Services\Scheduling\AvailabilityFilter;
 use App\Services\Scheduling\DoctorAvailabilityQuery;
 use App\Services\Scheduling\PracticeSessionGenerator;
 use App\Services\Scheduling\SessionAvailability;
 use App\Services\Settings\SettingsService;
+use App\Support\Actor;
+use App\Support\SensitiveInput;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
 
 /**
@@ -30,6 +40,9 @@ class AppointmentController extends Controller
 {
     /** Sesi yang dibatalkan alasan operasional tidak layak menjadi "praktik terdekat". */
     private const CANCELLATIONS = [Availability::Leave, Availability::Holiday, Availability::Cancelled];
+
+    /** Samaran nomor (sama dengan `PatientProfile::BPJS_MASK`/`Appointment::masked_payment_reference`). */
+    private const MASK = '•••••••••';
 
     public function create(
         BookingWizardQueryRequest $request,
@@ -61,6 +74,103 @@ class AppointmentController extends Controller
             'windowDays' => max(1, $rules->windowDays),
             'cutoffMinutes' => $rules->onlineCutoffMinutes,
         ]);
+    }
+
+    /**
+     * Langkah 5 (F6-R17): halaman tinjau hasil POST. Tidak menyimpan apa pun dan tidak memberi nomor antrean. Validasi
+     * V-10 dan `BookingService::precheck()` sudah dijalankan Form Request (kegagalan dialihkan ke `create?sesi=`).
+     */
+    public function review(ReviewAppointmentRequest $request, DoctorAvailabilityQuery $availability, SettingsService $settings): View
+    {
+        $profile = $request->user()->loadMissing('patientProfile')->patientProfile;
+        $session = PracticeSession::query()
+            ->with(['clinic', 'doctor', 'exception'])
+            ->findOrFail((int) $request->validated('practice_session_id'));
+        $data = $request->toBookingData();
+        $last4 = $data->paymentReferenceLast4();
+
+        return view('patient.appointments.review', [
+            'session' => $session,
+            'item' => $availability->forSession($session),
+            'clinic' => $session->clinic,
+            'doctor' => $session->doctor,
+            'profile' => $profile,
+            'data' => $data,
+            'partner' => $data->insurancePartnerId === null ? null : InsurancePartner::query()->find($data->insurancePartnerId),
+            'maskedReference' => $last4 === null ? null : self::MASK.$last4,
+            'hidden' => $this->hiddenFields($session, $data, $request->bpjsTyped()),
+            'cancelMinutes' => $settings->bookingRules()->cancelCutoffMinutes,
+            'links' => $this->stepLinks($session->clinic, $session->doctor, $session->session_date->toDateString(), $session->id),
+        ]);
+    }
+
+    /**
+     * Simpan (F6-R9, F6-R20): kunci kirim-ganda per pasien di controller (bukan service), lalu `BookingService::book()`.
+     * Kegagalan `BookingException` ditangani handler global (redirect per kode, F6-R10).
+     */
+    public function store(StoreAppointmentRequest $request, BookingService $booking): RedirectResponse
+    {
+        $user = $request->user();
+        $profile = $user->loadMissing('patientProfile')->patientProfile;
+        $sessionId = (int) $request->validated('practice_session_id');
+
+        $lock = Cache::lock('booking-submit:'.$user->getKey(), 10);
+
+        if (! $lock->get()) {
+            return redirect()->route('patient.appointments.create', ['sesi' => $sessionId])
+                ->withInput($request->except(SensitiveInput::FIELDS))
+                ->with('error', __('booking.submit_in_progress'));
+        }
+
+        try {
+            $appointment = $booking->book($profile, $sessionId, $request->toBookingData(), Actor::patient($user));
+        } finally {
+            $lock->release();
+        }
+
+        return redirect()->route('patient.appointments.show', ['appointment' => $appointment->booking_code])
+            ->with('success', 'Pendaftaran berhasil. Simpan kode booking Anda: '.$appointment->booking_code.'.');
+    }
+
+    /** Detail pendaftaran (F6-R24): hanya pemilik (kode pasien lain = 404 lewat AppointmentPolicy::view). */
+    public function show(Appointment $appointment, AppointmentProofService $proof, SettingsService $settings): View
+    {
+        $this->authorize('view', $appointment);
+
+        $appointment->load(['patientProfile', 'clinic', 'doctor', 'practiceSession', 'insurancePartner', 'statusHistories']);
+
+        return view('patient.appointments.show', [
+            'appointment' => $appointment,
+            'qrDataUri' => $proof->qrSvgDataUri($appointment),
+            'checkinMinutes' => $settings->bookingRules()->checkinOpenMinutes,
+        ]);
+    }
+
+    /**
+     * Field tersembunyi form `store` pada halaman tinjau. Nomor BPJS dan polis lengkap hanya ada di sini bila diketik
+     * pasien sendiri (F6-R21); nomor dari profil tidak pernah dirender (server mengisinya ulang di `store`).
+     *
+     * @return array<string, string>
+     */
+    private function hiddenFields(PracticeSession $session, BookingData $data, bool $bpjsTyped): array
+    {
+        $fields = [
+            'practice_session_id' => (string) $session->id,
+            'payment_type' => $data->paymentType->value,
+            'complaint' => $data->complaint,
+        ];
+
+        if ($data->paymentType === PaymentType::Asuransi) {
+            $fields['insurance_partner_id'] = $data->insurancePartnerId === null ? null : (string) $data->insurancePartnerId;
+            $fields['policy_number'] = $data->paymentReference;
+        }
+
+        if ($data->paymentType === PaymentType::Bpjs && $bpjsTyped) {
+            $fields['bpjs_number'] = $data->paymentReference;
+            $fields['save_bpjs'] = $data->saveBpjs ? '1' : null;
+        }
+
+        return array_filter($fields, fn (?string $value): bool => $value !== null && $value !== '');
     }
 
     // [[METODE-PUBLIK-BERIKUT]] (T8 sampai T10 menambah method publik di atas baris ini: review, store, show, index, cancel, proof, proofPdf)

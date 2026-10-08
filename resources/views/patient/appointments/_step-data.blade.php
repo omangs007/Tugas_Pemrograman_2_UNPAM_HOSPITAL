@@ -1,5 +1,5 @@
 @php
-    $reviewUrl = Route::has('patient.appointments.review') ? route('patient.appointments.review') : '';
+    $reviewUrl = route('patient.appointments.review');
     $bpjsHelp = 'Isi hanya bila memilih BPJS Kesehatan (13 digit angka).'.($storedBpjs ? ' Kosongkan untuk memakai nomor BPJS tersimpan ('.$storedBpjs.').' : '');
 @endphp
 <h1 class="h3 mb-3" id="judul-langkah" tabindex="-1" data-wizard-heading>Langkah 4 - Data pendaftaran</h1>
