@@ -303,6 +303,15 @@ class AppointmentProofTest extends TestCase
         $this->proofPage()->assertOk()->assertDontSee('Bukti ini tidak berlaku untuk check-in.');
     }
 
+    /** FX10: petunjuk "Tunjukkan kode ini di loket" tidak tampil pada pendaftaran yang sudah dibatalkan. */
+    public function test_the_loket_instruction_is_hidden_for_a_cancelled_appointment_on_the_proof_page(): void
+    {
+        $cancelled = $this->bookFor($this->owner, '2026-10-14', AppointmentStatus::Cancelled);
+
+        $this->proofPage(null, $cancelled)->assertOk()->assertDontSee('Tunjukkan kode ini di loket pendaftaran.');
+        $this->proofPage()->assertOk()->assertSee('Tunjukkan kode ini di loket pendaftaran.');
+    }
+
     public function test_the_patient_name_is_escaped_on_the_proof_page(): void
     {
         $evil = $this->createPatient(['email' => 'jahat@contoh.test'], ['full_name' => '<script>alert(1)</script>']);
@@ -448,6 +457,14 @@ class AppointmentProofTest extends TestCase
 
         $this->assertStringContainsString('Pendaftaran ini telah dibatalkan. Bukti ini tidak berlaku untuk check-in.', $this->capturedPdfHtml(null, $appointment));
         $this->assertStringNotContainsString('Bukti ini tidak berlaku untuk check-in.', $this->capturedPdfHtml());
+    }
+
+    public function test_the_pdf_html_hides_the_loket_instruction_for_a_cancelled_appointment(): void
+    {
+        $cancelled = $this->bookFor($this->owner, '2026-10-14', AppointmentStatus::Cancelled);
+
+        $this->assertStringNotContainsString('Tunjukkan kode ini di loket pendaftaran.', $this->capturedPdfHtml(null, $cancelled));
+        $this->assertStringContainsString('Tunjukkan kode ini di loket pendaftaran.', $this->capturedPdfHtml());
     }
 
     /**

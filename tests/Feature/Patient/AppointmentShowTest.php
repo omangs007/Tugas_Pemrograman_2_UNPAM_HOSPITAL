@@ -135,6 +135,23 @@ class AppointmentShowTest extends TestCase
         $this->assertStringContainsString('alt="Kode QR booking '.$appointment->booking_code.'"', $html);
     }
 
+    /** FX10: catatan check-in hanya untuk status aktif (`AppointmentStatus::isActive()`); status final tidak memuatnya. */
+    public function test_the_check_in_note_shows_only_for_an_active_appointment(): void
+    {
+        $note = 'Tunjukkan kode ini di loket. Check-in dibuka 60 menit sebelum sesi dimulai.';
+        $user = $this->patient();
+        $appointment = $this->book($user);
+
+        $this->assertSame(AppointmentStatus::Pending, $appointment->status);
+        $this->assertStringContainsString($note, $this->open($appointment));
+
+        foreach ([AppointmentStatus::Cancelled, AppointmentStatus::Completed, AppointmentStatus::NoShow] as $final) {
+            DB::table('appointments')->where('id', $appointment->id)->update(['status' => $final->value]);
+
+            $this->assertStringNotContainsString($note, $this->open($appointment->fresh()), $final->value);
+        }
+    }
+
     public function test_the_status_history_is_an_ordered_list_of_time_elements_in_chronological_order(): void
     {
         $appointment = $this->book($this->patient());

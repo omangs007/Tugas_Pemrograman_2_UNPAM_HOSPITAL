@@ -566,6 +566,45 @@ class BookingWizardTest extends TestCase
         $this->assertStringNotContainsString('Sesi yang dipilih tidak dapat dipesan', $html);
     }
 
+    /**
+     * @return array<string, array{array<string, mixed>, array<string, mixed>}>
+     */
+    public static function hiddenOwners(): array
+    {
+        return [
+            'dokter nonaktif' => [['status' => DoctorStatus::Inactive->value], []],
+            'dokter diarsipkan' => [['status' => DoctorStatus::Archived->value], []],
+            'poliklinik nonaktif' => [[], ['is_active' => false]],
+        ];
+    }
+
+    /**
+     * FX2: nama dokter atau poliklinik yang tidak tampil publik (F3-R17) tidak boleh bocor lewat `?sesi=`.
+     *
+     * @param  array<string, mixed>  $doctorState
+     * @param  array<string, mixed>  $clinicState
+     */
+    #[DataProvider('hiddenOwners')]
+    public function test_a_direct_session_of_a_hidden_doctor_or_clinic_is_treated_as_unusable(array $doctorState, array $clinicState): void
+    {
+        $clinic = $this->createClinic(['name' => 'Poliklinik Rahasia Uji'] + $clinicState);
+        $doctor = $this->createDoctor(['name' => 'Laras Wulandari'] + $doctorState, $clinic);
+        $session = $this->sessionOf($doctor, '2026-10-06');
+
+        $response = $this->actingAs($this->patient())->get($this->wizard(['sesi' => $session->id]));
+
+        $response->assertRedirect($this->wizard())->assertSessionHas('warning', self::INVALID);
+        $this->assertStringNotContainsString('Laras Wulandari', (string) $response->getContent());
+        $this->assertStringNotContainsString('Poliklinik Rahasia Uji', (string) $response->getContent());
+
+        $followed = $this->actingAs($this->patient())->get($this->wizard())->assertOk()->getContent();
+        $this->assertStringNotContainsString('Laras Wulandari', $followed);
+
+        if ($clinicState !== []) {
+            $this->assertStringNotContainsString('Poliklinik Rahasia Uji', $followed);
+        }
+    }
+
     /** Tautan "Daftar" pada jadwal publik (`?sesi=ID`) dan tombol poliklinik (`?poli=slug`) mendarat di langkah yang benar. */
     public function test_the_public_register_links_land_on_the_right_wizard_step(): void
     {

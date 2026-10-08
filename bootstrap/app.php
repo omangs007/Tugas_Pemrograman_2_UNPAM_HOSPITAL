@@ -20,6 +20,7 @@ use Spatie\Permission\Middleware\PermissionMiddleware;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -102,6 +103,17 @@ return Application::configure(basePath: dirname(__DIR__))
             return redirect()->to(BookingRedirect::after($e, $request))
                 ->withInput($request->except(SensitiveInput::FIELDS))
                 ->with('error', $e->getMessage());
+        });
+
+        // Halaman tinjau pendaftaran (langkah 5) adalah hasil POST. GET/HEAD langsung ke URL itu (bookmark, Maju/Mundur,
+        // muat ulang tanpa kirim ulang) dialihkan ke awal wizard, bukan 405 (BR-179); `auth` pada tujuan menangani tamu.
+        // Hanya path itu: metode lain dan path POST-only lain tetap 405.
+        $exceptions->render(function (MethodNotAllowedHttpException $e, Request $request) {
+            if (in_array($request->method(), ['GET', 'HEAD'], true) && ! $request->expectsJson() && $request->is('pasien/pendaftaran/tinjau')) {
+                return redirect()->route('patient.appointments.create');
+            }
+
+            return null;
         });
 
         // 403 / 419 / 429 berbahasa Indonesia (11 §11.3 + F1-R6). AuthorizationException sudah menjadi 403 dan

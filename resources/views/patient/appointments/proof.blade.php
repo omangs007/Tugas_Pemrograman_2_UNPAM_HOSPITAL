@@ -72,7 +72,9 @@
             <dd class="col-sm-8">{{ $appointment->channel->label() }}</dd>
         </dl>
 
-        <p class="mb-2">Tunjukkan kode ini di loket pendaftaran. Check-in dibuka {{ $checkinMinutes }} menit sebelum sesi dimulai dan ditutup saat sesi berakhir.</p>
+        @if ($appointment->status->isActive())
+            <p class="mb-2">Tunjukkan kode ini di loket pendaftaran. Check-in dibuka {{ $checkinMinutes }} menit sebelum sesi dimulai dan ditutup saat sesi berakhir.</p>
+        @endif
         <p class="small text-body-secondary mb-0">Dicetak pada {{ $printedAt->translatedFormat('j M Y H.i') }} WIB. Dokumen dari sistem prototipe (data contoh).</p>
     </article>
 </x-layouts.patient>

@@ -273,7 +273,8 @@ class Phase6RoutePermissionTest extends TestCase
             }
         }
 
-        $this->get('/pasien/pendaftaran/tinjau')->assertStatus(405);
+        // Halaman tinjau dibuka lewat GET dialihkan ke wizard (FX9; BookingReviewDirectOpenTest); route tetap POST-only.
+        $this->get('/pasien/pendaftaran/tinjau')->assertRedirect(route('patient.appointments.create'));
         $this->get('/pasien/notifikasi/'.self::SAMPLE_UUID.'/baca')->assertStatus(405);
     }
 

@@ -56,7 +56,9 @@
                 @endif
             </dl>
 
-            <p class="text-body-secondary">Tunjukkan kode ini di loket. Check-in dibuka {{ $checkinMinutes }} menit sebelum sesi dimulai.</p>
+            @if ($appointment->status->isActive())
+                <p class="text-body-secondary">Tunjukkan kode ini di loket. Check-in dibuka {{ $checkinMinutes }} menit sebelum sesi dimulai.</p>
+            @endif
 
             <h2 class="h5 mt-4" id="judul-riwayat">Riwayat Status</h2>
             <ol class="list-unstyled" aria-labelledby="judul-riwayat">

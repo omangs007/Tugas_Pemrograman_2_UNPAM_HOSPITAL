@@ -54,7 +54,7 @@ class AppointmentController extends Controller
         PracticeSessionGenerator $generator,
         DoctorAvailabilityQuery $availability,
         SettingsService $settings,
-    ): View {
+    ): View|RedirectResponse {
         $this->authorize('createOnline', Appointment::class);
 
         $generator->ensureDailyHorizon();
@@ -63,8 +63,17 @@ class AppointmentController extends Controller
         $filters = $request->filters();
         $rules = $settings->bookingRules();
 
+        $directSession = $filters['sesi'] === null
+            ? null
+            : PracticeSession::query()->with(['clinic', 'doctor', 'exception'])->findOrFail((int) $filters['sesi']);
+
+        // Sesi milik dokter atau poliklinik yang tidak tampil publik (F3-R17) diperlakukan sebagai sesi yang tidak valid.
+        if ($directSession !== null && ! $this->isPubliclyListed($directSession)) {
+            return redirect()->route('patient.appointments.create')->with('warning', BookingWizardQueryRequest::MESSAGE_INVALID);
+        }
+
         $data = match (true) {
-            $filters['sesi'] !== null => $this->stepFromSession($availability, $profile, (int) $filters['sesi']),
+            $directSession !== null => $this->stepFromSession($availability, $profile, $directSession),
             $filters['poli'] !== null && $filters['dokter'] !== null => $this->stepSessions(
                 $availability,
                 $this->clinicBySlug($filters['poli']),
@@ -352,9 +361,8 @@ class AppointmentController extends Controller
      * `?sesi=` langsung (alur 3.C, F6-R18): sesi yang dapat dipesan online langsung ke langkah 4; selain itu langkah 3
      * untuk dokter itu dengan peringatan berisi label ketersediaan.
      */
-    private function stepFromSession(DoctorAvailabilityQuery $availability, PatientProfile $profile, int $sessionId): array
+    private function stepFromSession(DoctorAvailabilityQuery $availability, PatientProfile $profile, PracticeSession $session): array
     {
-        $session = PracticeSession::query()->with(['clinic', 'doctor', 'exception'])->findOrFail($sessionId);
         $item = $availability->forSession($session);
 
         if (! $item->isBookableOnline) {
@@ -374,6 +382,13 @@ class AppointmentController extends Controller
             'partners' => InsurancePartner::query()->active()->ordered()->get(['id', 'name']),
             'storedBpjs' => $profile->masked_bpjs,
         ];
+    }
+
+    /** Dokter aktif pada poliklinik aktif (`Doctor::publiclyVisible`) dan poliklinik sesi itu sendiri aktif. */
+    private function isPubliclyListed(PracticeSession $session): bool
+    {
+        return (bool) $session->clinic?->is_active
+            && Doctor::query()->publiclyVisible()->whereKey($session->doctor_id)->exists();
     }
 
     private function clinicBySlug(string $slug): Clinic

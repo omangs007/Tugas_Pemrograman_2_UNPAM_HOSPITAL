@@ -77,7 +77,9 @@
         <tr><td class="key">Kanal</td><td>{{ $appointment->channel->label() }}</td></tr>
     </table>
 
-    <div class="instruction">Tunjukkan kode ini di loket pendaftaran. Check-in dibuka {{ $checkinMinutes }} menit sebelum sesi dimulai dan ditutup saat sesi berakhir.</div>
+    @if ($appointment->status->isActive())
+        <div class="instruction">Tunjukkan kode ini di loket pendaftaran. Check-in dibuka {{ $checkinMinutes }} menit sebelum sesi dimulai dan ditutup saat sesi berakhir.</div>
+    @endif
 
     <div class="footer">Dicetak pada {{ $printedAt->translatedFormat('j M Y H.i') }} WIB. Dokumen dari sistem prototipe (data contoh).</div>
 </body>
