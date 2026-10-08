@@ -24,7 +24,8 @@ class DemoSeeder extends Seeder
         config(['mail.default' => 'array']); // surat notifikasi seeding dibuang, bukan ditumpuk di log
 
         // Seeder data master (fase 2 dst.) ditambahkan ke daftar ini mengikuti urutan 13 §2.1.
-        // PatientSeeder dan AppointmentSeeder (fase 6/7) disisipkan antara ContentSeeder dan ContactMessageSeeder.
+        // PatientSeeder (fase 5: 7 akun pasien berakun) berada di antara ContentSeeder dan ContactMessageSeeder;
+        // AppointmentSeeder (fase 6/7) disisipkan tepat sesudah PatientSeeder.
         $this->call([
             DemoUserSeeder::class,
             SpecialtySeeder::class,
@@ -35,17 +36,22 @@ class DemoSeeder extends Seeder
             RoomCategorySeeder::class,
             FacilitySeeder::class,
             ContentSeeder::class,
+            PatientSeeder::class,
             ContactMessageSeeder::class,
         ]);
 
         $password = (string) config('app.demo_password');
 
-        $this->command?->table(
-            ['Nama', 'Email', 'Peran', 'Password'],
-            array_map(
-                fn (array $account): array => [$account['name'], $account['email'], $account['role'], $password],
-                DemoUserSeeder::ACCOUNTS,
-            ),
+        $rows = array_map(
+            fn (array $account): array => [$account['name'], $account['email'], $account['role'], $password],
+            DemoUserSeeder::ACCOUNTS,
         );
+
+        // Satu akun pasien demo pada tabel kredensial; enam akun pasien lain memakai password yang sama (F5-R27).
+        $demoPatient = PatientSeeder::ACCOUNTS[0];
+        $rows[] = [$demoPatient['name'], $demoPatient['email'], 'Pasien', $password];
+
+        $this->command?->table(['Nama', 'Email', 'Peran', 'Password'], $rows);
+        $this->command?->line('Enam akun pasien lain (@contoh.test) memakai password yang sama.');
     }
 }

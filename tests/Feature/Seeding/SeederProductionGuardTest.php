@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Seeding;
 
+use App\Models\PatientProfile;
 use App\Models\User;
 use App\Models\WebsiteSetting;
 use Closure;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Database\Seeders\DemoUserSeeder;
+use Database\Seeders\PatientSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -42,7 +44,7 @@ class SeederProductionGuardTest extends TestCase
         $this->assertSame(15, DB::table('pages')->count(), 'PageSeeder termasuk seeder inti (13 §2.3).');
         $this->assertSame(0, DB::table('specialties')->count() + DB::table('clinics')->count() + DB::table('doctors')->count() + DB::table('media')->count());
 
-        foreach (['article_categories', 'articles', 'banners', 'galleries', 'faqs', 'insurance_partners', 'room_categories', 'facilities', 'contact_messages'] as $table) {
+        foreach (['article_categories', 'articles', 'banners', 'galleries', 'faqs', 'insurance_partners', 'room_categories', 'facilities', 'contact_messages', 'patient_profiles'] as $table) {
             $this->assertSame(0, DB::table($table)->count(), $table);
         }
         $this->assertSame(0, User::query()->count());
@@ -88,8 +90,10 @@ class SeederProductionGuardTest extends TestCase
             ->expectsOutputToContain('MODE DEMO')
             ->assertExitCode(0);
 
-        $this->assertSame(3, User::query()->count());
+        $this->assertSame(10, User::query()->count()); // 3 staf + 7 akun pasien demo (fase 5)
+        $this->assertSame(7, PatientProfile::query()->count());
         $this->assertTrue(User::query()->where('email', 'superadmin@unpamhospital.test')->exists());
+        $this->assertTrue(User::query()->where('email', 'pasien@unpamhospital.test')->exists());
         $this->assertSame(3, Role::query()->count());
     }
 
@@ -101,7 +105,8 @@ class SeederProductionGuardTest extends TestCase
             ->expectsOutputToContain('Data demo sudah ada')
             ->assertExitCode(0);
 
-        $this->assertSame(3, User::query()->count());
+        $this->assertSame(10, User::query()->count());
+        $this->assertSame(7, PatientProfile::query()->count());
     }
 
     public function test_demo_user_seeder_throws_in_production_and_creates_no_users(): void
@@ -112,6 +117,14 @@ class SeederProductionGuardTest extends TestCase
     public function test_demo_user_seeder_is_rejected_outside_the_local_and_testing_whitelist(): void
     {
         $this->assertDemoSeederRejected(DemoUserSeeder::class, 'staging');
+    }
+
+    /** SEED-02 (bagian fase 5): akun pasien demo berpassword umum tidak boleh ada di produksi atau staging. */
+    public function test_patient_seeder_throws_in_production_and_staging_and_creates_no_accounts(): void
+    {
+        $this->assertDemoSeederRejected(PatientSeeder::class, 'production');
+        $this->assertDemoSeederRejected(PatientSeeder::class, 'staging');
+        $this->assertSame(0, PatientProfile::query()->count());
     }
 
     public function test_demo_seeder_is_rejected_in_staging(): void

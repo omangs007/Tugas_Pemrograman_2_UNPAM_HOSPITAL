@@ -15,8 +15,10 @@ use App\Models\Faq;
 use App\Models\Gallery;
 use App\Models\InsurancePartner;
 use App\Models\Media;
+use App\Models\PatientProfile;
 use App\Models\RoomCategory;
 use App\Models\Specialty;
+use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +26,7 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * SEED-01 (bagian master data, fase 2), SEED-03. Kueri K-5/K-23 dari 09 §12; invarian lengkap
+ * SEED-01 (bagian master data fase 2 dan invarian I15 sampai I17 fase 5), SEED-03. Kueri K-5/K-23 dari 09 §12; invarian lengkap
  * (`scripts/sql/seed-invariants.sql`) menyusul di fase 9.
  */
 class DemoSeederInvariantsTest extends TestCase
@@ -101,6 +103,28 @@ class DemoSeederInvariantsTest extends TestCase
         $this->assertSame([], DB::select('SELECT id FROM room_categories WHERE availability_updated_at IS NULL OR availability_updated_by IS NULL'));
         $this->assertSame([], DB::select("SELECT id FROM contact_messages WHERE (status IN ('replied', 'archived')) <> (handled_by IS NOT NULL)"));
         $this->assertSame([], DB::select('SELECT id FROM contact_messages WHERE CHAR_LENGTH(ip_hash) <> 64'));
+    }
+
+    /** SEED-01 fase 5: angka acuan 13 §11.2 untuk pasien berakun dan invarian I15, I16, I17 (13 §11.1) sebagai kueri. */
+    public function test_phase_5_counts_and_patient_invariants_match_the_reference_numbers(): void
+    {
+        $this->seedDemo();
+
+        $this->assertSame(10, User::query()->count());
+        $this->assertSame(3, User::query()->where('account_type', 'staff')->count());
+        $this->assertSame(7, User::query()->where('account_type', 'patient')->count());
+        $this->assertSame(10, User::query()->where('email', 'like', '%.test')->count());
+        $this->assertSame(3, DB::table('model_has_roles')->count(), 'Akun pasien tidak memegang peran.');
+        $this->assertSame(7, PatientProfile::query()->count());
+        $this->assertSame(7, PatientProfile::query()->where('registration_channel', 'online')->whereNotNull('user_id')->count());
+        $this->assertSame(0, PatientProfile::query()->where('registration_channel', 'loket')->count(), 'Walk-in menyusul di fase 6/7.');
+        $this->assertSame(3, PatientProfile::query()->whereNotNull('bpjs_number_last4')->count());
+        $this->assertSame('Anisa Rahmawati', PatientProfile::query()->where('email', 'pasien@unpamhospital.test')->value('full_name'));
+
+        // I15, I16, I17 (13 §11.1); I15 diperketat dengan IS NULL karena kolom `patient_number` NULLable.
+        $this->assertSame([], DB::select("SELECT id FROM patient_profiles WHERE patient_number IS NULL OR patient_number <> CONCAT('P', LPAD(id, 6, '0'))"));
+        $this->assertSame([], DB::select('SELECT p.id FROM patient_profiles p JOIN users u ON u.id = p.user_id WHERE p.email IS NULL OR p.email <> u.email'));
+        $this->assertSame([], DB::select('SELECT p.id FROM patient_profiles p JOIN users u ON u.id = p.user_id WHERE p.is_active <> u.is_active'));
     }
 
     public function test_every_doctor_has_exactly_one_primary_specialty_and_archive_state_is_consistent(): void
@@ -216,9 +240,11 @@ class DemoSeederInvariantsTest extends TestCase
     {
         $this->seedDemo();
 
-        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder', 'RoomCategorySeeder', 'FacilitySeeder', 'ContentSeeder', 'ContactMessageSeeder'] as $seeder) {
+        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder', 'RoomCategorySeeder', 'FacilitySeeder', 'ContentSeeder', 'PatientSeeder', 'ContactMessageSeeder'] as $seeder) {
             $this->artisan('db:seed', ['--class' => "Database\\Seeders\\{$seeder}", '--no-interaction' => true])->assertExitCode(0);
         }
+
+        $this->assertSame([10, 7], [User::query()->count(), PatientProfile::query()->count()]);
 
         $this->assertSame([13, 17, 18, 20, 83], [
             Specialty::query()->count(),

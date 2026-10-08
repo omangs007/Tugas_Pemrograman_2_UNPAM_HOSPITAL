@@ -472,6 +472,6 @@ class FacilitySeedersTest extends TestCase
             ContactMessage::query()->count(),
             Media::query()->count(),
         ]);
-        $this->assertSame(3, DB::table('users')->count());
+        $this->assertSame(10, DB::table('users')->count()); // 3 staf + 7 akun pasien demo (fase 5)
     }
 }
