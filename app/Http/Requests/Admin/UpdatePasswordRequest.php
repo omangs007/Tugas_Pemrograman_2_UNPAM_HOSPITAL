@@ -18,7 +18,9 @@ class UpdatePasswordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'current_password' => ['required', 'current_password'],
+            // `bail` + `string` mendahului `current_password`: aturan bawaan memanggil password_verify() tanpa memeriksa
+            // tipe, sehingga `current_password[]=x` akan menjadi 500.
+            'current_password' => ['bail', 'required', 'string', 'current_password'],
             'password' => [...PasswordRules::default(), 'different:current_password'],
             'password_confirmation' => ['required'],
         ];
@@ -33,6 +35,7 @@ class UpdatePasswordRequest extends FormRequest
     {
         return [
             'current_password.required' => 'Password saat ini wajib diisi.',
+            'current_password.string' => 'Password saat ini tidak valid.',
             'current_password.current_password' => 'Password saat ini tidak sesuai.',
             'password.required' => 'Password baru wajib diisi.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',

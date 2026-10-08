@@ -201,7 +201,7 @@ class AdminPasswordChangeTest extends TestCase
     }
 
     /**
-     * @return array<string, array{array<string, string>, string, string}>
+     * @return array<string, array{array<string, mixed>, string, string}>
      */
     public static function invalidPayloads(): array
     {
@@ -210,6 +210,7 @@ class AdminPasswordChangeTest extends TestCase
         return [
             'password saat ini salah' => [['current_password' => 'SalahSekali1'] + $ok, 'current_password', 'Password saat ini tidak sesuai.'],
             'password saat ini kosong' => [['current_password' => ''] + $ok, 'current_password', 'Password saat ini wajib diisi.'],
+            'password saat ini larik' => [['current_password' => ['x']] + $ok, 'current_password', 'Password saat ini tidak valid.'],
             'sama dengan password lama' => [['password' => self::TEMPORARY_PASSWORD, 'password_confirmation' => self::TEMPORARY_PASSWORD] + $ok, 'password', 'Password baru harus berbeda dari password saat ini.'],
             'tanpa angka' => [['password' => 'Abcdefghij', 'password_confirmation' => 'Abcdefghij'] + $ok, 'password', 'Password harus mengandung angka.'],
             'tanpa huruf' => [['password' => '1234567890', 'password_confirmation' => '1234567890'] + $ok, 'password', 'Password harus mengandung huruf.'],
@@ -221,7 +222,7 @@ class AdminPasswordChangeTest extends TestCase
         ];
     }
 
-    /** @param  array<string, string>  $payload */
+    /** @param  array<string, mixed>  $payload */
     #[DataProvider('invalidPayloads')]
     public function test_invalid_input_is_rejected_with_the_documented_messages_and_changes_nothing(array $payload, string $field, string $message): void
     {

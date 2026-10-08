@@ -2,7 +2,12 @@
 @php
     $isAdmin = $home === 'admin.dashboard';
     $homeUrl = \Illuminate\Support\Facades\Route::has($home) ? route($home) : url($isAdmin ? '/admin' : '/');
-    $trail = array_merge([['label' => $isAdmin ? 'Dasbor' : 'Beranda', 'url' => $homeUrl]], array_values($items));
+    $homeLabel = match ($home) {
+        'admin.dashboard' => 'Dasbor',
+        'patient.dashboard' => 'Portal Pasien',
+        default => 'Beranda',
+    };
+    $trail = array_merge([['label' => $homeLabel, 'url' => $homeUrl]], array_values($items));
     $last = count($trail) - 1;
 @endphp
 <nav aria-label="Breadcrumb" {{ $attributes }}>

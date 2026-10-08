@@ -24,6 +24,7 @@
                         <dt class="small text-body-secondary">Nomor telepon</dt>
                         <dd class="mb-0">{{ $profile->phone ?? '-' }}</dd>
                     </dl>
+                    <a class="btn btn-outline-primary btn-sm mt-3" href="{{ route('patient.profile.edit') }}">Ubah Profil dan Akun</a>
                 </div>
             </div>
         </section>

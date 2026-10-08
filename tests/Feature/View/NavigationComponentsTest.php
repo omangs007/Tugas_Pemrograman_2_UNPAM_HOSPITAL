@@ -32,6 +32,17 @@ class NavigationComponentsTest extends TestCase
             ->assertDontSee('Beranda');
     }
 
+    public function test_breadcrumb_for_the_patient_portal_starts_with_portal_pasien(): void
+    {
+        $this->blade('<x-breadcrumb home="patient.dashboard" :items="$items" />', [
+            'items' => [['label' => 'Profil dan Akun']],
+        ])
+            ->assertSee('<li class="breadcrumb-item"><a href="'.route('patient.dashboard').'">Portal Pasien</a></li>', false)
+            ->assertSee('<li class="breadcrumb-item active" aria-current="page">Profil dan Akun</li>', false)
+            ->assertDontSee('Beranda')
+            ->assertDontSee('Dasbor');
+    }
+
     public function test_breadcrumb_without_items_shows_home_as_the_current_page(): void
     {
         $this->blade('<x-breadcrumb />')
