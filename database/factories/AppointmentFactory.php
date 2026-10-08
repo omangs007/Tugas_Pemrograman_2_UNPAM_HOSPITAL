@@ -9,8 +9,8 @@ use App\Enums\PaymentType;
 use App\Models\Appointment;
 use App\Models\PatientProfile;
 use App\Models\PracticeSession;
+use App\Services\Booking\BookingCodeGenerator;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 /**
  * @extends Factory<Appointment>
@@ -28,7 +28,7 @@ class AppointmentFactory extends Factory
     public function definition(): array
     {
         return [
-            'booking_code' => 'UPH-'.Str::upper(fake()->unique()->bothify('????-????')),
+            'booking_code' => BookingCodeGenerator::generate(),
             'patient_profile_id' => PatientProfile::factory(),
             'practice_session_id' => PracticeSession::factory(),
             'doctor_id' => fn (array $attributes): int => PracticeSession::query()->findOrFail($attributes['practice_session_id'])->doctor_id,
@@ -40,6 +40,7 @@ class AppointmentFactory extends Factory
             'payment_type' => PaymentType::Umum,
             'insurance_partner_id' => null,
             'payment_reference' => null,
+            'payment_reference_last4' => null,
             'complaint' => null,
             'confirmed_at' => now(),
         ];
@@ -92,5 +93,38 @@ class AppointmentFactory extends Factory
 
             return ['status' => $status] + $timestamps;
         });
+    }
+
+    /**
+     * Sesi tertentu: menyalin `practice_session_id`, `doctor_id`, `clinic_id`, dan `session_date` (BR-52).
+     * TIDAK menyinkronkan `booked_count`/`last_queue_number` sesi (F6-R33); untuk itu gunakan
+     * `InteractsWithSchedules::bookAppointment()` atau BookingService.
+     */
+    public function forSession(PracticeSession $session): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'practice_session_id' => $session->id,
+            'doctor_id' => $session->doctor_id,
+            'clinic_id' => $session->clinic_id,
+            'session_date' => $session->session_date->toDateString(),
+        ]);
+    }
+
+    /** Pasien tertentu (tanpa membuat profil baru). */
+    public function forPatient(PatientProfile $profile): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'patient_profile_id' => $profile->id,
+        ]);
+    }
+
+    /** Pembayaran BPJS: jenis, referensi (terenkripsi oleh cast), dan `payment_reference_last4`. */
+    public function bpjs(string $number = '0009900000011'): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'payment_type' => PaymentType::Bpjs,
+            'payment_reference' => $number,
+            'payment_reference_last4' => mb_substr($number, -4),
+        ]);
     }
 }

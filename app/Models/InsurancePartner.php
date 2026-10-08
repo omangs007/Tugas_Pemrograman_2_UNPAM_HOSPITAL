@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Mitra asuransi fiktif berlabel "Contoh" (09 §6.7; tabelnya dibuat fase 3). Mitra yang dirujuk
  * `appointments.insurance_partner_id` tidak dapat dihapus (FK RESTRICT; pesan BR-180 lewat
- * `deletionBlockedReason()`). `Appointment::insurancePartner()` tetap ditunda (D-60).
+ * `deletionBlockedReason()`). Sisi seberangnya, `Appointment::insurancePartner()`, ditambahkan fase 6.
  */
 class InsurancePartner extends Model
 {

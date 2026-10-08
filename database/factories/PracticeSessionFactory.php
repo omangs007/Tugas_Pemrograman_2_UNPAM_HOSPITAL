@@ -104,4 +104,40 @@ class PracticeSessionFactory extends Factory
             'pending_change' => $pendingChange,
         ]);
     }
+
+    /**
+     * Sesi yang mulai `$minutes` menit dari sekarang (negatif = sudah mulai): `session_date` dan `start_time`
+     * dihitung dari `now()` (ikuti `travelTo`), `end_time` = mulai + 4 jam, dipotong ke 23.59.59 bila melewati
+     * tengah malam (CHECK `chk_sessions_time`). Hindari jam mulai tepat 23.59.59.
+     */
+    public function startingInMinutes(int $minutes): static
+    {
+        return $this->state(function (array $attributes) use ($minutes): array {
+            $start = CarbonImmutable::now()->addMinutes($minutes);
+            $end = $start->addHours(4);
+
+            if ($end->toDateString() !== $start->toDateString()) {
+                $end = $start->setTime(23, 59, 59);
+            }
+
+            return [
+                'session_date' => $start->toDateString(),
+                'start_time' => $start->format('H:i:s'),
+                'end_time' => $end->format('H:i:s'),
+            ];
+        });
+    }
+
+    /**
+     * Sesi penuh: `booked_count` dan `last_queue_number` = `quota` akhir (setelah semua penimpaan). Memakai
+     * `afterMaking` agar `create(['quota' => 3])` tetap konsisten dengan CHECK `chk_sessions_quota` dan
+     * `chk_sessions_queue`.
+     */
+    public function full(): static
+    {
+        return $this->afterMaking(function (PracticeSession $session): void {
+            $session->booked_count = (int) $session->quota;
+            $session->last_queue_number = max((int) $session->last_queue_number, (int) $session->quota);
+        });
+    }
 }

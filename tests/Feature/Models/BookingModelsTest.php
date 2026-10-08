@@ -12,7 +12,9 @@ use App\Models\AppointmentStatusHistory;
 use App\Models\PatientProfile;
 use App\Models\PracticeSession;
 use App\Models\User;
+use App\Services\Booking\BookingCodeGenerator;
 use Illuminate\Database\Eloquent\MassAssignmentException;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use LogicException;
@@ -112,7 +114,7 @@ class BookingModelsTest extends TestCase
         $this->assertSame(AppointmentStatus::Confirmed, $appointment->status);
         $this->assertSame(BookingChannel::Online, $appointment->channel);
         $this->assertSame(PaymentType::Umum, $appointment->payment_type);
-        $this->assertMatchesRegularExpression('/^UPH-[A-Z]{4}-[A-Z]{4}$/', $appointment->booking_code);
+        $this->assertTrue(BookingCodeGenerator::isValid($appointment->booking_code), $appointment->booking_code);
     }
 
     public function test_appointment_booking_codes_are_unique_across_a_batch(): void
@@ -142,9 +144,10 @@ class BookingModelsTest extends TestCase
         $this->assertArrayNotHasKey('payment_reference', $appointment->fresh()->toArray());
     }
 
-    public function test_appointment_has_no_insurance_partner_relation_in_phase_three(): void
+    public function test_appointment_has_an_insurance_partner_relation_since_phase_six(): void
     {
-        $this->assertFalse(method_exists(Appointment::class, 'insurancePartner'));
+        $this->assertTrue(method_exists(Appointment::class, 'insurancePartner'));
+        $this->assertInstanceOf(BelongsTo::class, (new Appointment)->insurancePartner());
     }
 
     public function test_appointment_system_columns_are_not_mass_assignable(): void
