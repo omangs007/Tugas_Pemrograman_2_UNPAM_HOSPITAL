@@ -1,11 +1,13 @@
 <?php
 
+use App\Exceptions\BookingException;
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureAccountType;
 use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\SecurityHeaders;
 use App\Models\User;
 use App\Support\SafeRedirect;
+use App\Support\SensitiveInput;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -78,10 +80,12 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Satu daftar input sensitif untuk dontFlash, redirect 419, dan redirect 429 (00 E.6).
-        $sensitive = ['password', 'password_confirmation', 'current_password', 'bpjs_number', 'payment_reference'];
+        // Satu daftar input sensitif untuk dontFlash, redirect 419, redirect 429, dan handler booking (00 E.6, F6-R36).
+        $sensitive = SensitiveInput::FIELDS;
 
         $exceptions->dontFlash($sensitive);
+        // Penolakan aturan booking (termasuk subkelas InvalidTransitionException) adalah keputusan bisnis, bukan galat sistem.
+        $exceptions->dontReport([BookingException::class]);
         // Galat validasi pada admin.media.* hanya JSON bila klien meminta JSON; form HTML biasa mendapat redirect + $errors.
         $exceptions->shouldRenderJsonWhen(fn (Request $request, Throwable $e): bool => $request->expectsJson()
             || $request->routeIs('admin.dashboard.chart')

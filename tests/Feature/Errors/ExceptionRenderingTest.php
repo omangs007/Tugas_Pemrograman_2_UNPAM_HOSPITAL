@@ -113,6 +113,7 @@ class ExceptionRenderingTest extends TestCase
             'password_confirmation' => 'RahasiaUji1',
             'current_password' => 'LamaUji1',
             'bpjs_number' => '0001234567890',
+            'policy_number' => 'POL-77-AB',
             'payment_reference' => 'PAY-12345',
         ];
 
@@ -124,6 +125,7 @@ class ExceptionRenderingTest extends TestCase
             ->assertSessionMissing('_old_input.password_confirmation')
             ->assertSessionMissing('_old_input.current_password')
             ->assertSessionMissing('_old_input.bpjs_number')
+            ->assertSessionMissing('_old_input.policy_number')
             ->assertSessionMissing('_old_input.payment_reference');
     }
 }
