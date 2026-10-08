@@ -1484,7 +1484,7 @@ flowchart TD
     A(["Pasien membuka patient.profile.edit"]) --> B{"Formulir mana?"}
     B -->|"Profil"| C["PUT patient.profile.update dengan UpdatePatientProfileRequest"]
     C --> D{"Email berubah?"}
-    D -->|"Ya"| E{"Password saat ini benar dan email unik di users?"}
+    D -->|"Ya"| E{"Email unik di users?"}
     E -->|"Tidak"| E1["Kembali ke form dengan galat per field"]
     E -->|"Ya"| F["Transaksi: perbarui users.email dan patient_profiles.email bersama kolom profil lain"]
     D -->|"Tidak"| F
@@ -1497,9 +1497,9 @@ flowchart TD
 
 **Langkah**
 
-1. `GET /pasien/profil` (`patient.profile.edit`, middleware `auth`, `account:patient`, `active`) menampilkan dua formulir: **Profil** (nama lengkap, tanggal lahir, jenis kelamin, telepon, email, alamat, nomor BPJS opsional) dan **Ganti password**. Nomor BPJS yang tersimpan hanya tampil 4 digit terakhir (`bpjs_number_last4`); kolom dikosongkan berarti tidak berubah. NIK tidak ada.
-2. `PUT /pasien/profil` (`patient.profile.update`) → `UpdatePatientProfileRequest` (aturan sama dengan registrasi). Untuk pasien berakun, `patient_profiles.email` **selalu** sama dengan `users.email` (00 E.1; 17 D-07): perubahan email memperbarui keduanya dalam satu transaksi, divalidasi unik di `users`, dan meminta password saat ini **[ASUMSI]**. Audit `patient.updated` (nama bidang yang berubah; tanpa nomor BPJS).
-3. `PUT /pasien/password` (`patient.password.update`) → `UpdatePasswordRequest`: password saat ini wajib, password baru memenuhi `Password::min(8)->letters()->numbers()` dan berbeda dari yang lama. Sukses: `users.password` diperbarui (cast `hashed`), baris `sessions` lain milik akun dihapus **[ASUMSI]**, audit `auth.password_changed` (tanpa nilai password), flash hijau.
+1. `GET /pasien/profil` (`patient.profile.edit`, middleware `auth`, `account:patient`, `active`) menampilkan dua formulir: **Profil** (nama lengkap, tanggal lahir, jenis kelamin, telepon, email, alamat) dan **Ganti password**. Nomor BPJS tidak diisi di halaman ini (nomor masuk lewat wizard pendaftaran, fase 6); bila tersimpan, hanya tampil tersamar dengan 4 digit terakhir (`bpjs_number_last4`) beserta kotak centang "Hapus nomor BPJS dari profil saya" (D-147). NIK tidak ada.
+2. `PUT /pasien/profil` (`patient.profile.update`) → `UpdatePatientProfileRequest` (aturan sama dengan registrasi). Untuk pasien berakun, `patient_profiles.email` **selalu** sama dengan `users.email` (00 E.1; 17 D-07): perubahan email memperbarui keduanya dalam satu transaksi, dan divalidasi unik di `users`; mengubah email tidak meminta password saat ini (12 V-06 menang atas asumsi sebelumnya; D-147). Audit `patient.updated` (nama bidang yang berubah; tanpa nomor BPJS).
+3. `PUT /pasien/password` (`patient.password.update`) → `UpdatePasswordRequest`: password saat ini wajib, password baru memenuhi `Password::min(8)->letters()->numbers()` dan berbeda dari yang lama. Sukses: `users.password` diperbarui (cast `hashed`), baris `sessions` lain milik akun dihapus (diputuskan, D-147), audit `auth.password_changed` (tanpa nilai password), flash hijau.
 4. Menonaktifkan profil (`admin.patients.status`) oleh petugas ikut menonaktifkan `users.is_active` (00 E.1; D-08); pasien yang nonaktif tidak dapat mengakses halaman ini (middleware `active`).
 
 **Cabang galat**
@@ -1507,13 +1507,13 @@ flowchart TD
 | Kondisi | Pesan Indonesia |
 |---|---|
 | Email sudah dipakai akun lain | "Email ini sudah terdaftar. Gunakan email lain." |
-| Password saat ini salah (profil dengan perubahan email, atau ganti password) | "Password saat ini tidak sesuai." |
+| Password saat ini salah (ganti password) | "Password saat ini tidak sesuai." |
 | Password baru sama dengan yang lama | "Password baru harus berbeda dari password saat ini." |
 | Password baru tidak memenuhi aturan / konfirmasi tidak cocok | "Password minimal 8 karakter." / "Password harus mengandung huruf." / "Password harus mengandung angka." / "Konfirmasi password tidak cocok." |
 | Nomor telepon tidak valid | "Nomor telepon tidak valid. Gunakan nomor seluler Indonesia, mis. 081234567890." |
 | Tanggal lahir tidak valid | "Tanggal lahir harus sebelum hari ini." / "Tanggal lahir tidak boleh lebih dari 120 tahun yang lalu." |
-| Nomor BPJS bukan 13 digit | "Nomor BPJS harus terdiri dari 13 digit angka." |
-| Akun staf membuka halaman ini | 403 "Anda tidak memiliki izin untuk mengakses halaman ini." |
+| Pilihan hapus nomor BPJS tidak valid (`remove_bpjs` bukan boolean) | "Pilihan hapus nomor BPJS tidak valid." |
+| Akun staf membuka halaman ini | Dialihkan 302 ke `admin.dashboard` (permintaan JSON: 403; D-142) |
 
 **Keterlibatan:** route `patient.profile.edit`, `patient.profile.update`, `patient.password.update`; Form Request `UpdatePatientProfileRequest`, `UpdatePasswordRequest` (namespace `Patient`); Policy `PatientProfilePolicy::update` (pemilik); service `AuditLogger`; tabel `patient_profiles`, `users`, `sessions`, `audit_logs`.
 

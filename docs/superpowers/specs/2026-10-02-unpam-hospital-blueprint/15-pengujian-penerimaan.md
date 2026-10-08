@@ -111,7 +111,7 @@ C:\xampp3\php\php.exe vendor\bin\pint --test
 
 ## 3. Matriks Akses 40 Halaman × Peran (`AKS-01`–`AKS-05`)
 
-Satu tes berbasis *data provider* mengakses setiap baris dengan lima aktor dan memeriksa hasil. Legenda: **200** = halaman tampil; **→L** = redirect ke login yang sesuai (`/masuk` untuk area pasien, `/admin/login` untuk area admin); **→D** = redirect ke dashboard sesuai tipe akun (middleware `guest`); **403** = ditolak (`account:*` atau `permission:*`). Seluruh akun aktif; akun nonaktif diuji di `AKS-08`.
+Satu tes berbasis *data provider* mengakses setiap baris dengan lima aktor dan memeriksa hasil. Legenda: **200** = halaman tampil; **→L** = redirect ke login yang sesuai (`/masuk` untuk area pasien, `/admin/login` untuk area admin); **→D** = redirect ke dashboard sesuai tipe akun (middleware `guest`); **→A** = staf di portal pasien dialihkan ke `admin.dashboard` (`account:patient`, D-142; permintaan JSON mendapat 403); **403** = ditolak (`account:staff` atau `permission:*`). Seluruh akun aktif; akun nonaktif diuji di `AKS-08`.
 
 ### 3.1 Website publik (#1–#22) — semua aktor 200
 
@@ -148,10 +148,10 @@ Satu tes berbasis *data provider* mengakses setiap baris dengan lima aktor dan m
 | 24 | Login pasien | `login` | 200 | →D | →D | →D | →D |
 | 25 | Permintaan reset | `password.request` | 200 | →D | →D | →D | →D |
 | 26 | Form reset | `password.reset` | 200 | →D | →D | →D | →D |
-| 27 | Dashboard pasien | `patient.dashboard` | →L | 200 | 403 | 403 | 403 |
-| 28 | Profil & akun | `patient.profile.edit` | →L | 200 | 403 | 403 | 403 |
-| 29 | Pendaftaran kunjungan | `patient.appointments.create` | →L | 200 | 403 | 403 | 403 |
-| 30 | Riwayat pendaftaran | `patient.appointments.index` | →L | 200 | 403 | 403 | 403 |
+| 27 | Dashboard pasien | `patient.dashboard` | →L | 200 | →A | →A | →A |
+| 28 | Profil & akun | `patient.profile.edit` | →L | 200 | →A | →A | →A |
+| 29 | Pendaftaran kunjungan | `patient.appointments.create` | →L | 200 | →A | →A | →A |
+| 30 | Riwayat pendaftaran | `patient.appointments.index` | →L | 200 | →A | →A | →A |
 
 ### 3.3 Dashboard admin (#31–#40) — baris tambahan (`b`, `c`, `d`) menguji izin berbeda pada halaman yang sama
 
@@ -194,11 +194,11 @@ Format tabel: `ID | Skenario | Langkah | Data | Hasil yang diharapkan | Jenis | 
 |---|---|---|---|---|---|---|
 | AKS-01 | Matriks akses — Tamu | Akses setiap baris §3 sebagai Tamu | Data provider §3 | Hasil sesuai kolom Tamu (publik 200, area pasien →L `/masuk`, area admin →L `/admin/login`) | otomatis | K1 |
 | AKS-02 | Matriks akses — Pasien | Idem sebagai Pasien aktif | Pasien factory | Publik 200; portal pasien 200; halaman admin 403; halaman guest-only →D | otomatis | K1 |
-| AKS-03 | Matriks akses — Super Admin | Idem sebagai Super Admin | Staf `super-admin` | Semua halaman admin 200; area pasien 403 | otomatis | K1 |
+| AKS-03 | Matriks akses — Super Admin | Idem sebagai Super Admin | Staf `super-admin` | Semua halaman admin 200; area pasien →A (302 ke `admin.dashboard`, JSON 403; D-142) | otomatis | K1 |
 | AKS-04 | Matriks akses — Admin Konten | Idem sebagai `content-admin`; ulangi untuk metode mutasi | Staf `content-admin` | Sesuai kolom Admin Konten; halaman `patients.*`, `appointments.*`, `admin.queue.*` 403 | otomatis | K1 |
 | AKS-05 | Matriks akses — Petugas | Idem sebagai `registration-officer` | Staf petugas | Sesuai kolom Petugas; `doctors.manage`, `clinics.manage`, `content.manage`, `settings.manage`, `staff.manage`, `audit.view` 403 | otomatis | K1 |
-| AKS-06 | URL admin ditolak untuk pasien | Login pasien; GET `/admin`, `/admin/dokter`, `/admin/pasien`, `/admin/pengaturan`; POST `/admin/dokter` | Pasien aktif | Semua **403**; tidak ada konten admin pada respons | otomatis | K6 |
-| AKS-07 | Tamu ke area terlindungi + *intended URL* | GET `/pasien/pendaftaran/baru?sesi=ID` sebagai tamu, login, ikuti redirect | Sesi bookable | Redirect ke `/masuk`; setelah login kembali ke URL semula dengan `sesi` utuh | otomatis | K1 |
+| AKS-06 | URL admin ditolak untuk pasien | Login pasien; GET `/admin`, `/admin/dokter`, `/admin/pasien`, `/admin/pengaturan`; POST `/admin/dokter` | Pasien aktif | Semua **403**; tidak ada konten admin pada respons. Fase 5: `/admin/pasien` dan `/admin/pengaturan` belum punya route (404) sampai fase 7 dan 8 | otomatis | K6 |
+| AKS-07 | Tamu ke area terlindungi + *intended URL* | GET `/pasien/pendaftaran/baru?sesi=ID` sebagai tamu, login, ikuti redirect | Sesi bookable | Redirect ke `/masuk`; setelah login kembali ke URL semula dengan `sesi` utuh. Fase 5 menguji dengan `/pasien/profil?contoh=utuh`; URL pendaftaran asli dipasang di fase 6 (D-151) | otomatis | K1 |
 | AKS-08 | Akun nonaktif | Set `is_active=false` untuk pasien dan staf; coba login; dan nonaktifkan saat sesi berjalan | Pasien + staf | Login ditolak dengan pesan generik; sesi berjalan diputus oleh middleware `active` (logout + pesan) | otomatis | K1 (tambahan §12) |
 | AKS-09 | Staf wajib ganti password | Login staf `must_change_password=true`; GET `/admin`, `/admin/dokter`; lalu GET `admin.password.edit`, PUT `admin.password.update`, POST `admin.logout` | Staf tipe ini | Rute lain redirect ke `admin.password.edit` sampai password diganti; `admin.password.edit`/`update` dan `admin.logout` **tidak** diredirect (tanpa loop, 00 I.4); setelah ganti flag menjadi false | otomatis | Tambahan (H) |
 | AKS-10 | Pemisahan kanal login | Pasien login di `/admin/login`; staf login di `/masuk` | Kredensial benar | Gagal dengan pesan generik "Email atau password salah"; tidak ada sesi terbentuk | otomatis | Tambahan (H) |

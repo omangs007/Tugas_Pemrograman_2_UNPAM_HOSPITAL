@@ -780,7 +780,7 @@ Tautan reset **tidak pernah ditampilkan di halaman**; ia hanya terkirim lewat su
 ### 10.1 Cara 1 — `MAIL_MAILER=log` (bawaan, tanpa perangkat tambahan)
 
 1. Pastikan `.env`: `MAIL_MAILER=log`, `LOG_CHANNEL=daily`, lalu `& $PHP artisan config:clear`.
-2. Buka `http://unpam-hospital.test/lupa-password`, isi email akun demo (`pasien@unpamhospital.test`), kirim. Halaman menjawab generik ("Jika email terdaftar, tautan telah dikirim").
+2. Buka `http://unpam-hospital.test/lupa-password`, isi email akun demo (`pasien@unpamhospital.test`), kirim. Halaman menjawab generik ("Jika email terdaftar, tautan untuk mengatur ulang password telah dikirim. Periksa kotak masuk Anda."), apa pun alamat yang diisi.
 3. Ambil tautan dari log harian `storage\logs\laravel-YYYY-MM-DD.log`. Surel di log berupa pesan MIME mentah dengan pembungkus baris `=` dan `=3D` (quoted-printable), sehingga tautan perlu dirapikan:
 
    ```powershell

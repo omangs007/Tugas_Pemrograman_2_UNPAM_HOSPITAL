@@ -68,7 +68,7 @@ Ketergantungan fungsional antar-izin (tidak otomatis, tetapi diuji):
 | Kode | Situasi | Respons | Pesan/arah |
 |---|---|---|---|
 | **D1** | Tamu mengakses area bertanda login | **302** ke halaman login sesuai area: `/admin/*` → `admin.login`; lainnya → `login`. Untuk GET, URL tujuan diingat (*intended URL*) | "Silakan masuk untuk melanjutkan." |
-| **D2** | Akun login, tetapi tipe akun salah atau izin tidak dimiliki | **403** (halaman galat berbahasa Indonesia; permintaan JSON mendapat JSON 403) | "Anda tidak memiliki akses ke halaman ini." + tombol kembali ke dashboard sesuai tipe akun |
+| **D2** | Akun login, tetapi tipe akun salah atau izin tidak dimiliki | **403** (halaman galat berbahasa Indonesia; permintaan JSON mendapat JSON 403). Pengecualian: staf yang membuka portal pasien dialihkan **302** ke `admin.dashboard` (permintaan JSON tetap 403; D-142) | "Anda tidak memiliki akses ke halaman ini." + tombol kembali ke dashboard sesuai tipe akun |
 | **D3** | Akun login membuka halaman khusus tamu (`/masuk`, `/daftar`, `/lupa-password`, `/reset-password/{token}`, `/admin/login`) | **302** ke dashboard sesuai tipe akun: pasien → `patient.dashboard`, staf → `admin.dashboard` | — |
 | **D4** | Pasien membuka booking milik orang lain (atau kode tidak ada) | **404** (`Response::denyAsNotFound()`) | Tidak membedakan "tidak ada" dari "bukan milik Anda" |
 | **D5** | Staf dengan `must_change_password = true` | **302** ke `admin.password.edit` untuk semua route admin kecuali `admin.password.edit/update` dan `admin.logout` | "Anda harus mengganti password sementara." |
@@ -82,9 +82,9 @@ Ketergantungan fungsional antar-izin (tidak otomatis, tetapi diuji):
 |---|---|---|---|---|
 | **PUB** | Website publik | Akses | Akses | Akses (konten draf/nonaktif/arsip tetap **404**; A-42) |
 | **GST** | Halaman khusus tamu (23–26, 31) | Akses | D3 | D3 |
-| **PAT** | Portal pasien (27–30) | D1 | Akses | D2 (termasuk Super Admin) |
+| **PAT** | Portal pasien (27–30) | D1 | Akses | 302 ke `admin.dashboard` (termasuk Super Admin; JSON 403; D-142) |
 | **ADM** | Area admin berizin | D1 | D2 | D2; D5 bila wajib ganti password; D6 bila nonaktif |
-| **OWN** | Data milik pasien (detail/bukti/batal booking) | D1 | Akses bila pemilik; D4 bila bukan | D2 (portal pasien tertutup bagi staf; staf memakai `admin.appointments.*` dengan `appointments.view`) |
+| **OWN** | Data milik pasien (detail/bukti/batal booking) | D1 | Akses bila pemilik; D4 bila bukan | 302 ke `admin.dashboard` (portal pasien tertutup bagi staf, D-142; staf memakai `admin.appointments.*` dengan `appointments.view`) |
 
 ---
 
@@ -161,7 +161,7 @@ Middleware: `auth`, `account:patient`, `active`.
 | 30 | Bukti cetak dan PDF | `patient.appointments.proof`, `patient.appointments.proof-pdf` | `AppointmentPolicy::view` (pemilik) | — | L | — | — | — | OWN |
 | tambahan | Tandai notifikasi dibaca | `patient.notifications.read` | Notifikasi milik sendiri (`$user->notifications()`) | — | K | — | — | — | PAT |
 
-Super Admin, Admin Konten, dan Petugas Pendaftaran **tidak** dapat membuka portal pasien (D2): untuk melihat appointment pasien, staf memakai `admin.appointments.*`.
+Super Admin, Admin Konten, dan Petugas Pendaftaran **tidak** dapat membuka portal pasien (dialihkan ke `admin.dashboard`, D-142): untuk melihat appointment pasien, staf memakai `admin.appointments.*`.
 
 ### 4.5 Area admin (halaman 31–40 dan layar tambahan)
 
@@ -443,6 +443,7 @@ $appointment = $request->user()->patientProfile
 | Pasien: `GET /admin` | 403 (D2) |
 | Pasien: `PUT /admin/pengaturan` | 403 (D2) |
 | Pasien login: `GET /masuk` | 302 → `patient.dashboard` (D3) |
+| Staf login: `GET /pasien` atau `GET /pasien/profil` | 302 → `admin.dashboard` (D-142); permintaan JSON 403 |
 | Pasien A: `GET /pasien/pendaftaran/{kode milik B}` | 404 (D4) |
 | Pasien A: `GET .../bukti.pdf` kode milik B | 404 (D4) |
 | Admin Konten: `GET /admin/pasien` | 403 (D2) |
@@ -454,7 +455,7 @@ $appointment = $request->user()->patientProfile
 | Petugas Pendaftaran: `POST /admin/kamar` | 403 (D2) |
 | Staf `must_change_password`: `GET /admin` | 302 → `admin.password.edit` (D5) |
 | Akun nonaktif: permintaan apa pun | Logout paksa + 302 login (D6) |
-| Super Admin: `GET /pasien` | 403 (D2); `account:patient` tidak dilewati `Gate::before` |
+| Super Admin: `GET /pasien` | 302 → `admin.dashboard` (D-142; permintaan JSON 403); `account:patient` tidak dilewati `Gate::before` |
 
 ### 10.4 `Gate::before` dan aturan mutlak
 

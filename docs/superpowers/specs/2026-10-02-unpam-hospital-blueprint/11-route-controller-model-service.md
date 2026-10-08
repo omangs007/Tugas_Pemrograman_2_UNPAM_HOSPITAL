@@ -705,7 +705,7 @@ trait SanitizesRichText {                          // Clinic.description, Facili
 - Relasi: `user(): BelongsTo`, `appointments(): HasMany`, `creator(): BelongsTo` (User, `created_by_user_id`).
 - Scope: `active()`, `walkIn()` (`user_id IS NULL`), `search(string $term)` (nama `LIKE`, `patient_number` sama persis, telepon `LIKE`, `birth_date` bila `$term` berformat tanggal).
 - Accessor/method: `maskedBpjs` (`•••••••••` + `bpjs_number_last4`, atau `null`), `age`, `isWalkIn()`, `hasAppointments(): bool`.
-- Event `booted()`: `creating` → `patient_number` sementara (`T` + 9 karakter acak; kolom ≥ `VARCHAR(10)`); `created` → `forceFill(['patient_number' => PatientNumberGenerator::format($id)])->saveQuietly()` (format `P000123`); `saving` → bila `bpjs_number` berubah, isi `bpjs_number_last4` (4 digit terakhir) atau `NULL`.
+- **Diganti pada fase 5 (D-145):** `patient_number` TIDAK diisi lewat event model; `PatientRegistrationService` mengisinya sesudah insert dalam transaksi yang sama (kolom NULLable), dan `booted()` hanya memuat hook `saving` untuk `bpjs_number_last4`. Teks berikut adalah rancangan awal. Event `booted()`: `creating` → `patient_number` sementara (`T` + 9 karakter acak; kolom ≥ `VARCHAR(10)`); `created` → `forceFill(['patient_number' => PatientNumberGenerator::format($id)])->saveQuietly()` (format `P000123`); `saving` → bila `bpjs_number` berubah, isi `bpjs_number_last4` (4 digit terakhir) atau `NULL`.
 
 ### 5.2 Spesialisasi, poliklinik, dokter
 

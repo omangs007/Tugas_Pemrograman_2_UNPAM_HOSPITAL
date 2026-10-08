@@ -50,7 +50,7 @@ flowchart TD
 | 2 | `SettingsSeeder` | semua | `website_settings` | 19 kunci (00 E.7) |
 | 3 | `PageSeeder` | semua | `pages` | 15 halaman (00 E.5) |
 | 4 | `DemoSeeder` | `local`, `testing` | — (orkestrator + guard) | — |
-| 4.1 | `DemoUserSeeder` | demo | `users`, `model_has_roles` | 3 staf + 7 akun pasien |
+| 4.1 | `DemoUserSeeder` | demo | `users`, `model_has_roles` | 3 staf (tujuh akun pasien dibuat `PatientSeeder`, D-150) |
 | 4.2 | `SpecialtySeeder` | demo | `specialties` | 13 |
 | 4.3 | `ClinicSeeder` | demo | `clinics`, `media` | 13 poliklinik + 4 penunjang |
 | 4.4 | `DoctorSeeder` | demo | `doctors`, `doctor_specialties`, `media` | 18 dokter (16 aktif, 1 nonaktif, 1 arsip) |
@@ -59,7 +59,7 @@ flowchart TD
 | 4.7 | `RoomCategorySeeder` | demo | `room_categories`, `media` | 4 |
 | 4.8 | `FacilitySeeder` | demo | `facilities`, `media` | 10 |
 | 4.9 | `ContentSeeder` | demo | `article_categories`, `articles`, `banners`, `galleries`, `faqs`, `insurance_partners`, `media` | 4, 8, 3, 3 album, 12, 4 |
-| 4.10 | `PatientSeeder` | demo | `patient_profiles` | 13 (7 berakun, 6 walk-in) |
+| 4.10 | `PatientSeeder` | demo | `users`, `patient_profiles` | fase 5: 7 akun pasien + 7 profil online; 6 walk-in menyusul di fase 6/7 sehingga total 13 (D-150) |
 | 4.11 | `AppointmentSeeder` | demo | `appointments`, `appointment_status_histories`, `audit_logs`, `notifications`, + 1 pengecualian akhir | 29 appointment |
 | 4.12 | `ContactMessageSeeder` | demo | `contact_messages` | 5 |
 
@@ -122,7 +122,7 @@ Aturan akun demo:
 - Staf demo: `must_change_password = false` (agar demo cepat). Akun staf yang dibuat untuk skenario uji `must_change_password` dibuat oleh factory di tes, bukan di seeder.
 - Enam akun pasien lain memakai domain `@contoh.test` dan password yang sama (tabel di §10) supaya skenario multi-pasien mudah diuji.
 - Hash memakai cast `hashed` (bcrypt) — tidak ada password mentah di kolom mana pun.
-- **Dilarang di produksi:** guard §2.3 + `DemoUserSeeder` memeriksa ulang `app()->environment('production')` dan melempar pengecualian. Daftar periksa produksi di [16 §14](16-instalasi-operasional.md#14-catatan-produksi-singkat) mencantumkan "tidak ada pengguna `@unpamhospital.test`/`@contoh.test`" dengan kueri: `SELECT email FROM users WHERE email LIKE '%.test';` → harus 0 baris.
+- **Dilarang di produksi:** guard §2.3 + `DemoUserSeeder` dan `PatientSeeder` memeriksa ulang `app()->environment('production')` dan melempar pengecualian. Daftar periksa produksi di [16 §14](16-instalasi-operasional.md#14-catatan-produksi-singkat) mencantumkan "tidak ada pengguna `@unpamhospital.test`/`@contoh.test`" dengan kueri: `SELECT email FROM users WHERE email LIKE '%.test';` → harus 0 baris.
 
 ---
 
@@ -461,7 +461,7 @@ Total **83 gambar + 83 thumbnail** (±30–60 detik di XAMPP). Logo situs tidak 
 
 ### 10.1 Pasien (13) — `PatientSeeder`
 
-`consent_at` = waktu pembuatan, `consent_version = 1.0`. Walk-in: `user_id = NULL`, `registration_channel = loket`, `created_by_user_id` = Petugas Pendaftaran Demo (persetujuan privasi dicentang petugas). Untuk pasien berakun, `patient_profiles.email` **selalu sama** dengan `users.email` dan `is_active` profil sama dengan `is_active` akun (sinkronisasi 00 E.1); untuk walk-in email dikosongkan. Telepon memakai pola `0812-0000-00NN`, alamat "Jl. Contoh No. N, Pamulang, Tangerang Selatan". Nomor BPJS adalah **angka fiktif 13 digit yang tidak valid**; disimpan terenkripsi dan `bpjs_number_last4` terisi. `patient_number` mengikuti `P` + 6 digit dari `id` (nilai di kolom pertama berlaku pada DB baru).
+`consent_at` = waktu pembuatan, `consent_version` = pengaturan `privacy.consent_version` (bawaan `1.0`). Walk-in: `user_id = NULL`, `registration_channel = loket`, `created_by_user_id` = Petugas Pendaftaran Demo (persetujuan privasi dicentang petugas). Untuk pasien berakun, `patient_profiles.email` **selalu sama** dengan `users.email` dan `is_active` profil sama dengan `is_active` akun (sinkronisasi 00 E.1); untuk walk-in email dikosongkan. Telepon memakai pola `0812-0000-00NN`, alamat "Jl. Contoh No. N, Pamulang, Tangerang Selatan". Nomor BPJS adalah **angka fiktif 13 digit yang tidak valid**; disimpan terenkripsi dan `bpjs_number_last4` terisi. `patient_number` mengikuti `P` + 6 digit dari `id` (nilai di kolom pertama berlaku pada DB baru).
 
 | No. | Nama | `gender` | `birth_date` | Akun (email) | Kanal | BPJS fiktif |
 |---|---|:-:|---|---|---|---|
@@ -690,6 +690,7 @@ SELECT COUNT(*) FROM appointment_status_histories;                  -- 64
 SELECT SUM(booked_count) FROM practice_sessions;                    -- 26
 SELECT status, COUNT(*) FROM practice_sessions GROUP BY status;     -- needs_review = 1, closed = 1
 SELECT COUNT(*) FROM users WHERE email LIKE '%.test';               -- 10 (hanya di local/testing)
+SELECT COUNT(*) FROM patient_profiles;                              -- 7 setelah fase 5 (online, berakun); 13 setelah walk-in fase 6/7
 SELECT COUNT(*) FROM media;                                         -- 83 setelah fase 4b (57 fase 1-4a + 26: fasilitas 10 cover + 4 galeri, kamar 4 cover + 8 galeri; cover 36, gallery 12; F4B-R36)
 SELECT COUNT(*) FROM room_categories;                               -- 4 (kapasitas 58, tersedia 16; Kelas 2 penuh); facilities 10 (2 medis, 3 penunjang, 5 umum); contact_messages 5 (2 new, 1 read, 1 replied, 1 archived)
 SELECT COUNT(*) FROM articles;                                      -- 8 (7 terbit + 1 draf); article_categories 4, banners 3, galleries 3, faqs 12, insurance_partners 4, pages 15

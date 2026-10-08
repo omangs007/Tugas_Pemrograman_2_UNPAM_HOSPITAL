@@ -235,7 +235,7 @@ Setiap aturan: **ID**, pernyataan, **penegakan** (lapisan yang menegakkan), dan 
 | BR-157 | Admin Konten tidak dapat melihat data pribadi pasien. Dashboard menampilkan angka agregat untuk semua `dashboard.view`; daftar yang memuat nama pasien hanya untuk `appointments.view`. | Policy, view per `@can`, `DashboardMetrics` memisahkan agregat dan daftar. | — |
 | BR-158 | Pembatasan sisi server berlapis: middleware route `permission:*` + Policy per model + `authorize()` Form Request. Menyembunyikan menu dengan `@can` hanya kenyamanan. | Tes akses langsung URL admin oleh pasien/peran lain (15). | "Anda tidak memiliki izin untuk mengakses halaman ini." |
 | BR-159 **[ASUMSI]** | Satu akun staf memiliki tepat satu peran; Super Admin boleh membuat Super Admin lain. | `StaffRequest`. | "Peran wajib dipilih." |
-| BR-160 | Akun staf tidak memiliki profil pasien; staf yang membuka rute portal pasien mendapat 403, dan pasien yang membuka rute admin mendapat 403. | Middleware `account:patient`/`account:staff`. | "Anda tidak memiliki izin untuk mengakses halaman ini." |
+| BR-160 | Akun staf tidak memiliki profil pasien; staf yang membuka rute portal pasien dialihkan ke `admin.dashboard` (permintaan JSON mendapat 403; D-142), dan pasien yang membuka rute admin mendapat 403. | Middleware `account:patient`/`account:staff`. | "Anda tidak memiliki izin untuk mengakses halaman ini." |
 | BR-161 | Pasien tidak dapat mengubah field sistem (`user_id`, `patient_number`, `is_active`, `consent_*`, `registration_channel`) lewat form profil. | `UpdatePatientProfileRequest` (daftar field tertutup), `$fillable`. | — |
 | BR-162 | Registrasi dan form pasien tidak pernah meminta NIK atau data medis (diagnosis, hasil pemeriksaan). | Skema dan tinjauan form (kebutuhan §8). | — |
 
