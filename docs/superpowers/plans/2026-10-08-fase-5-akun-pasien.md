@@ -10549,3 +10549,122 @@ Hasil dan temuan dicatat koordinator; tidak ada commit pada langkah ini.
 4. **`PatientPageMatrixTest` mengandalkan Task 1 sampai 6**: `createPatient()` (Task 1) dan semua route/perilaku redirect (Task 3 sampai 6). Sel `A` pada mutasi bergantung pada `EnsureAccountType` yang mengalihkan sebelum validasi; sel `V` bergantung pada `UpdatePatientProfileRequest::authorize()` bernilai true untuk pasien berprofil dan validasi memberi 302 dengan galat sesi (tanpa header JSON).
 5. **Langkah sanity (Step 5)** menulis ulang (`[IO.File]::WriteAllText`, UTF-8 tanpa BOM) pada `routes/patient.php`; pola `->name('dashboard')` harus cocok dengan cara Task 3 menulis route. Bila penulis Task 3 memakai kutip ganda atau urutan berbeda, implementer cukup menyesuaikan pola atau melewati langkah itu (bukan syarat lulus).
 6. **Tes AKS-07** (intended URL dengan `?sesi=ID`) tidak ada di T8: kerangka F5-R28 menaruhnya di Task 3 (`PatientLoginTest`, `/pasien/profil?contoh=utuh`).
+
+---
+
+## Catatan Eksekusi (2026-10-08)
+
+Dieksekusi dengan `superpowers:subagent-driven-development` dalam satu sesi, segera setelah pemilik menyetujui rencana. Pemilik menyampaikan persetujuan bersama izin "Ya, jalankan migrate:fresh --seed".
+
+Semua peran memakai subagent **Sonnet 5.5** (preferensi pemilik):
+- implementer;
+- reviewer per tugas dan re-reviewer;
+- final reviewer;
+- implementer gelombang perbaikan final;
+- penguji manual Playwright.
+
+Cabang `fase-5-akun-pasien` dibuat dari `master` (`33a6f52`). Isinya:
+- satu commit rencana (`4c162f0`);
+- 15 commit kerja Task 1–8 (`ebe2591`..`038ef6b`);
+- tiga commit gelombang perbaikan final (`e86889c`, `8e23394`, `de5a11b`);
+- commit catatan ini.
+
+**Hasil akhir:**
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `artisan test` | **5646 tes lulus (29278 asersi), ±23 menit**, diverifikasi koordinator di `de5a11b`; basis fase 4b: 5200 |
+| `pint --test` | PASS |
+| `npm run build` | Sukses (T3, T8); tanpa entri Vite baru, hanya kelas `.auth-card-wide` |
+| `route:list --except-vendor` | **141 route** (128 + 13 baru), **106 admin** (tetap), 4 route `patient.*` |
+| `migrate:fresh --seed` (Step 15) | OK atas izin pemilik; hitungan di tabel bawah |
+| MANUAL (Step 16) | Playwright + Lighthouse; laporan bergambar `Documents\UNPAM-Uji-Manual-2026-10-08-fase-5\index.html` |
+
+Hitungan data setelah Step 15:
+
+| Tabel | Jumlah |
+|---|---|
+| `users` | 10 (staf 3, pasien 7; `model_has_roles` 3 — pasien tanpa peran) |
+| `patient_profiles` | 7 (`P000001`–`P000007`, semua kanal `online`; `bpjs_number_last4` `0011`, `0022`, `0033`) |
+| `notifications` | 0 |
+| `media` | 83 (`media:prune` membersihkan 167 berkas yatim sisa seed lama; `--dry-run` kini 0/0) |
+
+Sisa data uji manual di DB pengembangan:
+- akun uji "Siti Rahma" (`siti@contoh.test`, P000008);
+- akun demo `pasien@unpamhospital.test` sudah kembali ke `Demo12345`, dan BPJS-nya dipulihkan ke `0009900000011` setelah uji hapus BPJS;
+- `dewi.susilowati@contoh.test` diaktifkan kembali setelah uji akun nonaktif.
+
+Hasil uji manual (Step 16):
+- **Kelompok 1–9:** semua sesuai. Lighthouse aksesibilitas **100** untuk `/masuk`, `/daftar`, dan `/pasien`, di desktop dan mobile. Best Practices 78 karena HTTP lokal. SEO 58/66 karena `noindex` disengaja dan tidak ada meta description di halaman auth.
+- **Temuan:** 0 Critical.
+  - Satu temuan "Important" dari penguji, bahwa audit `patient.updated` menyimpan `full_name`, diputuskan **bukan cacat** (E9).
+  - Minor: header "Akun Saya" tanpa nama (dropdown ditunda ke fase 6); baris radio/checkbox 42 px pada 360 px (target 44 px).
+  - Info: tombol "Memproses…" tanpa `disabled`/`aria-busy` (komponen fase 1); tab ekstra pada tautan Kebijakan Privasi.
+
+**Putaran perbaikan per tugas:**
+- Task 1–7 lolos review pada percobaan pertama, tanpa temuan Critical/Important.
+- Task 8 punya satu putaran (`038ef6b`): URL AKS-07 di D-151 dan 15 ditulis `/pasien/profil?contoh=utuh`, padahal tes memakai `/pasien?contoh=utuh`. Re-review: ADDRESSED.
+
+**Suite gerbang pertama** (`038ef6b`): 1 gagal dari 5641. Penyebabnya tes fase 3 yang flaky, `AdminPracticeSessionsTest::test_jdw_14…`. Nama faker staf ("Harjasa Praba Zulkarnain S.Kom") memuat "Zulkarnain", kata yang ditegaskan tidak muncul. Bukan regresi fase 5; diperbaiki di FX4.
+
+**Final review** (seluruh cabang, `4c162f0..038ef6b`, dengan paket diff produksi, tes, dan dokumen terpisah): verdict **Siap merge**, 0 Critical, 0 Important, 8 Minor. Tidak ada butir deferred yang wajib diperbaiki sebelum merge. Gelombang perbaikan tetap dijalankan untuk butir murah. Re-review terbatas menyatakan keenamnya ADDRESSED tanpa kerusakan baru.
+
+| Butir | Perbaikan |
+|---|---|
+| FX1 (`e86889c`) | Ganti password pasien kini atomik: simpan password, hapus sesi lain, cabut token reset (`Password::broker()->deleteToken`), dan audit dalam satu transaksi, sesudah `regenerate()`. Dua tes baru: token dicabut, dan audit gagal membatalkan semuanya. |
+| FX2 (`e86889c`) | `token` reset `max:255`. Kasus provider token 256 karakter dan `password_confirmation` larik ditambahkan. |
+| FX3 (`e86889c`) | Aturan email `LoginRequest` menjadi `bail, required, string, max:255, email:rfc` (F5-R31); email panjang dan rusak kini hanya memberi satu galat. |
+| FX4 (`8e23394`) | Tiga tes JDW-14 (fase 3) memakai nama staf tetap "Admin Konten Uji". |
+| FX5 (`de5a11b`) | README: komentar `route:list --name=password` (7 route); pemutusan sesi bergantung pada `SESSION_DRIVER=database`; token reset dicabut saat ganti password. |
+| FX6 (`de5a11b`) | D-151 carry merujuk 12 "staf membuka wizard → 403"; D-147 mencatat ganti password atomik; K-07 ditandai diputuskan di 01 dan 02. |
+
+### Keputusan (rulings) selama eksekusi
+
+| ID | Keputusan | Biaya bila keliru |
+|---|---|---|
+| E1 | Tanpa git worktree; checkout utama di cabang `fase-5-akun-pasien` (pola fase 0–4b). | Checkout utama terkunci di cabang ini. |
+| E2 | Semua subagent, termasuk final review, memakai Sonnet 5.5 (preferensi pemilik). | Final review sedikit kurang tajam; dimitigasi review per tugas, pemeriksa konsistensi saat penyusunan, dan uji manual. |
+| E3 | Trailer commit subagen memakai atribusi harness (`Claude Sonnet 5.5`). | Hanya teks trailer. |
+| E4 | Implementer Task 8 hanya mengerjakan Step 1–13. Step 14 (suite), 15 (seeding ulang), dan 16 (uji manual oleh subagen penguji yang dilarang mengubah kode) dikerjakan koordinator, paralel dengan final review. | Tidak ada. |
+| E5 | `migrate:fresh --seed` dijalankan atas izin persis pemilik yang diberikan saat menyetujui rencana. | Pemilik perlu login ulang. |
+| E6 | Pre-flight: `createPatient()`/`registrationPayload()` memakai `$argumen + $bawaan`, karena operator `+` PHP memenangkan sisi kiri dan teks kerangka D terbalik. | Hanya helper tes. |
+| E7 | Pre-flight, penyimpangan beralasan dari teks kerangka, dicatat di F5-R9/R15/R20/R21/R31:<ul><li>`updateProfile()` memakai `isDirty()` sebelum simpan dan mengembalikan `refresh()`;</li><li>permintaan tautan reset memakai `redirect()->route('password.request')`;</li><li>`x-form.checkbox` diperbaiki (`is_scalar`);</li><li>`Admin\UpdatePasswordRequest` ditambal (`bail`+`string`);</li><li>tes T2 berada di `tests/Feature/Patient/`.</li></ul> | Kecil; semuanya teruji. |
+| E8 | Teks F5-R28 dan Step 16 rencana menyebut AKS-07 diuji dengan `/pasien/profil?contoh=utuh`. Implementasinya memakai `/pasien?contoh=utuh`, karena route profil baru ada di Task 6. Dokumen blueprint dikoreksi (`038ef6b`); teks rencana dibiarkan sebagai catatan historis dan dikoreksi di sini. | Hanya teks. |
+| E9 | Temuan uji manual "audit `patient.updated` menyimpan `full_name`" bukan cacat. 12 §8.2 menyatakan `full_name` dan `gender` boleh bernilai, sedangkan alamat, telepon, email, tanggal lahir, dan BPJS disamarkan. Daftar periksa Step 16 butir 5 terlalu ketat. | Nama pasien tersimpan di audit, sesuai spesifikasi. |
+| E10 | Tes flaky JDW-14 (fase 3) diperbaiki dalam gelombang perbaikan fase 5. | Tiga tes lama berubah. |
+| E11 | Gelombang perbaikan final tetap dijalankan walau verdict "Siap merge": pencabutan token reset saat ganti password adalah keamanan nyata dan murah (pola E10 fase 4b). | Satu putaran kecil. |
+| E12 | Setelah uji manual, BPJS P000001 dipulihkan ke nilai seed lewat `tinker` (tanpa audit). Akun uji Siti Rahma dibiarkan sebagai sisa uji. | Data demo sedikit berbeda dari seed murni. |
+
+### Bawaan (carry) untuk rencana fase berikutnya
+
+**Fase 6 (mesin booking dan wizard):**
+- AKS-07 asli (`/pasien/pendaftaran/baru?sesi=ID`) dipasang. `PatientDashboardTest::test_empty_state_offers_the_doctor_schedule_while_the_booking_route_does_not_exist` diubah saat `patient.appointments.create` ada, karena tombol "Daftar Kunjungan" lalu menggantikan "Lihat Jadwal Dokter".
+- Teks 05/06/12 tentang staf → 403 pada wizard diselaraskan dengan D-142 (staf dialihkan ke `admin.dashboard`).
+- Dropdown "Akun Saya" (05 §3.1) dibangun saat Riwayat Pendaftaran ada.
+- `save_bpjs` di wizard mengisi `bpjs_number`. Hook `saving` mengambil 4 karakter terakhir apa adanya, jadi normalisasi (buang spasi/tanda hubung) wajib di Form Request.
+- Pertimbangkan satu sumber bersama untuk daftar input sensitif (`bootstrap/app.php` `$sensitive`, `RegisterController::SENSITIVE_INPUT`) sebelum salinan ketiga muncul.
+- Bawaan fase 6 dari CHECKPOINT §4 (handler `BookingException`, `assertBookable`, kunci sesi, dan seterusnya) tetap berlaku.
+
+**Fase 7:** `PatientProfilePolicy` dilengkapi `viewAny`/`create`/`changeStatus`/`linkAccount`. AKS-06 `/admin/pasien` menjadi 403. Walk-in dan profil P000008–P000013 (13 §10.1) masuk `PatientSeeder`. Notifikasi lewat antrean.
+
+**Fase 8:** AKS-06 `/admin/pengaturan` menjadi 403.
+
+**Fase 9 (hardening):**
+- Limiter per-IP untuk `login` dan `password-reset`.
+- Pisahkan bucket `password.email` dan `password.update`.
+- Notifikasi ke email lama saat email diganti.
+- `auth.timebox_duration`; mail reset lewat antrean agar waktu respons seragam.
+- Tombol "Tampilkan password" dan hitung mundur throttle.
+- Target sentuh radio/checkbox 44 px.
+- `x-loading-button` dengan `disabled`/`aria-busy`.
+
+**Minor yang ditunda (tidak memblokir):**
+- T1: asersi `masked_bpjs` kedua tidak bermakna; asersi `can()` duplikat.
+- T2: guard `$new !== []` tidak tercapai; blok route `login` pengganti di dua tes (kini tak berefek); tes notifikasi tumpang tindih.
+- T3: `md5('login'…)` menduplikasi format `ThrottleRequests`; `?? '-'` pada nomor pasien.
+- T4: `UniqueConstraintViolation` selalu dipetakan ke pesan email; `password_confirmation` bergantung implisit pada `confirmed`.
+- T5: broker menghapus token di luar transaksi callback.
+- T6: `messages()` admin/pasien terduplikasi; tes balapan unik bergantung pada urutan simpan T2.
+- T7: kueri I15–I17 terduplikasi; asersi "Pasien" di keluaran konsol lemah; idempotensi per akun.
+- T8: sel `V` matriks memakai payload kosong.
+- `report($e)` pada kegagalan mail dapat menulis alamat email penerima ke log.

@@ -1,6 +1,6 @@
 # Checkpoint — UNPAM HOSPITAL
 
-**Terakhir diperbarui:** 2026-10-08 (rencana fase 5 disusun di cabang `fase-5-akun-pasien`; menunggu persetujuan pemilik) · **Tag git:** `checkpoint/2026-10-08-fase-5-rencana` (sebelumnya `checkpoint/2026-10-07-fase-4b-selesai`, `checkpoint/2026-10-07-fase-4b-eksekusi`, `checkpoint/2026-10-06-fase-4b-task-1`, `checkpoint/2026-10-06-fase-4b-rencana`, `checkpoint/2026-10-06-fase-4a-selesai`, `checkpoint/2026-10-06-fase-4a-eksekusi`, `checkpoint/2026-10-05-fase-4a-rencana`, `checkpoint/2026-10-05-fase-3-selesai`, `checkpoint/2026-10-05-fase-3-eksekusi`, `checkpoint/2026-10-05-fase-3-rencana`, `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
+**Terakhir diperbarui:** 2026-10-08 (fase 5 **selesai dieksekusi** di cabang `fase-5-akun-pasien`; menunggu keputusan merge pemilik) · **Tag git:** `checkpoint/2026-10-08-fase-5-eksekusi` (sebelumnya `checkpoint/2026-10-08-fase-5-rencana`, `checkpoint/2026-10-07-fase-4b-selesai`, `checkpoint/2026-10-07-fase-4b-eksekusi`, `checkpoint/2026-10-06-fase-4b-task-1`, `checkpoint/2026-10-06-fase-4b-rencana`, `checkpoint/2026-10-06-fase-4a-selesai`, `checkpoint/2026-10-06-fase-4a-eksekusi`, `checkpoint/2026-10-05-fase-4a-rencana`, `checkpoint/2026-10-05-fase-3-selesai`, `checkpoint/2026-10-05-fase-3-eksekusi`, `checkpoint/2026-10-05-fase-3-rencana`, `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
 
 Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah sebelum bekerja.
 
@@ -17,7 +17,7 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Fase 3 — Penjadwalan (Jadwal Dokter) | Rencana disetujui pemilik. **Task 1–16 selesai** lewat subagent-driven-development (Sonnet 5.5), semuanya lolos review. Putaran perbaikan terjadi di Task 3, 11 (juga view Task 10), dan 13. Final review seluruh cabang: **With fixes** (3 Important, tanpa Critical). Satu gelombang perbaikan final (F1–F3, F6, M1, M2; `49f966a`..`606cfbe`) lolos re-review terbatas. `migrate:fresh --seed` sudah dijalankan dengan izin pemilik, dan uji manual Playwright selesai dengan Lighthouse aksesibilitas 100/100/100 setelah perbaikan. **Gerbang fase terpenuhi:** 2933 tes lulus (14113 asersi), Pint PASS, `npm run build` OK, 50 route admin (19 baru). **Sudah di-merge** ke `master` atas persetujuan pemilik (fast-forward `1558f62`, 2026-10-05; cabang `fase-3-jadwal-dokter` dihapus; suite pada hasil merge 2933 lulus). Rencana, catatan eksekusi, dan keputusan E1–E13: bagian akhir `docs/superpowers/plans/2026-10-05-fase-3-penjadwalan.md`. Rinciannya di §3a. |
 | Fase 4a — Konten Publik dan CMS | **Selesai dan sudah di-merge** ke `master` atas pilihan pemilik "1" (fast-forward `92173df`, 2026-10-06; cabang dihapus; suite pada hasil merge 4348 lulus). Rencana disetujui pemilik ("lanjutkan"). Task 1–17 selesai lewat subagent-driven-development (Sonnet 5.5) dan lolos review; putaran perbaikan di Task 9 dan 15. Final review: Dengan perbaikan (1 Important, 0 Critical); gelombang perbaikan F1–F4 (`a57eccf`) lolos re-review. **Gerbang:** 4348 tes lulus (21166 asersi), Pint PASS, `npm run build` OK, 90 route admin. `migrate:fresh --seed` dijalankan dengan izin pemilik; uji manual Playwright 0 Critical/Important dan Lighthouse aksesibilitas 100. Catatan eksekusi dan keputusan E1–E14: bagian akhir `docs/superpowers/plans/2026-10-05-fase-4a-konten-publik.md`. Rinciannya di §3b. |
 | Fase 4b — Fasilitas, Kamar, dan Kontak | **Selesai dan sudah di-merge** ke `master` atas pilihan pemilik "1" (fast-forward `bac258a`, 2026-10-07; cabang dihapus; suite pada hasil merge 5200 lulus). Rencana disetujui pemilik ("sesuai"): `docs/superpowers/plans/2026-10-06-fase-4b-fasilitas-kamar-kontak.md` (11 tugas, F4B-R1–R40). Task 1–11 selesai lewat subagent-driven-development (Sonnet 5.5) dan lolos review pada percobaan pertama. Final review: **Siap merge** (0 Critical/Important); gelombang perbaikan F1–F2 (`4a4ca50`, `fe3716e`) lolos re-review. **Gerbang:** 5200 tes lulus (26035 asersi), Pint PASS, `npm run build` OK, 106 route admin. `migrate:fresh --seed` dijalankan dengan izin pemilik; uji manual Playwright 0 Critical/Important dan Lighthouse aksesibilitas/SEO 100. Catatan eksekusi dan keputusan E1–E11: bagian akhir rencana. Rinciannya di §3c. |
-| Fase 5 — Portal Pasien (Akun) | **Rencana disusun, menunggu persetujuan pemilik.** Cabang `fase-5-akun-pasien` dari `master` (`33a6f52`). Rencana: `docs/superpowers/plans/2026-10-08-fase-5-akun-pasien.md` (8 tugas, keputusan F5-R1–R31, D-140–D-151 ditulis Task 8). Cakupan: #23–#28, `PatientRegistrationService`, `PatientNumberGenerator`, `PatientProfilePolicy`, `PatientWelcomeNotification`, `lang/id.json`, `PatientSeeder` (7 akun pasien), penghapusan cadangan F1-R2. Tanpa migration, enum, izin, atau JS baru. Target: 141 route (106 admin). |
+| Fase 5 — Portal Pasien (Akun) | **Eksekusi selesai, menunggu keputusan merge pemilik.** Cabang `fase-5-akun-pasien` dari `master` (`33a6f52`). Rencana disetujui pemilik (bersama izin "Ya, jalankan migrate:fresh --seed"): `docs/superpowers/plans/2026-10-08-fase-5-akun-pasien.md` (8 tugas, F5-R1–R31). Task 1–8 selesai lewat subagent-driven-development (Sonnet 5.5) dan lolos review; satu putaran perbaikan dokumen di Task 8. Final review: **Siap merge** (0 Critical/Important, 8 Minor); gelombang perbaikan FX1–FX6 (`e86889c`, `8e23394`, `de5a11b`) lolos re-review. **Gerbang:** 5646 tes lulus (29278 asersi), Pint PASS, `npm run build` OK, 141 route (106 admin). `migrate:fresh --seed` dijalankan; uji manual Playwright 9/9 kelompok sesuai, Lighthouse aksesibilitas 100. Catatan eksekusi dan keputusan E1–E12: bagian akhir rencana. |
 
 ### 3a. Status fase 3 (selesai dan di-merge 2026-10-05)
 
@@ -56,9 +56,8 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 
 Langkah lanjut:
 1. Nyalakan Apache dan MySQL di `C:\xampp3\xampp-control.exe`.
-2. Fase 5 (akun pasien): rencana sudah disusun dan di-commit di cabang `fase-5-akun-pasien`. Tunggu persetujuan pemilik, lalu eksekusi dengan `superpowers:subagent-driven-development` (Sonnet 5.5).
-   - Bahan penyusunan (digest, kerangka, laporan pemeriksa) ada di `.superpowers/plan-fase-5/` (git-ignored).
-   - Di gerbang Task 8, minta pemilik menulis persis "Ya, jalankan migrate:fresh --seed".
+2. Fase 5 (akun pasien): eksekusi selesai di cabang `fase-5-akun-pasien`; tunggu keputusan merge pemilik (merge lokal ke `master` / biarkan cabang / buang). Setelah merge: jalankan suite pada hasil merge, hapus cabang, `.superpowers/sdd/2026-10-08-fase-5-akun-pasien/`, dan `.superpowers/plan-fase-5/`, lalu commit dan tag CHECKPOINT.
+3. Fase 6 (mesin booking, wizard, bukti): susun rencana dengan `superpowers:writing-plans`. Bawaan fase 6 ada di §4 dan di Catatan Eksekusi rencana fase 5.
 
 Yang sudah ada di aplikasi:
 - Fase 1: enum, akun & peran (Spatie), audit log, media + sanitasi HTML, pengaturan situs, tema & komponen Blade, layout publik/pasien/auth/admin, login/logout staf, ganti password wajib, header keamanan, `StaffAccountService`, `app:create-super-admin`, `media:prune`, seeder demo staf.
@@ -104,7 +103,7 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
   - Gambar editor lintas poliklinik.
   - Logo kecil di header publik dan sidebar admin tampak sempit (lebar = tinggi).
   - Lainnya tercantum di Catatan Eksekusi fase 2.
-- **Fase 5:**
+- **Fase 5:** dikerjakan di rencana fase 5 (cadangan F1-R2 dihapus, `passwords.throttled` generik, `lang/id.json`, `routes/patient.php`, akun pasien demo). Butir asal:
   - Hapus cadangan `Route::has('login')`/`Route::has('patient.dashboard')` (F1-R2).
   - `passwords.throttled` dipetakan ke pesan generik `passwords.sent` (mencegah enumerasi email).
   - `lang/id.json`, `routes/patient.php`.
@@ -204,3 +203,12 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
      - tiga pemeriksa konsistensi. K1 menerapkan Task 1–4 ke salinan repo dan menjalankan suite: 5422 lulus setelah dua perbaikan.
      - satu putaran perbaikan oleh tiga fixer.
    - Rencana dirakit, di-self-review, lalu di-commit. Rencana diajukan ke pemilik.
+   - Rencana disetujui pemilik bersama izin "Ya, jalankan migrate:fresh --seed".
+   - Task 1–8 dieksekusi lewat subagent-driven-development (Sonnet 5.5) dan lolos review; satu putaran perbaikan dokumen di Task 8 (URL AKS-07).
+   - Suite gerbang pertama menemukan satu tes fase 3 yang flaky (nama faker "Zulkarnain").
+   - Final review: Siap merge (0 Critical/Important).
+   - Gelombang perbaikan FX1–FX6 menambahkan ganti password atomik dengan pencabutan token reset, `max:255` token, aturan email login, tes JDW-14, README, dan blueprint. Re-review: semuanya ADDRESSED.
+   - Gerbang: 5646 tes lulus, 141 route.
+   - `migrate:fresh --seed` dijalankan dan `media:prune` membersihkan 167 berkas yatim.
+   - Uji manual Playwright 9/9 sesuai, Lighthouse aksesibilitas 100 (`Documents\UNPAM-Uji-Manual-2026-10-08-fase-5`).
+   - Catatan eksekusi E1–E12 ditulis; menunggu keputusan merge.
