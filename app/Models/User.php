@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -87,6 +88,15 @@ class User extends Authenticatable
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Profil pasien milik akun ini (satu akun satu profil, K-07); NULL untuk staf. Daftar yang menampilkan
+     * profil wajib eager-load relasi ini (mode ketat).
+     */
+    public function patientProfile(): HasOne
+    {
+        return $this->hasOne(PatientProfile::class);
     }
 
     public function isStaff(): bool

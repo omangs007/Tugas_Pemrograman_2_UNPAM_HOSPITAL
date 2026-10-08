@@ -53,6 +53,17 @@ class PatientProfileFactory extends Factory
         });
     }
 
+    /**
+     * Profil dengan nomor BPJS tersimpan (terenkripsi); `bpjs_number_last4` diisi hook `saving` model
+     * saat `create()` (tidak saat `make()`).
+     */
+    public function withBpjs(string $number = '0009900000011'): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'bpjs_number' => $number,
+        ]);
+    }
+
     /** Profil dinonaktifkan (`is_active = false`). */
     public function inactive(): static
     {
