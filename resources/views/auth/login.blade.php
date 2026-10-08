@@ -8,4 +8,8 @@
 
         <x-loading-button class="w-100 mt-2" loading-text="Memproses…">Masuk</x-loading-button>
     </form>
+
+    <x-slot:footer>
+        <p class="mb-0">Belum punya akun? <a href="{{ route('register') }}">Daftar</a></p>
+    </x-slot:footer>
 </x-layouts.auth>

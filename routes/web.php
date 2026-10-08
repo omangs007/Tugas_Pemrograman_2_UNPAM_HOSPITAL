@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Public\ArticleController;
 use App\Http\Controllers\Public\ClinicController;
 use App\Http\Controllers\Public\ContactController;
@@ -66,6 +67,8 @@ Route::get('/kebijakan-privasi', [PageController::class, 'privacy'])->name('priv
 Route::middleware('guest')->group(function (): void {
     Route::get('/masuk', [LoginController::class, 'create'])->name('login');
     Route::post('/masuk', [LoginController::class, 'store'])->middleware('throttle:login')->name('login.store');
+    Route::get('/daftar', [RegisterController::class, 'create'])->name('register');
+    Route::post('/daftar', [RegisterController::class, 'store'])->middleware('throttle:register')->name('register.store');
 });
 // Logout di luar grup `guest` supaya akun yang sedang login bisa keluar (F5-R8).
 Route::post('/keluar', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
