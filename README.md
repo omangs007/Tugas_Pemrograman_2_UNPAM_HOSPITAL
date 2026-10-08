@@ -51,7 +51,7 @@ Hasil: 3 peran, 19 izin, 19 pengaturan situs, dan 3 akun staf demo. Seeder demo 
 | Admin Konten | `konten@unpamhospital.test` | `Demo12345` |
 | Petugas Pendaftaran | `pendaftaran@unpamhospital.test` | `Demo12345` |
 
-Password demo dapat diganti lewat `DEMO_PASSWORD` di `.env` (kosong = `Demo12345`). Akun ini adalah kredensial publik: **jangan** dipakai di produksi. Akun pasien demo menyusul di fase 5.
+Password demo dapat diganti lewat `DEMO_PASSWORD` di `.env` (kosong = `Demo12345`). Akun ini adalah kredensial publik: **jangan** dipakai di produksi. Akun pasien demo ada sejak fase 5 (lihat bagian "Fase 5").
 
 ### Super Admin pertama di produksi
 
@@ -248,4 +248,65 @@ Selain data fase 1–4a: 4 kategori kamar (satu sengaja penuh untuk menguji badg
 & $PHP artisan media:prune --dry-run     # setelah seeding: 0 baris dan 0 berkas yatim
 & $PHP artisan test                      # seluruh suite
 npm run build                            # peta tersemat (initMapEmbeds) dan gaya fasilitas/kamar ikut dibundel
+```
+
+## Fase 5 — Akun pasien (daftar, masuk, lupa password, dashboard, dan profil)
+
+Yang tersedia:
+- **Daftar akun** di <http://unpam-hospital.test/daftar> (nama, tanggal lahir, jenis kelamin, telepon, email, alamat, password, dan persetujuan Kebijakan Privasi). Setelah daftar pasien langsung masuk ke dashboard dan menerima email selamat datang; verifikasi email tidak diwajibkan. Nomor pasien dibuat otomatis (`P000123`).
+- **Masuk dan keluar** di `/masuk` (dengan "Ingat saya") dan tombol "Keluar" di header portal. Pesan galat login selalu "Email atau password salah.", apa pun penyebabnya.
+- **Lupa password** di `/lupa-password`: tautan atur ulang dikirim lewat email, berlaku 60 menit, sekali pakai. Halaman selalu menjawab sama, terdaftar atau tidak. Setelah reset semua sesi akun berakhir dan pasien masuk lagi dengan password baru.
+- **Dashboard pasien** di `/pasien` (sapaan, nomor pasien, keadaan kosong "Kunjungan Mendatang", ringkasan profil) dan **Profil dan Akun** di `/pasien/profil` (ubah profil, hapus nomor BPJS tersimpan, ganti password; sesi di perangkat lain berakhir saat password diganti).
+- Belum ada (menyusul): pendaftaran kunjungan, riwayat, dan notifikasi (fase 6); pengelolaan pasien oleh petugas (fase 7). Tombol "Daftar Kunjungan" di beranda dan dashboard tampil otomatis setelah fase 6.
+
+### Akun pasien demo
+
+Seeder `PatientSeeder` hanya berjalan di lokal dan membuat tujuh akun pasien aktif (tanpa peran) beserta profilnya, semuanya berpassword sama dengan akun staf demo (`Demo12345`, atau nilai `DEMO_PASSWORD`):
+
+| Nama | Email | No. pasien |
+|---|---|---|
+| Anisa Rahmawati (akun demo) | `pasien@unpamhospital.test` | P000001 |
+| Budi Hartanto | `budi.hartanto@contoh.test` | P000002 |
+| Dewi Susilowati | `dewi.susilowati@contoh.test` | P000003 |
+| Fitri Handayani | `fitri.handayani@contoh.test` | P000004 |
+| Gilang Saputra | `gilang.saputra@contoh.test` | P000005 |
+| Kartika Dewi Anggraini | `kartika.anggraini@contoh.test` | P000006 |
+| Mulyani Astuti | `mulyani.astuti@contoh.test` | P000007 |
+
+```powershell
+& $PHP artisan migrate:fresh --seed   # LOKAL SAJA: menghapus semua tabel dan isi database unpam_hospital
+```
+
+Tiga pasien (nomor 1, 2, dan 4) memiliki nomor BPJS fiktif yang tersimpan terenkripsi dan hanya tampil tersamar. Di produksi tidak ada akun demo: seeder menolak berjalan di luar `local` dan `testing`.
+
+### Mencoba lupa password di lokal
+
+Dengan `MAIL_MAILER=log` (bawaan) email tidak benar-benar terkirim dan tautannya tidak pernah ditampilkan di halaman. Ambil tautan dari log harian setelah mengirim permintaan di `/lupa-password`:
+
+```powershell
+$log  = "storage\logs\laravel-$(Get-Date -Format yyyy-MM-dd).log"
+$text = (Get-Content $log -Raw) -replace '=\r?\n', '' -replace '=3D', '='
+[regex]::Matches($text, 'http://unpam-hospital\.test/reset-password/[A-Za-z0-9]+\?email=[^\s"<>]+') | Select-Object -Last 1 | ForEach-Object Value
+```
+
+Rincian lengkap (termasuk Mailpit) ada di blueprint 16 §10.
+
+### Keterbatasan fase 5
+
+- Permintaan tautan reset dan pemakaian tautan reset berbagi satu bucket throttle (`password-reset`, 3 per 10 menit per email dan IP), sehingga permintaan ulang dapat menghabiskan jatah pemakaian tautan.
+- Waktu respons permintaan reset untuk email terdaftar sedikit lebih lambat daripada email tak dikenal (pengiriman email); isi respons identik.
+- Profil tidak menyediakan input nomor BPJS (nomor masuk lewat wizard fase 6); pasien hanya dapat menghapus nomor yang tersimpan.
+
+### Aturan keamanan yang berlaku
+
+Percobaan masuk dibatasi 5 per menit per email dan alamat IP, pendaftaran akun 5 per jam per IP, dan permintaan atau pemakaian tautan reset 3 per 10 menit per email dan IP (satu hitungan bersama; ini keterbatasan yang dicatat). Setiap batas yang terlewati memberi pesan "Terlalu banyak percobaan. Silakan coba lagi dalam {n} detik." Staf yang membuka `/pasien` dialihkan ke dashboard admin, dan pasien yang membuka `/admin` mendapat 403. Pasien hanya dapat mengubah profilnya sendiri; nomor pasien, kanal pendaftaran, dan persetujuan privasi tidak dapat diubah dari formulir. Login dan logout pasien tidak dicatat di audit log; pendaftaran, perubahan profil, ganti password, dan reset password dicatat tanpa data pribadi.
+
+### Pemeriksaan cepat (fase 5)
+
+```powershell
+& $PHP artisan route:list --except-vendor --path=pasien   # 4 route portal (dashboard, profil, ubah profil, ganti password)
+& $PHP artisan route:list --except-vendor --name=password # password.request, .email, .reset, .update (+ patient.password.update)
+& $PHP artisan route:list --path=admin                    # tetap 106 route admin
+& $PHP artisan test                                       # seluruh suite
+npm run build                                             # gaya kartu auth lebar (.auth-card-wide) ikut dibundel
 ```
