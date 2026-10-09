@@ -26,8 +26,8 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * SEED-01 (bagian master data fase 2 dan invarian I15 sampai I17 fase 5), SEED-03. Kueri K-5/K-23 dari 09 §12; invarian lengkap
- * (`scripts/sql/seed-invariants.sql`) menyusul di fase 9.
+ * SEED-01 (master data fase 2, invarian I15 sampai I17 fase 5, dan 17 invarian 13 §11.1 beserta angka acuan 13 §10.3 fase 7a
+ * lewat `scripts/sql/seed-invariants.sql`), SEED-03. Kueri K-5/K-23 dari 09 §12.
  */
 class DemoSeederInvariantsTest extends TestCase
 {
@@ -115,16 +115,81 @@ class DemoSeederInvariantsTest extends TestCase
         $this->assertSame(7, User::query()->where('account_type', 'patient')->count());
         $this->assertSame(10, User::query()->where('email', 'like', '%.test')->count());
         $this->assertSame(3, DB::table('model_has_roles')->count(), 'Akun pasien tidak memegang peran.');
-        $this->assertSame(7, PatientProfile::query()->count());
+        $this->assertSame(13, PatientProfile::query()->count(), '7 akun pasien + 6 walk-in dari AppointmentSeeder (fase 7a).');
         $this->assertSame(7, PatientProfile::query()->where('registration_channel', 'online')->whereNotNull('user_id')->count());
-        $this->assertSame(0, PatientProfile::query()->where('registration_channel', 'loket')->count(), 'Walk-in menyusul di fase 6/7.');
-        $this->assertSame(3, PatientProfile::query()->whereNotNull('bpjs_number_last4')->count());
+        $this->assertSame(6, PatientProfile::query()->where('registration_channel', 'loket')->count(), 'Enam walk-in dibuat AppointmentSeeder.');
+        $this->assertSame(5, PatientProfile::query()->whereNotNull('bpjs_number_last4')->count(), '3 pasien berakun + P000012 dan P000013 (saveBpjs pada A25 dan A05).');
         $this->assertSame('Anisa Rahmawati', PatientProfile::query()->where('email', 'pasien@unpamhospital.test')->value('full_name'));
 
         // I15, I16, I17 (13 §11.1); I15 diperketat dengan IS NULL karena kolom `patient_number` NULLable.
         $this->assertSame([], DB::select("SELECT id FROM patient_profiles WHERE patient_number IS NULL OR patient_number <> CONCAT('P', LPAD(id, 6, '0'))"));
         $this->assertSame([], DB::select('SELECT p.id FROM patient_profiles p JOIN users u ON u.id = p.user_id WHERE p.email IS NULL OR p.email <> u.email'));
         $this->assertSame([], DB::select('SELECT p.id FROM patient_profiles p JOIN users u ON u.id = p.user_id WHERE p.is_active <> u.is_active'));
+    }
+
+    /** SEED-01 fase 7a: 17 invarian 13 §11.1 dari `scripts/sql/seed-invariants.sql`, semuanya `pelanggaran = 0`. */
+    public function test_the_seed_invariants_sql_file_reports_zero_violations_after_seeding(): void
+    {
+        $path = base_path('scripts/sql/seed-invariants.sql');
+        $this->assertFileExists($path);
+        $contents = (string) file_get_contents($path);
+
+        $this->assertSame(0, preg_match('/[^\x00-\x7F]/', $contents), 'Berkas SQL harus ASCII murni (13 §11.1).');
+        $this->assertSame(17, preg_match_all("/SELECT 'I\\d+ /", $contents), 'Tujuh belas invarian I1 sampai I17.');
+
+        $this->travelTo('2026-10-05 07:00:00'); // Senin: A13 sampai A16 mendapat sesi hari ini
+        $this->seedDemo();
+
+        $rows = DB::select($this->invariantQuery($contents));
+
+        $this->assertCount(17, $rows);
+
+        foreach ($rows as $row) {
+            $this->assertSame(0, (int) $row->pelanggaran, "Invarian dilanggar: {$row->invarian}");
+        }
+
+        // Bukti tes tidak kosong: merusak satu pencacah harus tertangkap I1 dan hanya I1.
+        $sessionId = (int) DB::table('appointments')->where('status', 'completed')->orderBy('id')->value('practice_session_id');
+        DB::table('practice_sessions')->where('id', $sessionId)->update(['booked_count' => 0]);
+
+        $violations = collect(DB::select($this->invariantQuery($contents)))->filter(fn (object $row): bool => (int) $row->pelanggaran > 0);
+
+        $this->assertSame(1, $violations->count());
+        $this->assertStringStartsWith('I1 ', $violations->first()->invarian);
+    }
+
+    /** Isi berkas tanpa baris komentar dan titik koma penutup, siap dikirim sebagai satu kueri. */
+    private function invariantQuery(string $contents): string
+    {
+        $lines = array_filter(
+            preg_split('/\R/', $contents) ?: [],
+            fn (string $line): bool => ! str_starts_with(ltrim($line), '--'),
+        );
+
+        return rtrim(trim(implode("\n", $lines)), ';');
+    }
+
+    /** SEED-01 fase 7a: angka acuan 13 §10.3 dan §11.2 pada hari Senin (sesi hari ini tersedia). */
+    public function test_the_reference_numbers_of_the_appointment_seeder_match_13_section_10_3(): void
+    {
+        $this->travelTo('2026-10-05 07:00:00');
+        $this->seedDemo();
+
+        $this->assertSame(29, DB::table('appointments')->count());
+        $this->assertSame(
+            ['cancelled' => 3, 'checked_in' => 1, 'completed' => 8, 'confirmed' => 9, 'no_show' => 2, 'pending' => 6],
+            DB::table('appointments')->selectRaw('status, COUNT(*) AS total')->groupBy('status')->orderBy('status')->pluck('total', 'status')->map(fn ($total): int => (int) $total)->all(),
+        );
+        $this->assertSame(64, DB::table('appointment_status_histories')->count());
+        $this->assertSame(26, (int) DB::table('practice_sessions')->sum('booked_count'), '29 pendaftaran dikurangi 3 batal.');
+        $this->assertSame(9, DB::table('appointments')->where('channel', 'loket')->count());
+        $this->assertSame(20, DB::table('appointments')->where('channel', 'online')->count());
+        $this->assertSame(1, DB::table('practice_sessions')->where('status', 'needs_review')->count());
+        $this->assertSame(1, DB::table('practice_sessions')->where('status', 'closed')->count());
+        $this->assertSame(13, PatientProfile::query()->count());
+        $this->assertSame(6, PatientProfile::query()->where('registration_channel', 'loket')->count());
+        $this->assertSame(3, DB::table('schedule_exceptions')->count());
+        $this->assertSame('2026-10-05 07:00:00', now()->format('Y-m-d H:i:s'), 'Jam beku tes harus dipulihkan seeder.');
     }
 
     public function test_every_doctor_has_exactly_one_primary_specialty_and_archive_state_is_consistent(): void
@@ -240,11 +305,11 @@ class DemoSeederInvariantsTest extends TestCase
     {
         $this->seedDemo();
 
-        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder', 'RoomCategorySeeder', 'FacilitySeeder', 'ContentSeeder', 'PatientSeeder', 'ContactMessageSeeder'] as $seeder) {
+        foreach (['SpecialtySeeder', 'ClinicSeeder', 'DoctorSeeder', 'DoctorScheduleSeeder', 'ScheduleExceptionSeeder', 'RoomCategorySeeder', 'FacilitySeeder', 'ContentSeeder', 'PatientSeeder', 'AppointmentSeeder', 'ContactMessageSeeder'] as $seeder) {
             $this->artisan('db:seed', ['--class' => "Database\\Seeders\\{$seeder}", '--no-interaction' => true])->assertExitCode(0);
         }
 
-        $this->assertSame([10, 7], [User::query()->count(), PatientProfile::query()->count()]);
+        $this->assertSame([10, 13], [User::query()->count(), PatientProfile::query()->count()]);
 
         $this->assertSame([13, 17, 18, 20, 83], [
             Specialty::query()->count(),

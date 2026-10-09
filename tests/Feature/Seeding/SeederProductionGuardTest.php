@@ -6,6 +6,7 @@ use App\Models\PatientProfile;
 use App\Models\User;
 use App\Models\WebsiteSetting;
 use Closure;
+use Database\Seeders\AppointmentSeeder;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoSeeder;
 use Database\Seeders\DemoUserSeeder;
@@ -91,7 +92,7 @@ class SeederProductionGuardTest extends TestCase
             ->assertExitCode(0);
 
         $this->assertSame(10, User::query()->count()); // 3 staf + 7 akun pasien demo (fase 5)
-        $this->assertSame(7, PatientProfile::query()->count());
+        $this->assertSame(13, PatientProfile::query()->count()); // 7 online + 6 walk-in AppointmentSeeder (fase 7a)
         $this->assertTrue(User::query()->where('email', 'superadmin@unpamhospital.test')->exists());
         $this->assertTrue(User::query()->where('email', 'pasien@unpamhospital.test')->exists());
         $this->assertSame(3, Role::query()->count());
@@ -106,7 +107,7 @@ class SeederProductionGuardTest extends TestCase
             ->assertExitCode(0);
 
         $this->assertSame(10, User::query()->count());
-        $this->assertSame(7, PatientProfile::query()->count());
+        $this->assertSame(13, PatientProfile::query()->count());
     }
 
     public function test_demo_user_seeder_throws_in_production_and_creates_no_users(): void
@@ -130,6 +131,15 @@ class SeederProductionGuardTest extends TestCase
     public function test_demo_seeder_is_rejected_in_staging(): void
     {
         $this->assertDemoSeederRejected(DemoSeeder::class, 'staging');
+    }
+
+    /** SEED-02 fase 7a: pendaftaran contoh memakai pasien fiktif dan jam semu; tidak boleh jalan di produksi atau staging. */
+    public function test_appointment_seeder_throws_in_production_and_staging_and_creates_nothing(): void
+    {
+        $this->assertDemoSeederRejected(AppointmentSeeder::class, 'production');
+        $this->assertDemoSeederRejected(AppointmentSeeder::class, 'staging');
+        $this->assertSame(0, PatientProfile::query()->count());
+        $this->assertSame(0, DB::table('appointments')->count());
     }
 
     /**

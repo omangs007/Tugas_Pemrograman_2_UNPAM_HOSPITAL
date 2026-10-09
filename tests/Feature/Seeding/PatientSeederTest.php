@@ -31,7 +31,7 @@ use Tests\TestCase;
 /**
  * Seeder demo pasien fase 5 (13 §10.1, F5-R27): tujuh akun pasien berakun beserta profil online. SEED-01 (I15 sampai
  * I17 dan angka acuan), SEED-02 (guard produksi), SEED-03 (idempoten), SEK-01, NTF-08 dan Review Focus 5 (atomisitas).
- * Walk-in (P000008 sampai P000013) dan appointment menyusul di fase 6 dan 7.
+ * Walk-in (P000008 sampai P000013) dan appointment dibuat `AppointmentSeeder` (fase 7a), bukan seeder ini.
  */
 class PatientSeederTest extends TestCase
 {
@@ -151,7 +151,7 @@ class PatientSeederTest extends TestCase
         }
 
         $this->assertSame(7, PatientProfile::query()->whereNotNull('user_id')->count());
-        $this->assertSame(0, PatientProfile::query()->where('registration_channel', BookingChannel::Loket->value)->count(), 'Walk-in menyusul di fase 6/7.');
+        $this->assertSame(0, PatientProfile::query()->where('registration_channel', BookingChannel::Loket->value)->count(), 'Walk-in dibuat AppointmentSeeder (fase 7a), bukan PatientSeeder.');
     }
 
     /** SEED-01 I15: `patient_number` = `P` + `id` 6 digit (nilai literal P000001..P000007 berlaku pada DB baru). */
@@ -354,7 +354,7 @@ class PatientSeederTest extends TestCase
 
         $this->assertSame(0, $exit);
         $this->assertSame(10, User::query()->count());
-        $this->assertSame(7, PatientProfile::query()->count());
+        $this->assertSame(13, PatientProfile::query()->count(), '7 akun pasien + 6 walk-in AppointmentSeeder (fase 7a).');
         $this->assertStringContainsString('Anisa Rahmawati', $text);
         $this->assertStringContainsString('pasien@unpamhospital.test', $text);
         $this->assertStringContainsString('Pasien', $text);

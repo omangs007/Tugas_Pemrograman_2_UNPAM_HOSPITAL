@@ -446,8 +446,11 @@ class ScheduleSeederTest extends TestCase
         $this->seed(DatabaseSeeder::class);
 
         $this->assertSame(52, DoctorSchedule::query()->count());
-        $this->assertSame(2, ScheduleException::query()->count());
-        $this->assertSame(231, PracticeSession::query()->count());
+        // Fase 7a: AppointmentSeeder menambah pengecualian ketiga "Cuti mendadak (contoh)" dan sesi lampau 14 hari
+        // (tepat dua minggu x 51 templat aktif = 102) lewat PracticeSessionGenerator di bawah jam semu: 231 + 102 = 333.
+        $this->assertSame(3, ScheduleException::query()->count());
+        $this->assertSame(333, PracticeSession::query()->count());
+        $this->assertSame(102, PracticeSession::query()->where('session_date', '<', '2026-10-05')->count());
         $this->assertSame(16, Doctor::query()->publiclyVisible()->count());
 
         $this->get(route('schedules.index'))

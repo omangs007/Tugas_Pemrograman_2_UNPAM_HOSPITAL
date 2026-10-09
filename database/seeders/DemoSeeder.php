@@ -25,7 +25,7 @@ class DemoSeeder extends Seeder
 
         // Seeder data master (fase 2 dst.) ditambahkan ke daftar ini mengikuti urutan 13 §2.1.
         // PatientSeeder (fase 5: 7 akun pasien berakun) berada di antara ContentSeeder dan ContactMessageSeeder;
-        // AppointmentSeeder (fase 6/7) disisipkan tepat sesudah PatientSeeder.
+        // AppointmentSeeder (fase 7a: 6 profil walk-in, sesi lampau, 29 pendaftaran, pengecualian ketiga) tepat sesudah PatientSeeder.
         $this->call([
             DemoUserSeeder::class,
             SpecialtySeeder::class,
@@ -37,6 +37,7 @@ class DemoSeeder extends Seeder
             FacilitySeeder::class,
             ContentSeeder::class,
             PatientSeeder::class,
+            AppointmentSeeder::class,
             ContactMessageSeeder::class,
         ]);
 
