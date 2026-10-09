@@ -257,7 +257,7 @@ Yang tersedia:
 - **Masuk dan keluar** di `/masuk` (dengan "Ingat saya") dan tombol "Keluar" di header portal. Pesan galat login selalu "Email atau password salah.", apa pun penyebabnya.
 - **Lupa password** di `/lupa-password`: tautan atur ulang dikirim lewat email, berlaku 60 menit, sekali pakai. Halaman selalu menjawab sama, terdaftar atau tidak. Setelah reset semua sesi akun berakhir dan pasien masuk lagi dengan password baru.
 - **Dashboard pasien** di `/pasien` (sapaan, nomor pasien, keadaan kosong "Kunjungan Mendatang", ringkasan profil) dan **Profil dan Akun** di `/pasien/profil` (ubah profil, hapus nomor BPJS tersimpan, ganti password; sesi di perangkat lain berakhir saat password diganti).
-- Belum ada (menyusul): pendaftaran kunjungan, riwayat, dan notifikasi (fase 6); pengelolaan pasien oleh petugas (fase 7). Tombol "Daftar Kunjungan" di beranda dan dashboard tampil otomatis setelah fase 6.
+- Belum ada (menyusul): pendaftaran kunjungan, riwayat, dan notifikasi (fase 6); pengelolaan pasien oleh petugas (fase 7a, tersedia). Tombol "Daftar Kunjungan" di beranda dan dashboard tampil otomatis setelah fase 6.
 
 ### Akun pasien demo
 
@@ -322,7 +322,7 @@ Yang tersedia:
 - **Dashboard** menampilkan hingga lima kunjungan mendatang, banner "Jadwal … pendaftaran Anda berubah" dan pemberitahuan yang belum dibaca; header publik memuat dropdown **Akun Saya** (Dashboard, Riwayat Pendaftaran, Profil dan Akun, Keluar).
 - **Notifikasi**: setiap perubahan status tercatat di dashboard; email (lokal masuk log) hanya untuk dikonfirmasi, dibatalkan, dan perubahan jadwal (koreksi check-in tidak mengirim email). Dikirim sinkron setelah transaksi berhasil; kegagalan kirim hanya dicatat dan tidak membatalkan pendaftaran.
 - **Aturan**: pendaftaran online ditutup 60 menit sebelum sesi dimulai, jendela 30 hari ke depan, maksimal 3 pendaftaran aktif per pasien, satu pendaftaran aktif per sesi, dan sesi pada hari yang sama tidak boleh tumpang tindih; semua angka berasal dari pengaturan situs (`website_settings`).
-- Belum ada (menyusul fase 7): layar petugas untuk pendaftaran, antrean, walk-in, dan bukti admin; perubahan jadwal yang memicu notifikasi dari layar Sesi Terdampak; penandaan tidak hadir otomatis.
+- Belum ada saat fase 6 selesai (menyusul): layar petugas untuk pendaftaran, antrean, walk-in, dan bukti admin, serta penandaan tidak hadir otomatis (semuanya tersedia sejak fase 7a); perubahan jadwal yang memicu notifikasi dari layar Sesi Terdampak (fase 7b).
 
 ### Mencoba di lokal
 
@@ -330,9 +330,9 @@ Masuk sebagai `pasien@unpamhospital.test` (password `Demo12345`, lihat "Akun pas
 
 ### Keterbatasan fase 6
 
-- Notifikasi dikirim sinkron (tanpa antrean); antrean dirancang di fase 7.
-- Notifikasi perubahan jadwal baru dapat dipicu setelah layar Sesi Terdampak (fase 7); kelas dan tampilannya sudah ada dan diuji langsung.
-- Pembatalan oleh petugas, check-in, penyelesaian, dan penandaan tidak hadir sudah diatur oleh `AppointmentStatusService` tetapi belum punya layar (fase 7).
+- Notifikasi dikirim sinkron (tanpa antrean Laravel); tetap sinkron di fase 7a.
+- Notifikasi perubahan jadwal baru dapat dipicu setelah layar Sesi Terdampak (fase 7b); kelas dan tampilannya sudah ada dan diuji langsung.
+- Pembatalan oleh petugas, check-in, penyelesaian, dan penandaan tidak hadir diatur oleh `AppointmentStatusService`; layarnya tersedia sejak fase 7a.
 - Pemutusan pendaftaran ganda mengandalkan kunci database (`active_flag` UNIQUE) dan kunci aplikasi per akun (`Cache::lock`); dengan `CACHE_STORE=array` kunci aplikasi hanya berlaku dalam satu proses, sedangkan kunci database tetap berlaku.
 - Prasyarat produksi: ekstensi PHP `ext-gd` harus aktif (QR PNG pada PDF bukti pendaftaran); `composer.json` tidak mendeklarasikannya, jadi periksa `php -m` di server.
 
@@ -349,4 +349,66 @@ Kode booking milik pasien lain, kode berformat salah, dan notifikasi milik pasie
 & $PHP artisan test --filter=Concurrency                  # tes konkurensi booking (butuh MariaDB berjalan)
 & $PHP artisan test                                       # seluruh suite
 npm run build                                             # skrip cetak bukti dan blok pembayaran wizard ikut dibundel
+```
+
+## Fase 7a — Pasien, walk-in, pendaftaran, dan antrean (layar petugas)
+
+Yang tersedia (Super Admin dan Petugas Pendaftaran; Admin Konten tidak punya akses):
+- **Pasien (#37)** di <http://unpam-hospital.test/admin/pasien>: daftar dengan satu kotak pencarian (nama, nomor pasien `P000012`, telepon, atau tanggal lahir `dd/mm/yyyy`) dan filter kanal serta status; detail dengan nomor BPJS tersamar dan riwayat pendaftaran; **tambah profil walk-in** (persetujuan privasi lisan wajib dicentang; tanpa NIK dan tanpa nomor BPJS di form; profil yang mirip ditampilkan dulu); **ubah**; **nonaktifkan atau aktifkan** (ditolak bila pasien masih punya pendaftaran aktif; profil berakun ikut menonaktifkan akunnya); dan **hubungkan profil walk-in ke akun online** dalam dua langkah: masukkan email akun di panel `?hubungkan=`, periksa perbandingan nama, tanggal lahir, dan telepon, centang verifikasi identitas di loket, lalu hubungkan (hanya bila akun belum punya riwayat pendaftaran).
+- **Pendaftaran (#38)** di `/admin/pendaftaran`: daftar dengan filter tanggal kunjungan (bawaan hari ini), poliklinik, dokter, status, kanal, dan pencarian kode booking, nomor pasien, atau nama; detail dengan tombol status yang selalu sama dengan aturan server (konfirmasi, check-in, selesai, batal dengan alasan, koreksi check-in; check-in yang belum dibuka tampil nonaktif dengan jam bukanya); **bukti pendaftaran** versi cetak untuk petugas (tanpa PDF); dan **walk-in** di `/admin/pendaftaran/buat` dalam tiga bagian (pasien, sesi, data pembayaran). Sesi yang pendaftaran online-nya sudah ditutup tetap dapat dipilih petugas sampai jam selesai sesi.
+- **Antrean Hari Ini** di `/admin/antrean`: pilih tanggal, poliklinik, dokter, dan sesi; cari atau pindai kode booking (baris disorot, tidak mengubah status); aksi per baris; ringkasan terisi dan jumlah per status; dan **Tandai tidak hadir** untuk seluruh pendaftaran Menunggu atau Dikonfirmasi setelah sesi berakhir (dengan daftar dan konfirmasi). Halaman tidak diperbarui otomatis: gunakan "Muat ulang".
+- **Tidak hadir otomatis**: `appointments:mark-no-show` (opsi `--date=YYYY-MM-DD`) berjalan harian pukul 23.30 lewat scheduler dan menandai pendaftaran Menunggu atau Dikonfirmasi pada sesi yang sudah berakhir.
+- Menu **Pelayanan Pasien** memuat Pendaftaran, Antrean Hari Ini, dan Pasien; halaman pendaftaran dan antrean memakai tab modul yang sama.
+
+### Hak akses
+
+| Peran | Lihat pasien dan pendaftaran (`patients.view`, `appointments.view`) | Kelola: walk-in, ubah, status, hubungkan akun, transisi, tidak hadir (`patients.manage`, `appointments.manage`) |
+|---|:-:|:-:|
+| Super Admin | ya | ya |
+| Admin Konten | tidak (403) | tidak (403) |
+| Petugas Pendaftaran | ya | ya |
+
+Peran kustom dapat diberi izin lihat saja: tombol dan form kelola tidak tampil dan permintaan tulis ditolak 403. Ekspor CSV pendaftaran menyusul di fase 8; layar Sesi Terdampak dan notifikasi jadwal berubah di fase 7b.
+
+### Mencoba di lokal
+
+Data demo fase 7a memerlukan DB baru (`& $PHP artisan migrate:fresh --seed`, lokal saja; menghapus semua tabel `unpam_hospital`). Seeder menambah enam profil walk-in (P000008–P000013), 29 pendaftaran contoh dengan semua status (dibuat lewat service dengan jam semu, termasuk riwayat dan notifikasi), sesi 14 hari ke belakang, dan satu pengecualian "Cuti mendadak (contoh)". Masuk sebagai `pendaftaran@unpamhospital.test` (password `Demo12345`) di <http://unpam-hospital.test/admin/login>. Pasangan uji hubungkan akun: profil walk-in "Mulyani Astuti" (P000012, sudah punya pendaftaran) dengan akun `mulyani.astuti@contoh.test` (profil kosong P000007): buka detail P000012, tekan "Hubungkan ke akun online", dan masukkan email itu. Untuk melihat tombol Tandai tidak hadir, buka antrean sesi hari ini yang waktunya sudah lewat, atau jalankan perintah berikut untuk kemarin:
+
+```powershell
+& $PHP artisan appointments:mark-no-show --date=2026-10-08   # ganti dengan tanggal kemarin; keluaran per sesi dan ringkasan
+```
+
+Pemeriksaan data demo (17 invarian, kolom `pelanggaran` harus 0 semua; pengguna `unpam_app`; password diminta dan diambil dari `DB_PASSWORD` di `.env`):
+
+```powershell
+& "$XAMPP\mysql\bin\mysql.exe" -h 127.0.0.1 -u unpam_app -p unpam_hospital -e "source scripts/sql/seed-invariants.sql"
+```
+
+### Keterbatasan fase 7a
+
+- Layar Sesi Terdampak, resolusi `keep`/`apply`/`cancel`, dan notifikasi "jadwal berubah" menyusul di fase 7b. Sesi yang menunggu penyelesaian ditolak untuk aksi petugas dengan pesan "Sesi ini sedang menunggu penyelesaian di layar Sesi terdampak." dan tidak diproses perintah tidak hadir.
+- Notifikasi tetap dikirim sinkron sesudah transaksi (tanpa antrean Laravel), sama dengan fase 6.
+- Seeding saat tidak ada sesi hari ini sama sekali (misalnya Minggu malam) melewatkan pendaftaran contoh A13–A16 dengan peringatan, sehingga jumlah pendaftaran contoh menjadi 25, bukan 29; angka acuan 13 §10.3 persis dijamin hanya bila di-seed pada hari Senin pagi (dikunci tes); pada hari lain periksa 17 invarian dan bahwa jumlah per status sama dengan jumlah pendaftaran.
+- Form profil admin tidak memuat nomor BPJS: nomor tersimpan lewat pendaftaran walk-in ("Simpan nomor BPJS ke profil pasien") atau diisi pasien sendiri. Email profil yang sudah berakun ditampilkan hanya-baca.
+- Penggabungan dua profil yang sama-sama punya riwayat dan pelepasan tautan akun belum didukung; hubungkan akun hanya untuk akun tanpa riwayat pendaftaran dan profil walk-in yang aktif.
+- Tandai tidak hadir bukan satu transaksi: setiap pendaftaran diproses sendiri. Bila sistem sibuk, proses berhenti dan pesan meminta mengulang; mengulang aman karena yang sudah ditandai tidak diproses lagi.
+- Antrean tidak diperbarui otomatis, dan pindai kode booking hanya menemukan dan menyorot baris.
+- Kunci kirim ganda walk-in memakai `Cache::lock`; dengan `CACHE_STORE=array` hanya berlaku dalam satu proses, sedangkan kunci database tetap melindungi dari pendaftaran ganda.
+
+### Aturan keamanan yang berlaku
+
+Semua layar #37 dan #38 menjawab 403 bagi pasien dan Admin Konten dan mengalihkan tamu ke `/admin/login`; Admin Konten tidak pernah menerima data pasien. Nomor BPJS dan polis hanya tampil sebagai `•••••••••` dan empat digit terakhir (tanpa aksi "tampilkan lengkap") dan tidak masuk flash, data formulir yang dipulihkan, audit, notifikasi, atau log; keluhan tidak masuk audit atau notifikasi. Nama pasien, alamat, dan keluhan selalu di-escape. Tombol status mengikuti aturan server dan halaman yang basi ditolak tanpa menulis apa pun. Parameter `kembali` hanya dapat menunjuk ke `/admin/pendaftaran` atau `/admin/antrean` (dan form walk-in), tidak pernah ke situs lain. Pendaftaran di URL admin memakai kode booking (`UPH-XXXX-XXXX`), bukan id. Log galat basis data ditulis tanpa nilai parameter.
+
+### Pemeriksaan cepat (fase 7a)
+
+```powershell
+& $PHP artisan route:list --except-vendor --path=pasien   # 13 route portal pasien (tetap)
+& $PHP artisan route:list --path=admin                    # 122 route admin (16 baru: pasien 8, pendaftaran 6, antrean 2)
+& $PHP artisan route:list --except-vendor --json          # 166 route aplikasi
+& $PHP artisan schedule:list                              # sessions:generate 00.05 dan appointments:mark-no-show 23.30 (30 23 * * *)
+& $PHP artisan appointments:mark-no-show --date=2099-01-01   # galat: tanggal tidak boleh setelah hari ini (exit 1)
+& $PHP artisan test --filter=Concurrency                  # tes konkurensi (butuh MariaDB berjalan)
+& $PHP artisan test                                       # seluruh suite
+& $PHP vendor\bin\pint --test                             # format kode
+npm run build                                             # tanpa entri Vite baru
 ```
