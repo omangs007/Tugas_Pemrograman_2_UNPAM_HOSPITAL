@@ -134,6 +134,11 @@ return [
             ['label' => 'Kamar dan Kapasitas', 'route' => 'admin.room-categories.index', 'permission' => 'facilities.manage|rooms.update-availability', 'active' => ['admin.room-categories.*']],
             ['label' => 'Fasilitas', 'route' => 'admin.facilities.index', 'permission' => 'facilities.manage', 'active' => ['admin.facilities.*']],
         ],
+        // Halaman #38 (F7A-R24). "Antrean Hari Ini" tersembunyi otomatis sampai route antrean ada.
+        'appointments' => [
+            ['label' => 'Pendaftaran', 'route' => 'admin.appointments.index', 'permission' => 'appointments.view', 'active' => ['admin.appointments.*']],
+            ['label' => 'Antrean Hari Ini', 'route' => 'admin.queue.index', 'permission' => 'appointments.view', 'active' => ['admin.queue.*']],
+        ],
     ],
 
 ];

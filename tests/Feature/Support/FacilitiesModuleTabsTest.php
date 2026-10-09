@@ -99,6 +99,6 @@ class FacilitiesModuleTabsTest extends TestCase
     public function test_the_content_tabs_are_unchanged_by_the_new_group(): void
     {
         $this->assertCount(7, config('navigation.modules.content'));
-        $this->assertSame(['clinics', 'schedules', 'content', 'facilities'], array_keys(config('navigation.modules')));
+        $this->assertSame(['clinics', 'schedules', 'content', 'facilities', 'appointments'], array_keys(config('navigation.modules')));
     }
 }

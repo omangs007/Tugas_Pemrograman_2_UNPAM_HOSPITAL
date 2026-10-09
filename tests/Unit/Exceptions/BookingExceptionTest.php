@@ -232,7 +232,7 @@ class BookingExceptionTest extends TestCase
         /** @var array<string, mixed> $lang */
         $lang = require lang_path('id/booking.php');
 
-        $this->assertEqualsCanonicalizing(['errors', 'transitions', 'no_show', 'submit_in_progress'], array_keys($lang));
+        $this->assertEqualsCanonicalizing(['errors', 'transitions', 'no_show', 'admin', 'submit_in_progress'], array_keys($lang));
         $this->assertEqualsCanonicalizing(
             [...BookingException::CODES, 'PROFILE_INACTIVE', 'CUTOFF_PASSED_COUNTER'],
             array_keys($lang['errors']),
@@ -242,6 +242,10 @@ class BookingExceptionTest extends TestCase
             array_keys($lang['transitions']),
         );
         $this->assertEqualsCanonicalizing(['done', 'nothing', 'confirm_required'], array_keys($lang['no_show']));
+        $this->assertEqualsCanonicalizing(
+            ['confirmed', 'checked_in', 'completed', 'cancelled', 'corrected', 'invalid_target'],
+            array_keys($lang['admin']),
+        );
     }
 
     public function test_no_message_falls_back_to_its_translation_key(): void

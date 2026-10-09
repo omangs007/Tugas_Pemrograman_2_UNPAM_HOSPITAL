@@ -39,13 +39,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 ->group(base_path('routes/patient.php'));
 
             // Parameter admin berbasis id harus numerik (11 §1 aturan 2). Tidak memakai Route::pattern global
-            // karena nama {doctor}, {clinic}, dst. juga dipakai route publik berbasis slug.
+            // karena nama {doctor}, {clinic}, dst. juga dipakai route publik berbasis slug. {appointment} TIDAK di sini:
+            // route admin memakai booking_code berpola Crockford (F7A-R3), dibatasi per route.
             Route::middleware('web')
                 ->prefix('admin')
                 ->name('admin.')
                 ->where(array_fill_keys([
                     'doctor', 'specialty', 'clinic', 'schedule', 'exception', 'session', 'facility',
-                    'roomCategory', 'patient', 'appointment', 'page', 'banner', 'article',
+                    'roomCategory', 'patient', 'page', 'banner', 'article',
                     'articleCategory', 'gallery', 'faq', 'insurancePartner', 'user', 'role',
                     'auditLog', 'message', 'media',
                 ], '[0-9]+'))

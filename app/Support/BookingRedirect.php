@@ -29,7 +29,19 @@ final class BookingRedirect
             return self::appointment(self::routeCode($request)) ?? SafeRedirect::back($request);
         }
 
-        return SafeRedirect::back($request);
+        return self::forAdmin($routeName, $e, $request) ?? SafeRedirect::back($request);
+    }
+
+    /**
+     * Pemetaan layar petugas (F7A-R20); route yang tidak dikenal mengembalikan null (kembali ke halaman sebelumnya).
+     * Cabang `admin.appointments.store` (walk-in) dan `admin.queue.mark-no-show` (antrean) ditambah T9 dan T10.
+     */
+    private static function forAdmin(?string $routeName, BookingException $e, Request $request): ?string
+    {
+        return match ($routeName) {
+            'admin.appointments.transition' => self::adminTransition($request),
+            default => null,
+        };
     }
 
     private static function forWizard(BookingException $e, Request $request): string
@@ -90,6 +102,21 @@ final class BookingRedirect
         }
 
         return is_string($parameter) ? $parameter : null;
+    }
+
+    /**
+     * Transisi status dari layar petugas (F7A-R19/R20): `kembali` yang sah (detail atau antrean), selain itu detail
+     * pendaftaran; tanpa kode booking sah, daftar pendaftaran.
+     */
+    private static function adminTransition(Request $request): string
+    {
+        $code = self::routeCode($request);
+        $fallback = is_string($code) && BookingCodeGenerator::isValid($code)
+            ? route('admin.appointments.show', ['appointment' => $code])
+            : route('admin.appointments.index');
+        $back = $request->input('kembali');
+
+        return AdminReturn::path(is_string($back) ? $back : null, $fallback);
     }
 
     /** `practice_session_id` hanya dipakai bila bilangan bulat positif yang wajar (nilai larik/teks diabaikan). */

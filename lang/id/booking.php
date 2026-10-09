@@ -47,6 +47,18 @@ return [
         'confirm_required' => 'Centang konfirmasi untuk menandai seluruh pendaftaran yang belum hadir sebagai tidak hadir.',
     ],
 
+    /*
+    | Flash sukses layar petugas (F7A-R18). Placeholder: :code (kode booking), :queue (nomor antrean, mis. ANK-007).
+    */
+    'admin' => [
+        'confirmed' => 'Pendaftaran :code dikonfirmasi.',
+        'checked_in' => ':queue check-in berhasil.',
+        'completed' => 'Kunjungan :queue selesai.',
+        'cancelled' => 'Pendaftaran :code dibatalkan.',
+        'corrected' => 'Check-in :queue dikoreksi menjadi Dikonfirmasi.',
+        'invalid_target' => 'Status tujuan tidak diperbolehkan. Gunakan aksi Tandai tidak hadir pada antrean sesi.',
+    ],
+
     'submit_in_progress' => 'Permintaan Anda sedang diproses. Mohon tunggu sebentar dan jangan menekan tombol berulang kali.',
 
 ];
