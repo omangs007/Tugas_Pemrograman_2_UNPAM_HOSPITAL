@@ -243,7 +243,7 @@ class BookingExceptionTest extends TestCase
         );
         $this->assertEqualsCanonicalizing(['done', 'nothing', 'confirm_required'], array_keys($lang['no_show']));
         $this->assertEqualsCanonicalizing(
-            ['confirmed', 'checked_in', 'completed', 'cancelled', 'corrected', 'invalid_target'],
+            ['confirmed', 'checked_in', 'completed', 'cancelled', 'corrected', 'invalid_target', 'walk_in_created'],
             array_keys($lang['admin']),
         );
     }

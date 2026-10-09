@@ -4,6 +4,7 @@ namespace App\Http\Requests\Patient\Concerns;
 
 use App\Enums\PaymentType;
 use App\Exceptions\BookingException;
+use App\Models\PatientProfile;
 use App\Models\PracticeSession;
 use App\Models\User;
 use App\Services\Booking\BookingData;
@@ -103,8 +104,7 @@ trait HasBookingRules
 
         // Pasien mengosongkan isian BPJS dan profil menyimpan nomor: pakai nomor tersimpan (dekripsi hanya di server).
         if ($this->input('payment_type') === PaymentType::Bpjs->value && ($typed === null || $typed === '')) {
-            $user = $this->user();
-            $stored = $user instanceof User ? $user->loadMissing('patientProfile')->patientProfile?->bpjs_number : null;
+            $stored = $this->bookingProfile()?->bpjs_number;
 
             if (is_string($stored) && $stored !== '') {
                 $merge['bpjs_number'] = $stored;
@@ -114,6 +114,25 @@ trait HasBookingRules
         }
 
         $this->merge($merge);
+    }
+
+    /**
+     * Profil yang dipesan. Bawaan (pasien): profil milik `$this->user()`. Form walk-in petugas menimpanya dengan profil
+     * pilihan petugas (`patient_profile_id`).
+     */
+    protected function bookingProfile(): ?PatientProfile
+    {
+        $user = $this->user();
+
+        return $user instanceof User ? $user->loadMissing('patientProfile')->patientProfile : null;
+    }
+
+    /** Pelaku pemesanan. Bawaan (pasien): `Actor::patient`. Form walk-in menimpanya dengan `Actor::staff`. */
+    protected function bookingActor(): ?Actor
+    {
+        $user = $this->user();
+
+        return $user instanceof User ? Actor::patient($user) : null;
     }
 
     /** Nomor BPJS diketik pasien sendiri (bukan diisi dari profil). */
@@ -158,11 +177,11 @@ trait HasBookingRules
                 return;
             }
 
-            $user = $this->user();
-            $profile = $user instanceof User ? $user->loadMissing('patientProfile')->patientProfile : null;
+            $profile = $this->bookingProfile();
+            $actor = $this->bookingActor();
             $session = PracticeSession::query()->with(['clinic', 'doctor', 'exception'])->find((int) $this->input('practice_session_id'));
 
-            if ($profile === null || $session === null) {
+            if ($profile === null || $actor === null || $session === null) {
                 $validator->errors()->add('practice_session_id', 'Sesi praktik tidak ditemukan.');
 
                 return;
@@ -171,7 +190,7 @@ trait HasBookingRules
             $input = $this->only(['payment_type', 'bpjs_number', 'policy_number', 'insurance_partner_id', 'complaint', 'save_bpjs']);
 
             try {
-                app(BookingService::class)->precheck($profile, $session, BookingData::fromValidated($this->bookingInput($input)), Actor::patient($user));
+                app(BookingService::class)->precheck($profile, $session, BookingData::fromValidated($this->bookingInput($input)), $actor);
             } catch (BookingException $e) {
                 $validator->errors()->add('practice_session_id', $e->getMessage());
             }

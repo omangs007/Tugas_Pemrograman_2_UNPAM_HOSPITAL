@@ -40,6 +40,7 @@ final class BookingRedirect
     {
         return match ($routeName) {
             'admin.appointments.transition' => self::adminTransition($request),
+            'admin.appointments.store' => self::adminWalkIn($e, $request),
             default => null,
         };
     }
@@ -117,6 +118,22 @@ final class BookingRedirect
         $back = $request->input('kembali');
 
         return AdminReturn::path(is_string($back) ? $back : null, $fallback);
+    }
+
+    /**
+     * Form walk-in (F7A-R20): sesi-level kembali ke bagian 2 (`pasien`, `poli`, `dokter`, `tanggal`); pembayaran dan
+     * sistem sibuk ke bagian 3 (ditambah `sesi`); profil nonaktif (kode SESSION_UNAVAILABLE tanpa `practice_session_id`
+     * pada konteks) ke form tanpa pasien terpilih.
+     */
+    private static function adminWalkIn(BookingException $e, Request $request): string
+    {
+        if ($e->errorCode === BookingException::SESSION_UNAVAILABLE && ! isset($e->context['practice_session_id'])) {
+            return route('admin.appointments.create');
+        }
+
+        $keepSession = in_array($e->errorCode, [BookingException::INVALID_PAYMENT, BookingException::SYSTEM_BUSY], true);
+
+        return WalkInReturn::url($request->input('patient_profile_id'), $request->input('practice_session_id'), $keepSession);
     }
 
     /** `practice_session_id` hanya dipakai bila bilangan bulat positif yang wajar (nilai larik/teks diabaikan). */

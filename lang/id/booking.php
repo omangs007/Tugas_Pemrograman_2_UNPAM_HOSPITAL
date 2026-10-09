@@ -57,6 +57,7 @@ return [
         'cancelled' => 'Pendaftaran :code dibatalkan.',
         'corrected' => 'Check-in :queue dikoreksi menjadi Dikonfirmasi.',
         'invalid_target' => 'Status tujuan tidak diperbolehkan. Gunakan aksi Tandai tidak hadir pada antrean sesi.',
+        'walk_in_created' => 'Pendaftaran walk-in berhasil. Kode booking :code, nomor antrean :queue.',
     ],
 
     'submit_in_progress' => 'Permintaan Anda sedang diproses. Mohon tunggu sebentar dan jangan menekan tombol berulang kali.',

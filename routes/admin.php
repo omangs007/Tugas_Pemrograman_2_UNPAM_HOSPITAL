@@ -220,6 +220,8 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
     // Pendaftaran dan antrean (halaman #38, 11 §2.3 H). {appointment} memakai booking_code, bukan id (F7A-R3); pola kode
     // juga menjadikan /pendaftaran/buat (T9) tidak pernah tertangkap {appointment}.
     Route::middleware('permission:appointments.manage')->group(function (): void {
+        Route::get('pendaftaran/buat', [AppointmentController::class, 'create'])->name('appointments.create');
+        Route::post('pendaftaran', [AppointmentController::class, 'store'])->name('appointments.store');
         Route::post('pendaftaran/{appointment:booking_code}/status', [AppointmentController::class, 'transition'])
             ->where('appointment', 'UPH-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}')
             ->name('appointments.transition');

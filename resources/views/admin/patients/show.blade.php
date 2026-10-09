@@ -12,6 +12,13 @@
     </x-slot:breadcrumb>
 
     <x-slot:actions>
+        @if ($patient->is_active)
+            @can('createCounter', \App\Models\Appointment::class)
+                <a href="{{ route('admin.appointments.create', ['pasien' => $patient->id]) }}" class="btn btn-primary">
+                    <i class="bi bi-calendar-plus" aria-hidden="true"></i> Daftarkan Kunjungan
+                </a>
+            @endcan
+        @endif
         @if ($patient->user_id === null && $patient->is_active)
             @can('linkAccount', $patient)
                 <a href="#hubungkan-akun" class="btn btn-outline-primary">

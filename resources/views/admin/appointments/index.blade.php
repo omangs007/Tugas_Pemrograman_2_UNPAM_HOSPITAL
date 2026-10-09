@@ -4,6 +4,11 @@
     </x-slot:breadcrumb>
 
     <x-slot:actions>
+        @can('createCounter', \App\Models\Appointment::class)
+            <a href="{{ route('admin.appointments.create') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i> Pendaftaran Walk-in
+            </a>
+        @endcan
     </x-slot:actions>
 
     <div class="mb-3">
