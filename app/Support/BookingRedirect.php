@@ -41,6 +41,7 @@ final class BookingRedirect
         return match ($routeName) {
             'admin.appointments.transition' => self::adminTransition($request),
             'admin.appointments.store' => self::adminWalkIn($e, $request),
+            'admin.queue.mark-no-show' => self::adminQueue($e, $request),
             default => null,
         };
     }
@@ -134,6 +135,42 @@ final class BookingRedirect
         $keepSession = in_array($e->errorCode, [BookingException::INVALID_PAYMENT, BookingException::SYSTEM_BUSY], true);
 
         return WalkInReturn::url($request->input('patient_profile_id'), $request->input('practice_session_id'), $keepSession);
+    }
+
+    /**
+     * Tandai tidak hadir dari antrean (F7A-R20): kembali ke antrean sesi itu dengan `tanggal` (= `session_date`) dan
+     * `sesi`. Sesi diambil dari parameter route `{session}` (model terikat atau id), lalu dari konteks galat; tanpa sesi
+     * yang ditemukan, antrean polos. `kembali` tidak dipakai: aksi massal selalu kembali ke antrean sesi yang sama.
+     */
+    private static function adminQueue(BookingException $e, Request $request): string
+    {
+        $parameter = $request->route('session');
+        $session = $parameter instanceof PracticeSession ? $parameter : null;
+
+        if ($session === null) {
+            $id = self::queueSessionId($parameter) ?? self::queueSessionId($e->context['practice_session_id'] ?? null);
+            $session = $id === null ? null : PracticeSession::query()->find($id);
+        }
+
+        if ($session === null) {
+            return route('admin.queue.index');
+        }
+
+        return route('admin.queue.index', ['tanggal' => $session->session_date->toDateString(), 'sesi' => $session->id]);
+    }
+
+    /** Id sesi hanya bila bilangan bulat positif yang wajar (larik, desimal, dan teks lain diabaikan). */
+    private static function queueSessionId(mixed $value): ?int
+    {
+        if (is_int($value)) {
+            $value = (string) $value;
+        }
+
+        if (! is_string($value) || preg_match('/^[1-9][0-9]{0,17}$/', $value) !== 1) {
+            return null;
+        }
+
+        return (int) $value;
     }
 
     /** `practice_session_id` hanya dipakai bila bilangan bulat positif yang wajar (nilai larik/teks diabaikan). */

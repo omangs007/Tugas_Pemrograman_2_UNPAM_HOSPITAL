@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\PageController;
 use App\Http\Controllers\Admin\PatientController;
 use App\Http\Controllers\Admin\PracticeSessionController;
+use App\Http\Controllers\Admin\QueueController;
 use App\Http\Controllers\Admin\RoomCategoryController;
 use App\Http\Controllers\Admin\ScheduleExceptionController;
 use App\Http\Controllers\Admin\SpecialtyController;
@@ -225,6 +226,7 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
         Route::post('pendaftaran/{appointment:booking_code}/status', [AppointmentController::class, 'transition'])
             ->where('appointment', 'UPH-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}')
             ->name('appointments.transition');
+        Route::post('antrean/{session}/tidak-hadir', [QueueController::class, 'markNoShow'])->name('queue.mark-no-show');
     });
     Route::middleware('permission:appointments.view')->group(function (): void {
         Route::get('pendaftaran', [AppointmentController::class, 'index'])->name('appointments.index');
@@ -234,6 +236,7 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
         Route::get('pendaftaran/{appointment:booking_code}/bukti', [AppointmentController::class, 'proof'])
             ->where('appointment', 'UPH-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}')
             ->name('appointments.proof');
+        Route::get('antrean', [QueueController::class, 'index'])->name('queue.index');
     });
 
     // J. Media (11 §2.3 J, F2-R3). JSON; izin akhir ditentukan MediaPolicy menurut pemilik media.
