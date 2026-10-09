@@ -30,7 +30,8 @@ Ukuran relatif **[ASUMSI]**: S = kecil, M = sedang, L = besar, XL = sangat besar
 | 4 | Konten publik dan CMS | 1, 2, 3, 9–22, galeri detail, privasi, 36, 39, kotak pesan | 1, 2 (4a), 3 (beranda) | L (dua rencana: 4a, 4b) |
 | 5 | Portal pasien (akun) | 23–28 | 1 | M |
 | 6 | Mesin booking, wizard, bukti | 29, 30 | 3, 5 | XL |
-| 7 | Admin pendaftaran, antrean, walk-in, sesi terdampak, notifikasi | 37, 38, layar tinjau sesi terdampak (bagian 35) | 6 | L |
+| 7a | Pasien, walk-in, pendaftaran, antrean (admin) | 37, 38 | 6 | L |
+| 7b | Sesi terdampak dan pemberitahuan lintas peran | layar tinjau sesi terdampak (bagian 35) | 7a | M |
 | 8 | Dashboard, ekspor, audit log, pengaturan, staf | 32, 40 | 4, 6 (data), 1 | M |
 | 9 | Hardening dan dokumentasi | semua (verifikasi) | 4, 5, 7, 8 | M |
 
@@ -51,18 +52,19 @@ flowchart LR
     F1 --> F5["Fase 5<br/>Portal pasien"]
     F3 --> F6["Fase 6<br/>Mesin booking & wizard"]
     F5 --> F6
-    F6 --> F7["Fase 7<br/>Admin pendaftaran & antrean"]
+    F6 --> F7["Fase 7a<br/>Pasien, walk-in, pendaftaran & antrean"]
+    F7 --> F7B["Fase 7b<br/>Sesi terdampak & pemberitahuan"]
     F6 --> F8["Fase 8<br/>Dashboard, ekspor, audit, staf"]
     F4 --> F8
     F4 --> F9["Fase 9<br/>Hardening & dokumentasi"]
     F5 --> F9
-    F7 --> F9
+    F7B --> F9
     F8 --> F9
     classDef crit fill:#0A4D8C,stroke:#0A4D8C,color:#ffffff;
-    class F0,F1,F2,F3,F6,F7,F9 crit;
+    class F0,F1,F2,F3,F6,F7,F7B,F9 crit;
 ```
 
-**Jalur kritis (warna biru):** 0 → 1 → 2 → 3 → 6 → 7 → 9. Perubahan apa pun pada fase-fase ini langsung menggeser tanggal selesai.
+**Jalur kritis (warna biru):** 0 → 1 → 2 → 3 → 6 → 7a → 7b → 9. Perubahan apa pun pada fase-fase ini langsung menggeser tanggal selesai.
 
 **Dapat dikerjakan paralel (di luar jalur kritis):**
 
@@ -70,7 +72,7 @@ flowchart LR
 |---|---|
 | Fase 1 selesai | Fase 5 (akun pasien) dan Fase 4a (CMS statis) — keduanya hanya butuh fondasi |
 | Fase 2 selesai | Fase 4b (fasilitas/kamar/kontak) |
-| Fase 6 selesai | Fase 7 dan Fase 8 |
+| Fase 6 selesai | Fase 7a dan Fase 8 (7b menyusul 7a) |
 
 **Urutan eksekusi default (keputusan K-10 di 17, pilihan (a) — situs publik lebih dulu): 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9**, dikerjakan berurutan oleh satu pengembang plus subagen. Urutan ini hanya mengatur urutan kerja dan tidak mengubah desain atau dependensi di §3 (fase 4 tidak bergantung pada fase 5–7; fase 6 tetap menunggu fase 3 dan 5). Alternatif (b) bila pemilik menginginkan risiko terbesar (booking) teruji lebih awal: 0 → 1 → 2 → 3 → 5 → 6 → 7 → 4 → 8 → 9; (b) hanya dipakai bila pemilik memilihnya secara eksplisit. Fase 3 sudah memuat spike konkurensi (`KON-01`) sehingga risiko booking tetap ditutup di awal pada kedua urutan.
 
@@ -90,7 +92,8 @@ ID fitur mengikuti [02 — Ruang lingkup](02-ruang-lingkup.md) (`F-PUB`, `F-AUTH
 | 4b | F-PUB-08, F-PUB-09, F-PUB-15, F-PUB-16, F-ADM-09, F-ADM-10, F-ADM-11, F-ADM-24 |
 | 5 | F-AUTH-01, F-AUTH-02, F-AUTH-03 (logout pasien), F-AUTH-04, F-AUTH-05, F-PAS-01 (sebagian: sapaan dan profil), F-PAS-02, F-PAS-03 |
 | 6 | F-SYS-03, F-SYS-04, F-SYS-05, F-PAS-04, F-PAS-05, F-PAS-06, F-PAS-07, F-PAS-08, F-PAS-09, F-PAS-10, F-SYS-19 (sebagian: kelas notifikasi), F-PAS-01 (kunjungan mendatang dan banner notifikasi) |
-| 7 | F-ADM-08, F-ADM-12, F-ADM-13, F-ADM-14, F-ADM-15, F-ADM-16, F-SYS-06 (resolusi), F-SYS-12 (`appointments:mark-no-show`), F-SYS-19 (notifikasi perubahan jadwal) |
+| 7a | F-ADM-12, F-ADM-13, F-ADM-14, F-ADM-15, F-ADM-16, F-SYS-12 (`appointments:mark-no-show`) |
+| 7b | F-ADM-08, F-SYS-06 (resolusi), F-SYS-19 (notifikasi perubahan jadwal) |
 | 8 | F-ADM-01, F-ADM-17, F-ADM-25, F-ADM-26, F-ADM-27, F-ADM-28 |
 | 9 | F-SYS-13, F-SYS-14 (seeder final), F-SYS-20, F-SYS-10 (CSP produksi), F-SYS-15–F-SYS-17 (audit akhir), F-PUB-19/F-PUB-20 (verifikasi) |
 
@@ -222,7 +225,7 @@ ID fitur mengikuti [02 — Ruang lingkup](02-ruang-lingkup.md) (`F-PUB`, `F-AUTH
 **Tujuan.** Membangun tiga lapis jadwal (templat, pengecualian, sesi) dan satu sumber kebenaran `DoctorAvailabilityQuery`, serta skema appointment untuk menguji konkurensi sejak dini.
 
 **Keluaran.**
-- Halaman: **#35 Jadwal, kuota, libur** (templat `admin.schedules.*`, sesi `admin.sessions.*`, pengecualian `admin.exceptions.*`; layar tinjau sesi terdampak menyusul di fase 7), publik **#6 Daftar dokter** (filter `q`, `spesialisasi`, `poli`, `tanggal`), **#7 Detail dokter**, **#8 Jadwal dokter**.
+- Halaman: **#35 Jadwal, kuota, libur** (templat `admin.schedules.*`, sesi `admin.sessions.*`, pengecualian `admin.exceptions.*`; layar tinjau sesi terdampak menyusul di fase 7b), publik **#6 Daftar dokter** (filter `q`, `spesialisasi`, `poli`, `tanggal`), **#7 Detail dokter**, **#8 Jadwal dokter**.
 - Fitur: F-ADM-05, F-ADM-06, F-ADM-07, F-SYS-01, F-SYS-02, F-SYS-06 (propagasi), F-PUB-05, F-PUB-06, F-PUB-07.
 - Skema: `doctor_schedules`, `schedule_exceptions`, `practice_sessions` (CHECK + UNIQUE), **dan** `patient_profiles`, `insurance_partners` (skema saja karena `appointments.insurance_partner_id` wajib FK `RESTRICT`; model, factory, seeder, dan admin-nya tetap di fase 4, F3-R3), `appointments` (kolom `active_flag` generated + tiga UNIQUE), `appointment_status_histories` (skema, model, dan factory saja; belum ada UI, `BookingService`, atau `AppointmentStatusService`, F3-R4).
 - Perintah `sessions:generate {--days=}`; `DoctorScheduleSeeder`, `ScheduleExceptionSeeder`; komponen `schedule-table`, `availability-badge`, `doctor-card`, `module-tabs` (tab Templat/Sesi/Pengecualian/Sesi terdampak).
@@ -244,7 +247,7 @@ ID fitur mengikuti [02 — Ruang lingkup](02-ruang-lingkup.md) (`F-PUB`, `F-AUTH
 **Kriteria keluar.**
 - `JDW-01`–`JDW-10` (templat, generator idempoten, cuti/libur tidak dapat dipesan menurut `DoctorAvailabilityQuery`, sesi lampau, tumpang tindih templat ditolak, kuota tidak turun di bawah `booked_count`, perubahan templat dengan appointment aktif → `needs_review`, hapus pengecualian membuka kembali sesi); `JDW-12` (publik dan wizard memakai query yang sama — tes kontrak pada `DoctorAvailabilityQuery`; di fase 3 dua konsumennya adalah `doctors.show` dan `schedules.index`, dibuktikan di `PublicScheduleTest`), `JDW-13` (sesi tambahan manual), `JDW-14` (Admin Konten hanya melihat jumlah booking).
 - `KON-01` versi spike lulus pada skema final (`ConcurrencySpikeTest`: dua koneksi PDO mentah, F3-R6).
-- Bagian `book()`, wizard, dan form walk-in dari `JDW-03`, `JDW-04`, `JDW-05`, `JDW-12`, `JDW-13`, `CRD-02`, `CRD-05`, dan `KON-01a`–`d` diuji di fase 6/7; di fase 3 kasus-kasus itu diuji lewat `DoctorAvailabilityQuery` (`availability`, `is_bookable_online`, `is_bookable_counter`, `remaining`), status sesi, dan halaman #6/#7/#8 (F3-R5). `JDW-11` (resolusi) milik fase 7.
+- Bagian `book()`, wizard, dan form walk-in dari `JDW-03`, `JDW-04`, `JDW-05`, `JDW-12`, `JDW-13`, `CRD-02`, `CRD-05`, dan `KON-01a`–`d` diuji di fase 6 (wizard) dan 7a (form walk-in); di fase 3 kasus-kasus itu diuji lewat `DoctorAvailabilityQuery` (`availability`, `is_bookable_online`, `is_bookable_counter`, `remaining`), status sesi, dan halaman #6/#7/#8 (F3-R5). `JDW-11` (resolusi) milik fase 7b.
 - `AKS` untuk #6–#8 dan #35 lulus; `CRD-05` (jadwal baru muncul di jadwal publik), `CRD-13` (aturan `destroy` per tabel), `JDW-15` (edit manual sesi), `JDW-16` (dokter dinonaktifkan/diarsipkan), `JDW-17` (prioritas `pending_change`), `JDW-18` (kombinasi jenis pengecualian vs dokter, termasuk CHECK DB), `JDW-19` (hapus templat/sesi manual), `VAL-07`.
 
 **Risiko dan mitigasi.**
@@ -372,14 +375,18 @@ Fase ini sebaiknya dibagi menjadi **dua rencana implementasi**: **4a** (halaman 
 
 ---
 
-### Fase 7 — Admin Pendaftaran, Antrean, Walk-in, Sesi Terdampak, Notifikasi
+### Fase 7 — Admin Pendaftaran, Antrean, Walk-in, Sesi Terdampak, Notifikasi (dipecah menjadi 7a dan 7b)
 
-**Tujuan.** Petugas dapat mengelola pasien, mendaftarkan walk-in, memproses antrean dan status, serta menyelesaikan sesi terdampak perubahan jadwal.
+Keputusan pemilik 2026-10-09 (D-168): fase 7 dipecah menjadi **7a** (pasien, walk-in, pendaftaran, antrean, tandai tidak hadir, seeder) dan **7b** (Sesi Terdampak dan pemberitahuan lintas peran) karena ukurannya sekitar 1,5 kali fase 6. Pada urutan eksekusi di §3, "7" berarti 7a lalu 7b. Rencana 7a ada di `docs/superpowers/plans/`.
+
+#### Fase 7a — Pasien, Walk-in, Pendaftaran, dan Antrean
+
+**Tujuan.** Petugas dapat mengelola pasien, mendaftarkan walk-in, memproses antrean dan status, serta menandai pendaftaran yang tidak hadir.
 
 **Keluaran.**
-- Halaman: **#37 Pengelolaan pasien** (index, create, show, edit, status, hubungkan akun), **#38 Pengelolaan pendaftaran dan antrean** (`admin.appointments.index/create/store/show`, `admin.queue.index`, transisi status, bukti admin), layar **tinjau sesi terdampak** (`admin.sessions.review` + `resolve`, bagian dari #35).
-- Fitur: F-ADM-08, F-ADM-12 sampai F-ADM-16, F-SYS-06 (resolusi), F-SYS-12 (`appointments:mark-no-show`), F-SYS-19 (notifikasi perubahan jadwal).
-- Kelas: `PatientAccountLinker`, `PatientProfilePolicy`; perintah `appointments:mark-no-show {--date=}`; resolusi sesi pada `ScheduleChangeService` (`keep`, `apply`, `cancel`).
+- Halaman: **#37 Pengelolaan pasien** (`admin.patients.index/show/create/store/edit/update/status/link-account`), **#38 Pengelolaan pendaftaran dan antrean** (`admin.appointments.index/show/proof/create/store/transition`, `admin.queue.index`, `admin.queue.mark-no-show`); 16 route baru (total 166, admin 122).
+- Fitur: F-ADM-12 sampai F-ADM-16, F-SYS-12 (`appointments:mark-no-show`, harian pukul 23.30).
+- Kelas: `PatientAccountLinker`, `PatientSearch`, `PatientProfilePolicy` dan method baru `AppointmentPolicy`/`PracticeSessionPolicy`, evaluator transisi dengan `transitionChecks()` serta `markNoShowForSession()`/`markNoShowForDate()` pada `AppointmentStatusService`, `AdminReturn`, `QueryLogSanitizer`; perintah `appointments:mark-no-show {--date=}`; `AppointmentSeeder` dengan enam profil walk-in P000008–P000013.
 
 **Dependensi.** Fase 6.
 
@@ -389,14 +396,45 @@ Fase ini sebaiknya dibagi menjadi **dua rencana implementasi**: **4a** (halaman 
 3. Layar antrean per sesi (pencarian/pindai kode booking, check-in, selesai, batal beralasan, koreksi `checked_in → confirmed`); aksi massal "Tandai tidak hadir" setelah `end_time`.
 4. `appointments:mark-no-show` (aktor `system`) memakai `AppointmentStatusService::markNoShowForDate()`; aksi massal petugas memakai `markNoShowForSession()` (hanya setelah `end_time`, kode `SESSION_NOT_ENDED`).
 5. `PatientAccountLinker` (verifikasi manual, hanya bila profil akun belum beriwayat; satu transaksi).
-6. Layar sesi terdampak: tampilkan keenam sumber (`exception`, `template_time`, `template_removed`, `manual_time`, `manual_cancel`, `doctor_inactive`) dan pilihan sah per sumber (`allowedResolutions()`; `keep` untuk `doctor_inactive` hanya bila dokter aktif kembali); `apply` memberi `schedule_changed_at` dan notifikasi; `cancel` membatalkan appointment aktif dengan alasan wajib; peringatan benturan jam pasien.
-7. Pemberitahuan lintas peran: Admin Konten melihat "N sesi perlu ditindaklanjuti"; petugas melihat daftar.
-8. Bukti admin `admin.appointments.proof`; perluas matriks `AKS` (petugas vs Admin Konten).
+6. Bukti admin `admin.appointments.proof` (cetak, tanpa PDF); perluas matriks `AKS` (petugas vs Admin Konten) dan kunci `Phase7aRoutePermissionTest`.
+7. `AppointmentSeeder` (29 appointment lewat service dengan jam semu) dan enam profil walk-in; `scripts/sql/seed-invariants.sql` (17 invarian).
+8. Bawaan fase 6: sanitasi log `QueryException`, retry `DoctorService::archive`/`changeStatus`, dan tes konkurensi 7a.
 
-**Keputusan terkait (17).** K-04 (nomor BPJS/polis lengkap untuk petugas: default (a), hanya 4 digit terakhir), K-15 (pelacakan "sudah dihubungi" pasien walk-in: default (a), tidak ada), K-13 (notifikasi perubahan jadwal).
+**Keputusan terkait (17).** K-04 (nomor BPJS/polis lengkap untuk petugas: (a), hanya 4 digit terakhir; diputuskan pemilik 2026-10-09, D-168), K-14 (verifikasi hubungkan akun: default prototipe, manual di loket), K-13 (notifikasi, D-159).
 
 **Kriteria keluar.**
-- `WLK-01`–`WLK-07` (walk-in, berbagi kuota, hubungkan akun, tidak ada pencocokan otomatis), `JDW-11` (resolusi `keep`/`apply`/`cancel` per sumber), `BKG-14`, `BKG-16`, `BKG-19`, `NTF-03`, `NTF-06`, `AKS-03`–`AKS-05`, `PAS-06`, `PAS-07`, `SEK-15` pada nama pasien di daftar admin.
+- `WLK-01`–`WLK-07` (walk-in, berbagi kuota, hubungkan akun, tidak ada pencocokan otomatis), `BKG-14`, `BKG-16`, `BKG-19`, `KON-05` (antarmuka staf), `NTF-03`, `NTF-07` (sisi transisi staf), `AKS-03`–`AKS-06`, `PAS-04` (sisi Petugas), `PAS-06`, `PAS-07`, `SEK-15` pada nama pasien di seluruh layar admin 7a, `SEED-01`.
+- Sesudah `migrate:fresh --seed`, 17 invarian [13 §11](13-data-contoh.md#11-invarian-setelah-seeding-dan-cara-memeriksanya) = 0 (termasuk I1: `booked_count` = jumlah appointment non-batal per sesi); `Phase7aRoutePermissionTest` mengunci 166 route (admin 122).
+
+**Risiko dan mitigasi.**
+
+| Risiko | Mitigasi |
+|---|---|
+| Aksi massal melanggar urutan kunci → deadlock | Satu transaksi per appointment lewat `AppointmentStatusService::transition()` (urutan kunci baku, retry 3 kali); tes konkurensi 7a |
+| Tombol UI menyimpang dari aturan server | Satu evaluator untuk `transition()` dan `availableTransitions()` |
+| Salah hubungkan akun ke profil orang lain | Verifikasi identitas manual, panel perbandingan dua langkah (`?hubungkan=`), centang verifikasi wajib, catat di audit log |
+| Antrean lambat untuk sesi besar | Kueri per sesi dengan index `practice_session_id`, `queue_number`; daftar pendaftaran dipaginasi dengan filter bawaan hari ini |
+
+#### Fase 7b — Sesi Terdampak dan Pemberitahuan Lintas Peran
+
+**Tujuan.** Petugas dan Admin Konten dapat menyelesaikan sesi yang terdampak perubahan jadwal dan melihat pemberitahuannya.
+
+**Keluaran.**
+- Halaman: layar **tinjau sesi terdampak** (`admin.sessions.review` + `resolve`, bagian dari #35).
+- Fitur: F-ADM-08, F-SYS-06 (resolusi), F-SYS-19 (notifikasi perubahan jadwal).
+- Kelas: resolusi sesi pada `ScheduleChangeService` (`keep`, `apply`, `cancel`), `AppointmentStatusService::cancelAllForSession()`, `PracticeSessionPolicy::review()` dan `resolve()`.
+
+**Dependensi.** Fase 7a.
+
+**Tugas utama (berurutan).**
+1. Layar sesi terdampak: tampilkan keenam sumber (`exception`, `template_time`, `template_removed`, `manual_time`, `manual_cancel`, `doctor_inactive`) dan pilihan sah per sumber (`allowedResolutions()`; `keep` untuk `doctor_inactive` hanya bila dokter aktif kembali); `apply` memberi `schedule_changed_at` dan notifikasi; `cancel` membatalkan appointment aktif dengan alasan wajib; peringatan benturan jam pasien.
+2. Pemberitahuan lintas peran: Admin Konten melihat "N sesi perlu ditindaklanjuti"; petugas melihat daftar.
+3. Bawaan fase 3 untuk layar sesi terdampak (carry fase 3).
+
+**Keputusan terkait (17).** K-15 (pelacakan "sudah dihubungi" pasien walk-in: default (a), tidak ada), K-13 (notifikasi perubahan jadwal).
+
+**Kriteria keluar.**
+- `JDW-11` (resolusi `keep`/`apply`/`cancel` per sumber), `NTF-06`, `NTF-07` (sisi resolusi `apply`), dan `AKS-03`–`AKS-05` untuk layar sesi terdampak.
 - Setelah resolusi `cancel`, `booked_count` sesi = jumlah appointment non-batal (invarian I1 di [13 §11](13-data-contoh.md#11-invarian-setelah-seeding-dan-cara-memeriksanya)).
 
 **Risiko dan mitigasi.**
@@ -404,8 +442,6 @@ Fase ini sebaiknya dibagi menjadi **dua rencana implementasi**: **4a** (halaman 
 | Risiko | Mitigasi |
 |---|---|
 | Resolusi sesi massal melanggar urutan kunci → deadlock | Gunakan satu jalur kode `AppointmentStatusService` dengan urutan kunci baku; tes konkurensi tambahan |
-| Salah hubungkan akun ke profil orang lain | Verifikasi identitas manual, konfirmasi dua langkah, catat di audit log |
-| Antrean lambat untuk sesi besar | Index (`session_date`, `status`); paginasi; filter default hari ini |
 
 ---
 
@@ -506,7 +542,7 @@ git commit -m "feat(fase-3): PracticeSessionGenerator idempoten"
 - **[ASUMSI]** Ukuran fase (S/M/L/XL) hanya relatif; tidak ada estimasi waktu yang dijanjikan.
 - **[ASUMSI]** Skema `patient_profiles`, `appointments`, `appointment_status_histories` dibuat di fase 3 (bukan fase 5/6) agar `ScheduleChangeService` dan spike konkurensi dapat diuji dengan data nyata; UI dan service booking tetap di fase 6.
 - **[ASUMSI]** UI autentikasi pasien (#23–#26) diselesaikan di fase 5 meski infrastruktur auth (middleware, limiter) dibangun di fase 1.
-- **[ASUMSI]** Resolusi sesi terdampak (`keep`/`apply`/`cancel`) ditunda ke fase 7 karena bergantung pada `AppointmentStatusService` dan notifikasi.
+- **[ASUMSI]** Resolusi sesi terdampak (`keep`/`apply`/`cancel`) ditunda ke fase 7b karena bergantung pada `AppointmentStatusService` dan notifikasi.
 - **[ASUMSI]** Penempatan ID fitur 02 pada fase (§4) adalah usulan; fitur lintas fase (F-SYS-06, F-SYS-19, F-PAS-01) ditandai "(sebagian)".
 - **[ASUMSI]** Rentang ID kasus uji (`AKS`, `CRD`, `MED`, `JDW`, `PAS`, `SEK`, `BKG`, `KON`, `WLK`, `NTF`, `VAL`, `EMP`, `DSH`, `AUD`, `STF`, `SET`, `ERR`, `RSP`, `A11`, `OFF`, `BAK`, `INS`, `SEED`) mengikuti [15](15-pengujian-penerimaan.md).
 - Urutan eksekusi fase = K-10 di 17, default (a): 0→1→2→3→4→5→6→7→8→9 (opsi (b): 0→1→2→3→5→6→7→4→8→9 hanya bila dipilih pemilik).

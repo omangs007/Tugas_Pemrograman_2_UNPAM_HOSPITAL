@@ -54,13 +54,13 @@ flowchart TD
 | 4.2 | `SpecialtySeeder` | demo | `specialties` | 13 |
 | 4.3 | `ClinicSeeder` | demo | `clinics`, `media` | 13 poliklinik + 4 penunjang |
 | 4.4 | `DoctorSeeder` | demo | `doctors`, `doctor_specialties`, `media` | 18 dokter (16 aktif, 1 nonaktif, 1 arsip) |
-| 4.5 | `DoctorScheduleSeeder` | demo | `doctor_schedules`, `practice_sessions` | 52 templat (51 aktif + 1 nonaktif); sesi hanya untuk hari ini s.d. hari ini + 30 (F3-R7: tanpa sesi lampau; sesi lampau dibuat seeder appointment di fase 6/7) |
+| 4.5 | `DoctorScheduleSeeder` | demo | `doctor_schedules`, `practice_sessions` | 52 templat (51 aktif + 1 nonaktif); sesi hanya untuk hari ini s.d. hari ini + 30 (F3-R7: tanpa sesi lampau; sesi lampau dibuat `AppointmentSeeder` lewat generator di bawah jam semu, fase 7a, D-178) |
 | 4.6 | `ScheduleExceptionSeeder` | demo | `schedule_exceptions`, `practice_sessions` | 2 pengecualian + 1 sesi `closed` + 1 sesi tambahan manual kuota kecil |
 | 4.7 | `RoomCategorySeeder` | demo | `room_categories`, `media` | 4 |
 | 4.8 | `FacilitySeeder` | demo | `facilities`, `media` | 10 |
 | 4.9 | `ContentSeeder` | demo | `article_categories`, `articles`, `banners`, `galleries`, `faqs`, `insurance_partners`, `media` | 4, 8, 3, 3 album, 12, 4 |
-| 4.10 | `PatientSeeder` | demo | `users`, `patient_profiles` | fase 5: 7 akun pasien + 7 profil online; 6 walk-in menyusul di fase 6/7 sehingga total 13 (D-150) |
-| 4.11 | `AppointmentSeeder` | demo | `appointments`, `appointment_status_histories`, `audit_logs`, `notifications`, + 1 pengecualian akhir | 29 appointment |
+| 4.10 | `PatientSeeder` | demo | `users`, `patient_profiles` | fase 5: 7 akun pasien + 7 profil online; 6 walk-in dibuat `AppointmentSeeder` (fase 7a, D-178) sehingga total 13 (D-150) |
+| 4.11 | `AppointmentSeeder` | demo | `patient_profiles` (6 walk-in), `practice_sessions` (sesi 14 hari lampau), `appointments`, `appointment_status_histories`, `audit_logs`, `notifications`, + 1 pengecualian akhir | 6 profil walk-in + 29 appointment (25 bila hari seeding tidak punya sesi hari ini; D-178) |
 | 4.12 | `ContactMessageSeeder` | demo | `contact_messages` | 5 |
 
 > `DemoUserSeeder` berjalan **sebelum** data master karena `created_by`/`updated_by` pada jadwal, kamar, dan pesan merujuk ke akun staf demo.
@@ -233,7 +233,7 @@ Nama adalah gabungan fiktif nama Indonesia umum; kemiripan dengan orang sungguha
 | 16 dr. Ayu (GG) | Sen 09:00–12:00 · 15 | Rab 13:00–16:00 · 15 | Jum 09:00–12:00 · 15 | Sab 09:00–12:00 · 15 |
 | 17 dr. Eko (BDH, nonaktif) | Sel 13:00–16:00 · 12 — **`is_active = false`** | — | — | — |
 
-Total: **51 templat aktif + 1 templat nonaktif**. `PracticeSessionGenerator` tidak membangkitkan sesi dari templat nonaktif maupun untuk dokter `inactive`/`archived`. Setiap hari Senin–Sabtu ada sesi dari beberapa poliklinik (poliklinik Umum buka Senin–Sabtu). Setelah templat disimpan, seeder memanggil `PracticeSessionGenerator::ensureRange(today, today + booking.window_days)` untuk sesi ke depan saja: `ensureRange` diklem ke hari ini (BR-22, 00 F.2) dan tidak pernah membuat sesi lampau (F3-R7). Sesi lampau yang dibutuhkan appointment `completed`/`no_show` dibuat seeder appointment di fase 6/7 lewat factory atau insert seeder, bukan lewat generator. Di fase 3 seeder memanggil `ensureRange` sekali untuk seluruh templat (bukan per templat), dan `created_by`/`updated_by` templat diisi akun Admin Konten Demo lewat `forceFill`.
+Total: **51 templat aktif + 1 templat nonaktif**. `PracticeSessionGenerator` tidak membangkitkan sesi dari templat nonaktif maupun untuk dokter `inactive`/`archived`. Setiap hari Senin–Sabtu ada sesi dari beberapa poliklinik (poliklinik Umum buka Senin–Sabtu). Setelah templat disimpan, seeder memanggil `PracticeSessionGenerator::ensureRange(today, today + booking.window_days)` untuk sesi ke depan saja: `ensureRange` diklem ke hari ini (BR-22, 00 F.2) dan tidak pernah membuat sesi lampau (F3-R7). Sesi lampau yang dibutuhkan appointment `completed`/`no_show` dibuat `AppointmentSeeder` (fase 7a, D-178) lewat `PracticeSessionGenerator::ensureRange` yang sama di bawah jam semu (`Carbon::setTestNow` ke setiap hari lampau pukul 00.00, lalu `ensureRange(hari itu, kemarin)` untuk 14 hari terakhir), bukan lewat factory atau insert manual. Di fase 3 seeder memanggil `ensureRange` sekali untuk seluruh templat (bukan per templat), dan `created_by`/`updated_by` templat diisi akun Admin Konten Demo lewat `forceFill`.
 
 ### 7.2 Pengecualian jadwal — `ScheduleExceptionSeeder`
 
@@ -479,7 +479,7 @@ Total **83 gambar + 83 thumbnail** (±30–60 detik di XAMPP). Logo situs tidak 
 | P000012 | Mulyani Astuti | P | 1958-02-20 | — (walk-in; memiliki appointment — pasangan uji hubungkan akun) | loket | `0009900000044` |
 | P000013 | Nayla Putri Prakoso | P | 2020-03-18 | — (walk-in anak; telepon orang tua) | loket | `0009900000055` |
 
-7 akun pasien (`users.account_type = patient`) + 6 profil walk-in = 13 profil. Akun #7 dan profil #12 sengaja memiliki nama dan tanggal lahir sama untuk menguji alur verifikasi identitas manual (F.9). Penggabungan dua profil beriwayat tidak didukung (00 N).
+7 akun pasien (`users.account_type = patient`) + 6 profil walk-in = 13 profil. Tujuh profil berakun dibuat `PatientSeeder`; enam profil walk-in dibuat di awal `AppointmentSeeder` lewat `PatientRegistrationService::createWalkIn()` dengan Petugas Pendaftaran Demo sebagai pembuat (D-178), dan nomor BPJS P000012 dan P000013 tersimpan lewat booking BPJS mereka dengan pilihan "simpan ke profil". Akun #7 dan profil #12 sengaja memiliki nama dan tanggal lahir sama untuk menguji alur verifikasi identitas manual (F.9). Penggabungan dua profil beriwayat tidak didukung (00 N).
 
 ### 10.2 Aturan pembuatan appointment — `AppointmentSeeder`
 
@@ -498,7 +498,7 @@ Total **83 gambar + 83 thumbnail** (±30–60 detik di XAMPP). Logo situs tidak 
    | Booking sesi mendatang | **tanpa** jam semu (waktu nyata), dalam jendela `booking.window_days` |
 
    Konsekuensi: `created_at` riwayat/audit/notifikasi konsisten dengan urutan kejadian. Untuk sesi hari ini, `created_at` bisa lebih awal/akhir dari jam nyata seeding — dapat diterima untuk data demo.
-3. **Pemilih sesi (`SessionPicker`).** Skenario memakai acuan relatif: `lampau-N` = sesi `open` ke-N terakhir milik dokter sebelum hari ini; `hari ini-N` = sesi `open` hari ini urut `start_time` dengan poliklinik berbeda (sesi cadangan §7.3 dipakai bila kurang dari 3); `depan-N` = sesi `open` mendatang ke-N dengan `session_date >= today + 1`; `manual` = sesi tambahan kuota 2 (§7.3). Bila `BookingService` melempar `OVERLAPPING_BOOKING` atau `DUPLICATE_BOOKING` untuk kandidat, picker mencoba kandidat berikutnya (seeding deterministik tetapi tahan terhadap hari-dalam-pekan yang berbeda).
+3. **Pemilih sesi (method privat `AppointmentSeeder`, bukan kelas `SessionPicker`; D-178).** Skenario memakai acuan relatif: `lampau-N` = sesi `open` ke-N terakhir milik dokter sebelum hari ini; `hari ini-N` = sesi `open` hari ini urut `start_time` dengan poliklinik berbeda (bila tidak ada sesi hari ini sama sekali, misalnya seeding pada Minggu malam, pendaftaran contoh hari ini dilewati dengan peringatan; D-178); `depan-N` = sesi `open` mendatang ke-N dengan `session_date >= today + 1`; `manual` = sesi tambahan kuota 2 (§7.3). Bila `BookingService` melempar `OVERLAPPING_BOOKING` atau `DUPLICATE_BOOKING` untuk kandidat, picker mencoba kandidat berikutnya (seeding deterministik tetapi tahan terhadap hari-dalam-pekan yang berbeda).
 4. **Notifikasi.** Notifikasi `database` untuk pasien berakun tetap dibuat; yang berkaitan dengan appointment lampau ditandai dibaca (`read_at` diisi) sehingga banner "belum dibaca" hanya muncul untuk perubahan hari ini/mendatang. Surat dibuang (`mail.default = array`).
 
 ### 10.3 Daftar appointment (29)
@@ -690,7 +690,7 @@ SELECT COUNT(*) FROM appointment_status_histories;                  -- 64
 SELECT SUM(booked_count) FROM practice_sessions;                    -- 26
 SELECT status, COUNT(*) FROM practice_sessions GROUP BY status;     -- needs_review = 1, closed = 1
 SELECT COUNT(*) FROM users WHERE email LIKE '%.test';               -- 10 (hanya di local/testing)
-SELECT COUNT(*) FROM patient_profiles;                              -- 7 setelah fase 5 (online, berakun); 13 setelah walk-in fase 6/7
+SELECT COUNT(*) FROM patient_profiles;                              -- 7 setelah fase 5 (online, berakun); 13 setelah AppointmentSeeder fase 7a (6 walk-in)
 SELECT COUNT(*) FROM media;                                         -- 83 setelah fase 4b (57 fase 1-4a + 26: fasilitas 10 cover + 4 galeri, kamar 4 cover + 8 galeri; cover 36, gallery 12; F4B-R36)
 SELECT COUNT(*) FROM room_categories;                               -- 4 (kapasitas 58, tersedia 16; Kelas 2 penuh); facilities 10 (2 medis, 3 penunjang, 5 umum); contact_messages 5 (2 new, 1 read, 1 replied, 1 archived)
 SELECT COUNT(*) FROM articles;                                      -- 8 (7 terbit + 1 draf); article_categories 4, banners 3, galleries 3, faqs 12, insurance_partners 4, pages 15
@@ -754,7 +754,7 @@ Factory dipakai oleh tes ([15](15-pengujian-penerimaan.md)) dan sebagian oleh `P
 |---|---|---|
 | `DemoSeeder`, `DemoUserSeeder`, `SpecialtySeeder`, `ClinicSeeder`, `DoctorSeeder`, `DoctorScheduleSeeder`, `ScheduleExceptionSeeder`, `RoomCategorySeeder`, `FacilitySeeder`, `ContentSeeder`, `PatientSeeder`, `AppointmentSeeder`, `ContactMessageSeeder`, `RolePermissionSeeder`, `SettingsSeeder`, `PageSeeder` | Seeder (`database/seeders`) | Urutan di §2 |
 | `App\Services\Media\PlaceholderImageGenerator` | Kelas pendukung | Pembuat gambar GD lokal (§9.2); **diterima di 00 J.6** |
-| `Database\Seeders\Support\SessionPicker` | Kelas pendukung | Pemilih sesi relatif untuk skenario appointment (§10.2) |
+| `Database\Seeders\Support\SessionPicker` | Tidak jadi dibuat (D-178) | Pemilih sesi relatif untuk skenario appointment (§10.2) menjadi method privat `AppointmentSeeder` |
 | Factory §12 (`UserFactory` … `AuditLogFactory`) beserta state | Factory | Daftar di §12 |
 | `DEMO_PASSWORD` | Kunci `.env` opsional | Password akun demo (lokal) |
 | `resources/fonts/PlusJakartaSans-Bold.ttf` | Aset | Font untuk placeholder GD |

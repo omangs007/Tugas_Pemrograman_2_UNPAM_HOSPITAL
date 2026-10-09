@@ -492,7 +492,7 @@ Field di luar tabel (mis. `user_id`, `patient_number`, `is_active`, `consent_at`
 | `birth_date` | `required` `date_format:Y-m-d` `before:today` `after_or_equal:-120 years` | (sama dengan V-01 `birth_date`) |
 | `gender` | `required` `Rule::enum(Gender::class)` | "Jenis kelamin wajib dipilih."<br>"Jenis kelamin tidak valid." |
 | `phone` | `required` `new IndonesianPhone` | "Nomor telepon wajib diisi."<br>"Nomor telepon tidak valid. Gunakan nomor seluler Indonesia, mis. 081234567890." |
-| `email` | `nullable` `email:rfc` `max:255`; saat **ubah** profil yang sudah berakun: `required` dan `Rule::unique('users','email')->ignore($profile->user_id)` (email profil berakun = email login, disinkronkan ke `users.email`, 00 E.1) | "Format email tidak valid."<br>"Email maksimal 255 karakter."<br>"Email ini sudah terdaftar. Gunakan email lain." |
+| `email` | `nullable` `email:rfc` `max:255`; saat **ubah** profil yang sudah berakun: field `email` tidak divalidasi dan dibuang dari data; email ditampilkan hanya-baca karena sama dengan email login (`users.email`, 00 E.1; D-172) | "Format email tidak valid."<br>"Email maksimal 255 karakter."<br>"Email ini sudah terdaftar. Gunakan email lain." |
 | `address` | `required` `string` `min:10` `max:500` | (sama dengan V-01 `address`) |
 | `verbal_consent` (hanya buat) | `accepted` | "Persetujuan privasi lisan dari pasien wajib dicentang." |
 | `confirm_not_duplicate` | `nullable` `boolean`; wajib dicentang bila `withValidator` menemukan profil mirip (nama + tanggal lahir sama, atau telepon sama) | "Terdapat profil yang mirip. Pilih profil yang sudah ada atau centang konfirmasi untuk tetap membuat profil baru." |

@@ -2584,7 +2584,7 @@ Pembuatan profil walk-in (`admin.patients.create`):
 | Nama lengkap * [__________]   Tanggal lahir * [__/__/____]                       |
 | Jenis kelamin * (o) L ( ) P   Telepon * [__________]   Email [____________]      |
 | Alamat * [____________________________________]                                  |
-| Nomor BPJS (opsional) [_____________]                                            |
+| Catatan: nomor BPJS tidak diisi di form ini (lihat Perilaku interaksi).          |
 | [x] Persetujuan privasi lisan telah dibacakan dan disetujui pasien. *            |
 | [ Simpan Profil ]   [ Batal ]        (tanpa NIK; tanpa akun login)               |
 +----------------------------------------------------------------------------------+
@@ -2596,7 +2596,7 @@ Pembuatan profil walk-in (`admin.patients.create`):
 2. **Bagian 2 — Sesi**: poliklinik → dokter → tanggal → daftar sesi dari `DoctorAvailabilityQuery` (jadwal **sama** dengan situs publik dan wizard pasien) dengan “Sisa N dari M” dan status; sesi yang online-nya sudah ditutup tetap dapat dipilih petugas (“Online ditutup; loket masih bisa”) selama `is_bookable_counter` benar, yaitu sebelum `end_time` (00 F.3).
 3. **Bagian 3 — Data pembayaran**: jenis pembayaran (Umum/Pribadi, BPJS Kesehatan, Asuransi), nomor BPJS 13 digit atau mitra asuransi + nomor polis opsional, keluhan singkat; catatan kanal “Loket” dan status awal “Dikonfirmasi”.
 4. Tombol **Simpan Pendaftaran** dan **Batal**.
-5. Profil baru: nama, tanggal lahir, jenis kelamin, telepon, email (opsional), alamat, nomor BPJS (opsional), **checkbox persetujuan privasi lisan** yang dicentang petugas (`consent_at`, `consent_version`); tanpa NIK dan tanpa akun login.
+5. Profil baru: nama, tanggal lahir, jenis kelamin, telepon, email (opsional), alamat, **checkbox persetujuan privasi lisan** yang dicentang petugas (`consent_at`, `consent_version`); tanpa NIK dan tanpa akun login.
 
 **Perilaku interaksi**
 
@@ -2604,6 +2604,7 @@ Pembuatan profil walk-in (`admin.patients.create`):
 - Simpan memanggil `BookingService::book()` dengan kanal `loket` dan status awal `confirmed`; aturan loket: `now < end_time` pada tanggal sesi; **batas pendaftaran aktif per pasien tidak berlaku** untuk loket, tetapi duplikat dan benturan jadwal tetap diperiksa (F.5).
 - Sukses → `admin.appointments.show` dengan flash hijau dan tombol **Cetak Bukti** (`admin.appointments.proof`).
 - Menghubungkan profil walk-in ke akun online dilakukan terpisah dari `admin.patients.show` setelah verifikasi identitas di loket, tidak otomatis (00 bagian F.9).
+- Form profil admin tidak memuat nomor BPJS (D-172): nomor BPJS profil tersimpan lewat pendaftaran walk-in dengan pilihan "Simpan nomor BPJS ke profil pasien" atau diisi pasien sendiri; ringkasan pasien di bagian 1 hanya menampilkan nomor tersamar.
 
 **Kondisi**
 

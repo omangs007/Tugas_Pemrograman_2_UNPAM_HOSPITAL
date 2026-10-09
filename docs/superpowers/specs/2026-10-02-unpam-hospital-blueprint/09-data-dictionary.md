@@ -1627,7 +1627,7 @@ Angka mengikuti rencana seeder di [13-data-contoh.md](13-data-contoh.md) bagian 
 | `doctor_specialties` | 20 (18 primer + 2 sekunder, 13 §6) | sebagian dokter dua spesialisasi |
 | `doctor_schedules` | 52 | 51 aktif + 1 nonaktif |
 | `schedule_exceptions` | 3 | 2 dari seeder jadwal + 1 dari seeder appointment |
-| `practice_sessions` | ±230–260 | hari ini s.d. hari ini + 30 saja (F3-R7: generator tidak membuat sesi lampau); 51 templat aktif × tanggalnya (230 pada seeding hari Senin), + 1 sesi tambahan manual, + 3 sesi cadangan bila hari seeding Minggu; sesi lampau untuk appointment `completed`/`no_show` dibuat seeder appointment di fase 6/7 |
+| `practice_sessions` | ±230–260 | hari ini s.d. hari ini + 30 saja (F3-R7: generator tidak membuat sesi lampau); 51 templat aktif × tanggalnya (230 pada seeding hari Senin), + 1 sesi tambahan manual, + 3 sesi cadangan bila hari seeding Minggu; sesi lampau untuk appointment `completed`/`no_show` dibuat `AppointmentSeeder` (fase 7a, D-178) lewat generator di bawah jam semu: 14 hari lampau menambah 102 sesi (333 pada seeding Senin 07.00) |
 | `insurance_partners` | 4 | fiktif, berlabel "Contoh" |
 | `appointments` | 29 | contoh semua status |
 | `appointment_status_histories` | 64 | tabel acuan 13 §10.3/§11.2 (29 appointment, ±2,2 baris per appointment) |
