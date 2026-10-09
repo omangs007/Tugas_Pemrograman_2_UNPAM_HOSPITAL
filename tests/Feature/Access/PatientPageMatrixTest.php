@@ -201,14 +201,30 @@ class PatientPageMatrixTest extends TestCase
     }
 
     /**
-     * AKS-06 (carry): `/admin/pasien` dan `/admin/pengaturan` belum punya route sampai fase 7 dan 8, sehingga menjawab 404.
-     * Fase 7 dan 8 mengubah tes ini menjadi 403 (15 AKS-06).
+     * AKS-06 (fase 7a): `/admin/pasien` kini punya route, jadi pasien mendapat 403 (bukan 404) tanpa konten admin.
+     * Route pasien lain milik fase 7a (`/admin/pendaftaran`, `/admin/antrean`) dimasukkan matriks oleh T13.
      */
-    public function test_aks_06_urls_that_do_not_exist_yet_answer_404_until_phases_7_and_8(): void
+    public function test_aks_06_patient_is_forbidden_from_the_admin_patient_list_and_profile(): void
     {
         $patient = $this->createPatient();
 
-        $this->actingAs($patient)->get('/admin/pasien')->assertNotFound();
+        $this->actingAs($patient)
+            ->get('/admin/pasien')
+            ->assertForbidden()
+            ->assertDontSee('admin-sidebar', false)
+            ->assertDontSee('Menu admin');
+
+        $this->actingAs($patient)->get('/admin/pasien/'.$patient->patientProfile->id)->assertForbidden();
+    }
+
+    /**
+     * AKS-06 (carry): `/admin/pengaturan` belum punya route sampai fase 8, sehingga menjawab 404.
+     * Fase 8 mengubah tes ini menjadi 403 (15 AKS-06).
+     */
+    public function test_aks_06_settings_url_answers_404_until_phase_8(): void
+    {
+        $patient = $this->createPatient();
+
         $this->actingAs($patient)->get('/admin/pengaturan')->assertNotFound();
         $this->actingAs($patient)->put('/admin/pengaturan')->assertNotFound();
     }

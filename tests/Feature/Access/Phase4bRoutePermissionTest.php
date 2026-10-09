@@ -13,7 +13,8 @@ use Tests\TestCase;
 /**
  * KNS-01 (bagian fase 4b), KNS-02 (route admin berizin), KNS-03 (`facilities.manage`, `rooms.update-availability`,
  * `messages.manage`), dan bagian route dari CRD-13: 16 nama route admin 4b, izin, nama parameter, URI Indonesia,
- * enam route publik terbuka, serta route yang sengaja tidak ada.
+ * enam route publik terbuka, serta route yang sengaja tidak ada. Angka global route admin tidak lagi dikunci di sini
+ * sejak fase 7a (F7A-R4); `Phase7aRoutePermissionTest` mengunci angka akhir.
  */
 class Phase4bRoutePermissionTest extends TestCase
 {
@@ -87,20 +88,6 @@ class Phase4bRoutePermissionTest extends TestCase
         $this->assertSame(16, count($names));
         $this->assertSame(array_values(array_unique($names)), $names, 'Nama route tidak boleh ganda.');
         $this->assertEqualsCanonicalizing(array_keys(self::permissions()), $names);
-    }
-
-    public function test_the_admin_area_has_one_hundred_and_six_routes_after_phase_4b(): void
-    {
-        $count = 0;
-
-        foreach (Route::getRoutes()->getRoutes() as $route) {
-            if ($route->uri() === 'admin' || str_starts_with($route->uri(), 'admin/')) {
-                $count++;
-            }
-        }
-
-        // 31 fase 1-2 + 19 fase 3 + 40 fase 4a + 16 fase 4b (F4B-R13); fase 5 dan seterusnya wajib memperbarui angka ini.
-        $this->assertSame(106, $count);
     }
 
     public function test_route_parameters_are_named_as_documented(): void

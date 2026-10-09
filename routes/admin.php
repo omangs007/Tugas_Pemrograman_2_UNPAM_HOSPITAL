@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\GalleryController;
 use App\Http\Controllers\Admin\InsurancePartnerController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\PageController;
+use App\Http\Controllers\Admin\PatientController;
 use App\Http\Controllers\Admin\PracticeSessionController;
 use App\Http\Controllers\Admin\RoomCategoryController;
 use App\Http\Controllers\Admin\ScheduleExceptionController;
@@ -196,6 +197,15 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
         Route::get('pesan', [ContactMessageController::class, 'index'])->name('messages.index');
         Route::get('pesan/{message}', [ContactMessageController::class, 'show'])->name('messages.show');
         Route::patch('pesan/{message}/status', [ContactMessageController::class, 'status'])->name('messages.status');
+    });
+
+    // Pasien (halaman #37, 11 §2.3 G, F7A-R3): grup kelola (patients.manage) didaftarkan DAHULU agar /pasien/buat tidak
+    // tertangkap {patient}, lalu grup lihat. Pasien tidak punya destroy (BR-109, 00 I.6).
+    Route::middleware('permission:patients.view')->group(function (): void {
+        Route::resource('pasien', PatientController::class)
+            ->names('patients')
+            ->parameters(['pasien' => 'patient'])
+            ->only(['index', 'show']);
     });
 
     // J. Media (11 §2.3 J, F2-R3). JSON; izin akhir ditentukan MediaPolicy menurut pemilik media.

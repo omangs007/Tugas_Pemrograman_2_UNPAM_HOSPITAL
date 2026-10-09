@@ -12,9 +12,9 @@ use Tests\TestCase;
 
 /**
  * KNS-01 (bagian fase 5), KNS-02 (route `patient.*` berpagar), dan KNS-03 (izin tetap 19): 13 route baru persis
- * kerangka C.1 (nama, URI, method, middleware, action) dan route admin tetap 106. Angka global (total route, jumlah di
- * bawah `/pasien`, ketiadaan route `patient.appointments.*`) tidak lagi dikunci di sini sejak fase 6 (F6-R4);
- * `Phase6RoutePermissionTest` mengunci angka akhir.
+ * kerangka C.1 (nama, URI, method, middleware, action). Angka global (total route, jumlah route admin, jumlah di
+ * bawah `/pasien`, ketiadaan route `patient.appointments.*`) tidak lagi dikunci di sini sejak fase 6 (F6-R4) dan fase 7a
+ * (F7A-R4); `Phase7aRoutePermissionTest` mengunci angka akhir.
  */
 class Phase5RoutePermissionTest extends TestCase
 {
@@ -112,20 +112,6 @@ class Phase5RoutePermissionTest extends TestCase
                 }
             }
         }
-    }
-
-    public function test_the_admin_area_still_has_one_hundred_and_six_routes_after_phase_5(): void
-    {
-        $count = 0;
-
-        foreach (Route::getRoutes()->getRoutes() as $route) {
-            if ($route->uri() === 'admin' || str_starts_with($route->uri(), 'admin/')) {
-                $count++;
-            }
-        }
-
-        // Fase 5 tidak menambah route admin (admin pasien = fase 7, pengaturan = fase 8).
-        $this->assertSame(106, $count);
     }
 
     public function test_uris_use_indonesian_segments(): void

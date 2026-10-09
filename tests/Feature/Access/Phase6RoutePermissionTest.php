@@ -17,7 +17,8 @@ use Tests\TestCase;
 /**
  * KNS-01 (bagian fase 6), KNS-02 (route `patient.*` berpagar), dan KNS-03 (izin tetap 19): 9 route baru persis kerangka
  * C.1 (nama, URI, method, middleware, action, pola `where`, binding `booking_code`), `throttle:booking` hanya pada
- * `store`, 13 route di bawah `/pasien`, route admin tetap 106, dan total 150 (141 + 9).
+ * `store`, dan 13 route di bawah `/pasien`. Angka global (route admin 106, total 150) tidak lagi dikunci di sini sejak
+ * fase 7a (F7A-R4): angka global dikunci `Phase7aRoutePermissionTest`.
  */
 class Phase6RoutePermissionTest extends TestCase
 {
@@ -108,48 +109,6 @@ class Phase6RoutePermissionTest extends TestCase
 
         $this->assertCount(13, $found);
         $this->assertSame($expected, $found);
-    }
-
-    public function test_the_admin_area_still_has_one_hundred_and_six_routes_after_phase_6(): void
-    {
-        $count = 0;
-
-        foreach (Route::getRoutes()->getRoutes() as $route) {
-            if ($route->uri() === 'admin' || str_starts_with($route->uri(), 'admin/')) {
-                $count++;
-            }
-        }
-
-        // Fase 6 tidak menambah route admin (admin pendaftaran, antrean, walk-in, dan bukti admin = fase 7).
-        $this->assertSame(106, $count);
-    }
-
-    /** Fase 7 memperbarui tes ini saat `admin.appointments.*` dan `admin.patients.*` dibuat. */
-    public function test_phase_7_admin_routes_do_not_exist_yet(): void
-    {
-        foreach (Route::getRoutes()->getRoutes() as $route) {
-            $name = (string) $route->getName();
-
-            $this->assertFalse(str_starts_with($name, 'admin.appointments.'), "{$name} adalah route fase 7.");
-            $this->assertFalse(str_starts_with($name, 'admin.patients.'), "{$name} adalah route fase 7.");
-        }
-    }
-
-    /**
-     * Setara `route:list --except-vendor`: route milik aplikasi (aksi `App\…`). Tiga route vendor (`storage.local`,
-     * `storage.local.upload`, `up`) berupa Closure dan tidak dihitung. 141 sebelum fase 6 + 9 = 150.
-     */
-    public function test_the_application_has_one_hundred_and_fifty_routes_after_phase_6(): void
-    {
-        $count = 0;
-
-        foreach (Route::getRoutes()->getRoutes() as $route) {
-            if (str_starts_with($route->getActionName(), 'App\\')) {
-                $count++;
-            }
-        }
-
-        $this->assertSame(150, $count);
     }
 
     public function test_uris_use_indonesian_segments(): void
