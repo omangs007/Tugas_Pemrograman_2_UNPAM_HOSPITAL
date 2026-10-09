@@ -103,7 +103,16 @@ Lewati bagian ini di mesin pemilik. Di mesin lain:
 Start-Process "$XAMPP\xampp-control.exe" -Verb RunAs     # (Admin) disarankan agar dapat memulai/menghentikan service
 ```
 
-Klik **Start** pada **Apache** dan **MySQL** bila belum hijau. Tombol **Config** pada baris Apache/MySQL membuka `httpd.conf`, `httpd-vhosts.conf`, `my.ini`, dan `php.ini` dengan cepat. Uji cepat: `http://localhost/` (dashboard XAMPP) dan `http://localhost/phpmyadmin`. Bila Apache tidak mau start karena port 80 terpakai, lihat §13 baris "Port 80 dipakai".
+Klik **Start** pada **Apache** bila belum hijau. Tombol **Config** pada baris Apache/MySQL membuka `httpd.conf`, `httpd-vhosts.conf`, `my.ini`, dan `php.ini` dengan cepat. Uji cepat: `http://localhost/` (dashboard XAMPP) dan `http://localhost/phpmyadmin`. Bila Apache tidak mau start karena port 80 terpakai, lihat §13 baris "Port 80 dipakai".
+
+**MySQL tidak dinyalakan atau dimatikan dari Control Panel** (insiden 2026-10-09, §13 baris "`GRANT` tidak tersimpan"). Start dari Control Panel membuat MariaDB 10.4.32 menulis log galat ke dalam berkas tabel sistem Aria, sedangkan Stop dari Control Panel atau `mysql_stop.bat` membunuh proses `mysqld`. Akibatnya `mysql.db` rusak dan GRANT hilang. Pakai dua skrip proyek:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\mysql-start.ps1   # start lewat konsol tersembunyi; menunggu "ping" OK
+powershell -ExecutionPolicy Bypass -File scripts\mysql-stop.ps1    # mysqladmin shutdown (bersih); jalankan juga sebelum Windows dimatikan
+```
+
+Keduanya aman dijalankan ulang: start tidak berbuat apa-apa bila MySQL sudah berjalan, dan stop tidak berbuat apa-apa bila MySQL sudah berhenti. Status MySQL di Control Panel boleh diabaikan.
 
 ---
 
@@ -384,7 +393,7 @@ Keputusan **K-12** (17): default (a) — `root` MariaDB dibiarkan tanpa password
 Select-String -Path "$XAMPP\mysql\bin\my.ini" -Pattern '^\s*(bind-address|skip-networking|port)\s*=' | ForEach-Object { $_.Line }
 ```
 
-Bila tidak ada `bind-address`, tambahkan `bind-address=127.0.0.1` pada bagian `[mysqld]` di `my.ini` lalu restart MySQL dari Control Panel; pastikan firewall tidak membuka port 3306. **Hanya untuk opsi (b)** — memberi `root` password:
+Bila tidak ada `bind-address`, tambahkan `bind-address=127.0.0.1` pada bagian `[mysqld]` di `my.ini` lalu restart MySQL (`scripts\mysql-stop.ps1` lalu `scripts\mysql-start.ps1`, §1.3); pastikan firewall tidak membuka port 3306. **Hanya untuk opsi (b)** — memberi `root` password:
 
 ```powershell
 $rootPw = Read-Host "Password baru untuk root MariaDB"
@@ -416,7 +425,7 @@ if (-not (Select-String -Path $my -Pattern '^\s*innodb_lock_wait_timeout' -Quiet
     $l.Insert($i + 1, 'innodb_lock_wait_timeout=10')
     [System.IO.File]::WriteAllLines($my, $l)
 }
-# restart MySQL dari Control Panel (Stop lalu Start), kemudian:
+# restart MySQL: scripts\mysql-stop.ps1 lalu scripts\mysql-start.ps1 (§1.3), kemudian:
 "SELECT @@innodb_lock_wait_timeout;" | & $MYSQL -u root -N                  # 10
 ```
 
@@ -1075,9 +1084,9 @@ Backup baru dianggap valid setelah **dipulihkan**. Lakukan prosedur [15 §9](15-
 
 | Gejala | Penyebab | Solusi |
 |---|---|---|
-| `SQLSTATE[HY000] [2002] Connection refused` | MariaDB belum berjalan; port/host salah; memakai `localhost` yang di Windows dapat diselesaikan ke `::1` | Start **MySQL** di Control Panel; `Get-NetTCPConnection -LocalPort 3306 -State Listen`; set `DB_HOST=127.0.0.1` dan `DB_PORT` yang benar; `& $PHP artisan config:clear` |
+| `SQLSTATE[HY000] [2002] Connection refused` | MariaDB belum berjalan; port/host salah; memakai `localhost` yang di Windows dapat diselesaikan ke `::1` | `scripts\mysql-start.ps1` (§1.3); `Get-NetTCPConnection -LocalPort 3306 -State Listen`; set `DB_HOST=127.0.0.1` dan `DB_PORT` yang benar; `& $PHP artisan config:clear` |
 | `SQLSTATE[HY000] [1045] Access denied for user 'unpam_app'` | Password di `.env` salah; user belum dibuat untuk host `127.0.0.1`; config ter-cache | Ulangi §4.2 (`ALTER USER 'unpam_app'@'127.0.0.1' IDENTIFIED BY '…'`); samakan `DB_PASSWORD`; `config:clear`; uji `& $MYSQL -h 127.0.0.1 -u unpam_app -p unpam_hospital` |
-| `GRANT` tidak tersimpan: `unpam_app` hanya melihat sebagian database / `SHOW GRANTS` hanya `USAGE` setelah `FLUSH PRIVILEGES`, atau `ERROR 3 … Error writing file 'aria_log.00000001' (Errcode: 9 "Bad file descriptor")` (**terjadi di mesin pemilik, 2026-10-02**) | Data dir bawaan paket XAMPP 8.2.12: tabel sistem Aria `mysql.db` rusak (`CHECK TABLE mysql.db` → *Size of indexfile … Expected …* / *Corrupt*) dan proses MariaDB kehilangan handle tulis ke log Aria (`SHOW ENGINE ARIA LOGS` → status `unknown`, berkas `aria_log.00000001` bertanggal 2019) | (1) **Stop MySQL** di Control Panel, cadangkan `C:\xampp3\mysql\data\mysql\db.frm`, `db.MAD`, `db.MAI` ke `C:\xampp3\mysql\backup-fase0-mysqldb\`, lalu **Start MySQL** (salinan saat server berjalan hanya *best-effort*); (2) `CHECK TABLE mysql.db; REPAIR TABLE mysql.db; CHECK TABLE mysql.db;` → `OK` (peringatan ukuran index boleh); (3) **Stop → Start MySQL** di Control Panel; (4) ulangi kedua `GRANT` + `FLUSH PRIVILEGES`; (5) verifikasi `SELECT Host, Db, User FROM mysql.db WHERE User='unpam_app';` = 4 baris dan `aria_log.00000001` kini ber-*timestamp* baru. Bila log Aria tetap tak tertulis: hentikan MySQL, pindahkan `aria_log.00000001` + `aria_log_control` ke folder cadangan, start lagi (MariaDB membuat ulang). |
+| `GRANT` tidak tersimpan: `unpam_app` hanya melihat sebagian database / `SHOW GRANTS` hanya `USAGE` setelah `FLUSH PRIVILEGES`, atau `ERROR 3 … Error writing file 'aria_log.00000001' (Errcode: 9 "Bad file descriptor")` (**terjadi di mesin pemilik, 2026-10-02**) | Data dir bawaan paket XAMPP 8.2.12: tabel sistem Aria `mysql.db` rusak (`CHECK TABLE mysql.db` → *Size of indexfile … Expected …* / *Corrupt*) dan proses MariaDB kehilangan handle tulis ke log Aria (`SHOW ENGINE ARIA LOGS` → status `unknown`, berkas `aria_log.00000001` bertanggal 2019) | (1) **Stop MySQL** di Control Panel, cadangkan `C:\xampp3\mysql\data\mysql\db.frm`, `db.MAD`, `db.MAI` ke `C:\xampp3\mysql\backup-fase0-mysqldb\`, lalu **Start MySQL** (salinan saat server berjalan hanya *best-effort*); (2) `CHECK TABLE mysql.db; REPAIR TABLE mysql.db; CHECK TABLE mysql.db;` → `OK` (peringatan ukuran index boleh); (3) **Stop → Start MySQL** di Control Panel; (4) ulangi kedua `GRANT` + `FLUSH PRIVILEGES`; (5) verifikasi `SELECT Host, Db, User FROM mysql.db WHERE User='unpam_app';` = 4 baris dan `aria_log.00000001` kini ber-*timestamp* baru. Bila log Aria tetap tak tertulis: hentikan MySQL, pindahkan `aria_log.00000001` + `aria_log_control` ke folder cadangan, start lagi (MariaDB membuat ulang).<br>**Terulang 2026-10-09; akar masalah terbukti.** Gejalanya semua tes ber-DB gagal `[1044] Access denied for user 'unpam_app' to database 'unpam_hospital_test'`. Penyebabnya ada dua. (a) MariaDB yang di-start dari Control Panel menulis setiap baris log sesudah "Server socket created" ke dalam berkas tabel Aria. Teks log ditemukan di `db.MAD/MAI`, `proxies_priv.MAD`, `roles_mapping.MAD`, `event.MAI`, dan `tables_priv.MAI`, bukan di `mysql_error.log`. (b) Stop dari Control Panel dan `mysql_stop.bat` membunuh `mysqld`: log mencatat 23 start tanpa satu pun "Shutdown complete". Pencegahan: §1.3 (`scripts\mysql-start.ps1` dan `scripts\mysql-stop.ps1`). Pemulihan bila server menolak start ("Can't open and lock privilege tables: Table '.\mysql\db' is marked as crashed"): (1) server mati, cadangkan `mysql\db.*`, `mysql\tables_priv.*`, `aria_log*`; (2) dari `C:\xampp3\mysql\data` jalankan `..\bin\aria_chk.exe --recover --zerofill mysql\db mysql\tables_priv` (isi `mysql.db` bisa hilang); (3) `scripts\mysql-start.ps1`; (4) `REPAIR TABLE mysql.db, mysql.tables_priv;` (menghapus galat "from another system"); (5) jalankan ulang keenam `GRANT` §4.2 ditambah `GRANT SELECT, INSERT, UPDATE, DELETE ON phpmyadmin.* TO 'pma'@'localhost';`, lalu `FLUSH PRIVILEGES`; (6) `mysqlcheck -u root --check --databases unpam_hospital unpam_hospital_test` harus OK semua. |
 | `SQLSTATE[HY000] [1049] Unknown database 'unpam_hospital'` | Database belum dibuat atau namanya salah ketik di `.env` | Jalankan SQL §4.2; periksa `DB_DATABASE`; `"SHOW DATABASES;" \| & $MYSQL -u root` |
 | Port 3306 bentrok dengan MySQL lain (service MySQL80/MariaDB lain), MySQL XAMPP gagal start | Dua server memakai port yang sama | Cari pemilik port: `Get-NetTCPConnection -LocalPort 3306 -State Listen \| ForEach-Object { Get-Process -Id $_.OwningProcess }`; hentikan service lain (`Stop-Service MySQL80` **(Admin)**) atau pindahkan MariaDB XAMPP ke port 3307: ubah `port=3307` pada `[client]` dan `[mysqld]` di `my.ini`, `DB_PORT=3307` di `.env`/`.env.testing`, dan `$cfg['Servers'][$i]['port']` di `phpMyAdmin\config.inc.php`; restart MySQL |
 | `MissingAppKeyException: No application encryption key has been specified` | `APP_KEY` kosong; `.env` tidak terbaca; config ter-cache tanpa kunci | Pastikan `.env` ada di `D:\Project Web RS`; `& $PHP artisan key:generate` **hanya** bila belum ada data terenkripsi; `config:clear` |
