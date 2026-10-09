@@ -17,6 +17,7 @@ use App\Services\Settings\SettingsService;
 use App\Support\Actor;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Database\ConcurrencyErrorDetector;
+use Illuminate\Database\DeadlockException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -25,7 +26,9 @@ use Illuminate\Support\Facades\DB;
  * ada sebagai data (TRANSITIONS dan RULES): pembuatan (T1-T3) milik BookingService. Kunci baku 00 F.6:
  * patient_profiles, practice_sessions, appointments (hanya lewat PK) sebelum kueri lain; semua pemeriksaan
  * dibaca ulang di bawah kunci. Otorisasi (izin Spatie, Policy) ada di lapisan HTTP; service menegakkan
- * aturan domain menurut JENIS pelaku dan kepemilikan.
+ * aturan domain menurut JENIS pelaku dan kepemilikan. Pemeriksaan aturan ada di SATU evaluator (F7A-R5) yang
+ * dipakai `transition()` (di bawah kunci) dan `transitionChecks()` (tombol UI, tanpa kunci), sehingga tombol
+ * tidak pernah berbeda dari aturan server.
  */
 final class AppointmentStatusService
 {
@@ -33,7 +36,7 @@ final class AppointmentStatusService
 
     public const REASON_MAX_LENGTH = 255;
 
-    /** Peta dari-ke yang sah (00 F.8). Status final tidak punya jalan keluar. */
+    /** Peta dari-ke yang sah (00 F.8). Status final tidak punya jalan keluar. Dasar kandidat `transitionChecks()`. */
     public const TRANSITIONS = [
         'pending' => ['confirmed', 'checked_in', 'cancelled', 'no_show'],
         'confirmed' => ['checked_in', 'cancelled', 'no_show'],
@@ -60,6 +63,17 @@ final class AppointmentStatusService
         'confirmed>no_show' => ['step' => 'T10', 'actors' => ['staff', 'system'], 'window' => 'after_end', 'reason' => []],
     ];
 
+    /**
+     * Status tujuan yang boleh diminta lewat aksi per appointment di UI (F7A-R5, F7A-R18). `no_show` TIDAK
+     * termasuk: hanya lewat aksi massal per sesi (`markNoShowForSession`) atau perintah terjadwal.
+     */
+    public const INDIVIDUAL_TARGETS = [
+        AppointmentStatus::Confirmed,
+        AppointmentStatus::CheckedIn,
+        AppointmentStatus::Completed,
+        AppointmentStatus::Cancelled,
+    ];
+
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly SettingsService $settings,
@@ -72,7 +86,7 @@ final class AppointmentStatusService
      * disinkronkan dengan keadaan baru dan dikembalikan.
      *
      * @throws InvalidTransitionException aturan F.8 dilanggar (tidak ada yang ditulis)
-     * @throws BookingException SYSTEM_BUSY bila galat konkurensi lolos dari 3 percobaan
+     * @throws BookingException SYSTEM_BUSY bila galat konkurensi (QueryException atau DeadlockException) lolos dari 3 percobaan
      */
     public function transition(Appointment $appointment, AppointmentStatus $to, Actor $actor, ?string $reason = null, ?AppointmentStatus $expected = null): Appointment
     {
@@ -91,8 +105,9 @@ final class AppointmentStatusService
                 fn (): Appointment => $this->applyLocked($appointmentId, $profileId, $sessionId, $to, $actor, $reason, $expected),
                 3,
             );
-        } catch (QueryException $e) {
-            if (app(ConcurrencyErrorDetector::class)->causedByConcurrencyError($e)) {
+        } catch (QueryException|DeadlockException $e) {
+            // DeadlockException dilempar Laravel di dalam transaksi pembungkus (tanpa pengulangan); selalu galat konkurensi.
+            if ($e instanceof DeadlockException || app(ConcurrencyErrorDetector::class)->causedByConcurrencyError($e)) {
                 SanitizedBookingFault::capture('SYSTEM_BUSY (transisi status)', $e, ['practice_session_id' => $sessionId, 'patient_profile_id' => $profileId]);
 
                 throw BookingException::make(BookingException::SYSTEM_BUSY, [], [], $e);
@@ -107,6 +122,60 @@ final class AppointmentStatusService
         return $appointment;
     }
 
+    /**
+     * Pemeriksaan tombol untuk satu appointment (F7A-R5): kandidat = TRANSITIONS[status] yang juga ada di
+     * INDIVIDUAL_TARGETS (urut INDIVIDUAL_TARGETS); status final menghasilkan []. Memakai evaluator yang sama
+     * dengan `transition()` tetapi tanpa kunci (SELECT biasa) dan MENGABAIKAN `expected` dan alasan (modal
+     * mengumpulkan alasan; server tetap memeriksa). Kandidat yang ditolak tetap dikembalikan dengan kode dan
+     * pesan penolakan (mis. `CHECKIN_NOT_OPEN` + `opensAt()` untuk tombol "Dibuka HH.MM").
+     *
+     * @return list<TransitionCheck>
+     */
+    public function transitionChecks(Appointment $appointment, Actor $actor, ?CarbonImmutable $now = null): array
+    {
+        $appointment->loadMissing(['practiceSession', 'patientProfile']);
+
+        $from = $appointment->status;
+
+        if ($from->isFinal()) {
+            return [];
+        }
+
+        $moment = $this->momentOf($now);
+        $legal = self::TRANSITIONS[$from->value];
+        $checks = [];
+
+        foreach (self::INDIVIDUAL_TARGETS as $to) {
+            if (! in_array($to->value, $legal, true)) {
+                continue;
+            }
+
+            $rejection = $this->evaluate($appointment->patientProfile, $appointment->practiceSession, $from, $to, $actor, $moment, false);
+
+            $checks[] = $rejection === null
+                ? new TransitionCheck($to)
+                : new TransitionCheck($to, $rejection['code'], (string) __('booking.transitions.'.$rejection['key'], $rejection['replace']), $rejection['replace']);
+        }
+
+        return $checks;
+    }
+
+    /**
+     * Status tujuan yang boleh dipilih aktor sekarang (tombol yang tampil): pemeriksaan `transitionChecks()`
+     * yang `allowed()`, dalam urutan yang sama.
+     *
+     * @return list<AppointmentStatus>
+     */
+    public function availableTransitions(Appointment $appointment, Actor $actor, ?CarbonImmutable $now = null): array
+    {
+        $allowed = array_filter(
+            $this->transitionChecks($appointment, $actor, $now),
+            fn (TransitionCheck $check): bool => $check->allowed(),
+        );
+
+        return array_values(array_map(fn (TransitionCheck $check): AppointmentStatus => $check->to, $allowed));
+    }
+
     private function applyLocked(int $appointmentId, int $profileId, int $sessionId, AppointmentStatus $to, Actor $actor, ?string $reason, ?AppointmentStatus $expected): Appointment
     {
         // Urutan kunci baku (00 F.6): profil, sesi, appointment; hanya lewat PK dan tanpa kueri lain sebelumnya.
@@ -115,10 +184,13 @@ final class AppointmentStatusService
         $appointment = Appointment::query()->whereKey($appointmentId)->lockForUpdate()->firstOrFail();
 
         $from = $appointment->status;
-        $now = CarbonImmutable::instance(now())->setTimezone((string) config('app.timezone'));
+        $now = $this->momentOf(null);
 
-        $rule = $this->authorize($appointment, $profile, $from, $to, $actor, $reason, $expected);
-        $this->assertWindow($rule['window'], $appointment, $from, $to, $actor, $session, $now);
+        $rejection = $this->evaluate($profile, $session, $from, $to, $actor, $now, true, $reason, $expected);
+
+        if ($rejection !== null) {
+            throw InvalidTransitionException::makeVariant($rejection['code'], $rejection['key'], $rejection['replace'], $this->context($appointment, $from, $to));
+        }
 
         $appointment->forceFill($this->changes($appointment, $from, $to, $actor, $reason, $now))->save();
 
@@ -156,52 +228,110 @@ final class AppointmentStatusService
     }
 
     /**
-     * Urutan pemeriksaan (semuanya di bawah kunci): pemilik, expected, final, pelaku-ke-status, pasangan,
-     * alasan. Mengembalikan aturan pasangan itu untuk pemeriksaan jendela.
+     * Evaluator tunggal aturan F.8. Urutan pemeriksaan (tidak boleh berubah; dikunci matriks 108 kasus):
+     * pemilik, expected, final, pelaku-ke-status, pasangan, pelaku-di-aturan, alasan, lalu jendela waktu.
+     * `$enforceInput` = true di `transition()` (di bawah kunci); false di `transitionChecks()`, yang melewati
+     * `expected` dan alasan. Mengembalikan penolakan pertama (kode, kunci pesan `booking.transitions.*`,
+     * placeholder) atau null bila diizinkan.
      *
-     * @return array{step: string, actors: list<string>, window: ?string, reason: list<string>}
+     * @return array{code: string, key: string, replace: array<string, scalar>}|null
      */
-    private function authorize(Appointment $appointment, PatientProfile $profile, AppointmentStatus $from, AppointmentStatus $to, Actor $actor, ?string $reason, ?AppointmentStatus $expected): array
+    private function evaluate(PatientProfile $profile, PracticeSession $session, AppointmentStatus $from, AppointmentStatus $to, Actor $actor, CarbonImmutable $now, bool $enforceInput, ?string $reason = null, ?AppointmentStatus $expected = null): ?array
     {
         if ($actor->isPatient() && ($profile->user_id === null || (int) $profile->user_id !== $actor->userId)) {
-            $this->reject('FORBIDDEN_TRANSITION', $appointment, $from, $to);
+            return $this->rejection('FORBIDDEN_TRANSITION');
         }
 
-        if ($expected !== null && $expected !== $from) {
-            $this->reject('STALE_STATUS', $appointment, $from, $to);
+        if ($enforceInput && $expected !== null && $expected !== $from) {
+            return $this->rejection('STALE_STATUS');
         }
 
         if ($from->isFinal()) {
-            $this->reject('ALREADY_FINAL', $appointment, $from, $to, ['status' => mb_strtolower($from->label())]);
+            return $this->rejection('ALREADY_FINAL', ['status' => mb_strtolower($from->label())]);
         }
 
         if (! $this->actorMayTarget($actor, $to)) {
-            $this->reject('FORBIDDEN_TRANSITION', $appointment, $from, $to);
+            return $this->rejection('FORBIDDEN_TRANSITION');
         }
 
         $rule = self::RULES[$from->value.'>'.$to->value] ?? null;
 
         if ($rule === null) {
             if ($actor->isPatient() && $from === AppointmentStatus::CheckedIn && $to === AppointmentStatus::Cancelled) {
-                throw new InvalidTransitionException('INVALID_TRANSITION', __('booking.transitions.CANCEL_CHECKED_IN'), $this->context($appointment, $from, $to));
+                return $this->rejection('INVALID_TRANSITION', [], 'CANCEL_CHECKED_IN');
             }
 
-            $this->reject('INVALID_TRANSITION', $appointment, $from, $to, ['dari' => $from->label(), 'ke' => $to->label()]);
+            return $this->rejection('INVALID_TRANSITION', ['dari' => $from->label(), 'ke' => $to->label()]);
         }
 
         if (! in_array($actor->type->value, $rule['actors'], true)) {
-            $this->reject('FORBIDDEN_TRANSITION', $appointment, $from, $to);
+            return $this->rejection('FORBIDDEN_TRANSITION');
         }
 
-        if (in_array($actor->type->value, $rule['reason'], true)) {
+        if ($enforceInput && in_array($actor->type->value, $rule['reason'], true)) {
             $length = $reason === null ? 0 : mb_strlen($reason);
 
             if ($length < self::REASON_MIN_LENGTH || $length > self::REASON_MAX_LENGTH) {
-                $this->reject('REASON_REQUIRED', $appointment, $from, $to);
+                return $this->rejection('REASON_REQUIRED');
             }
         }
 
-        return $rule;
+        return $this->evaluateWindow($rule['window'], $session, $actor, $now);
+    }
+
+    /** Jendela waktu pasangan (setelah semua pemeriksaan struktur lolos); null bila tidak ada jendela atau lolos. */
+    private function evaluateWindow(?string $window, PracticeSession $session, Actor $actor, CarbonImmutable $now): ?array
+    {
+        if ($window === null) {
+            return null;
+        }
+
+        $rules = $this->settings->bookingRules();
+        $isSessionDay = $session->session_date->toDateString() === $now->toDateString();
+
+        if ($window === 'before_end' && ! $now->lessThan($session->ends_at)) {
+            return $this->rejection('CONFIRM_AFTER_END');
+        }
+
+        if ($window === 'checkin_window') {
+            if (! $isSessionDay) {
+                return $this->rejection('CHECKIN_NOT_TODAY', ['date' => $session->session_date->translatedFormat('l, j F Y')]);
+            }
+
+            $opensAt = $session->starts_at->subMinutes($rules->checkinOpenMinutes);
+
+            if ($now->lessThan($opensAt)) {
+                return $this->rejection('CHECKIN_NOT_OPEN', ['time' => $opensAt->format('H.i')]);
+            }
+
+            if ($now->greaterThan($session->ends_at)) {
+                return $this->rejection('CHECKIN_CLOSED');
+            }
+        }
+
+        if ($window === 'same_day' && ! $isSessionDay) {
+            return $this->rejection('CORRECTION_NOT_SAME_DAY');
+        }
+
+        if ($window === 'cancel_rule' && $actor->isPatient()) {
+            $deadline = $session->starts_at->subMinutes($rules->cancelCutoffMinutes);
+
+            if ($now->greaterThan($deadline)) {
+                // Nomor telepon rumah sakit boleh kosong di pengaturan: pesan tetap utuh.
+                $phone = trim($this->settings->string('contact.phone'));
+
+                return $this->rejection('CANCEL_CUTOFF_PASSED', [
+                    'minutes' => $rules->cancelCutoffMinutes,
+                    'phone' => $phone === '' ? 'nomor rumah sakit' : $phone,
+                ]);
+            }
+        }
+
+        if ($window === 'after_end' && ! $now->greaterThan($session->ends_at)) {
+            return $this->rejection('SESSION_NOT_ENDED', ['time' => $session->ends_at->format('H.i')]);
+        }
+
+        return null;
     }
 
     /** Staf boleh menuju status apa pun (pasangan yang tidak sah ditolak sebagai INVALID_TRANSITION). */
@@ -218,58 +348,6 @@ final class AppointmentStatusService
         }
 
         return false;
-    }
-
-    private function assertWindow(?string $window, Appointment $appointment, AppointmentStatus $from, AppointmentStatus $to, Actor $actor, PracticeSession $session, CarbonImmutable $now): void
-    {
-        if ($window === null) {
-            return;
-        }
-
-        $rules = $this->settings->bookingRules();
-        $isSessionDay = $session->session_date->toDateString() === $now->toDateString();
-
-        if ($window === 'before_end' && ! $now->lessThan($session->ends_at)) {
-            $this->reject('CONFIRM_AFTER_END', $appointment, $from, $to);
-        }
-
-        if ($window === 'checkin_window') {
-            if (! $isSessionDay) {
-                $this->reject('CHECKIN_NOT_TODAY', $appointment, $from, $to, ['date' => $session->session_date->translatedFormat('l, j F Y')]);
-            }
-
-            $opensAt = $session->starts_at->subMinutes($rules->checkinOpenMinutes);
-
-            if ($now->lessThan($opensAt)) {
-                $this->reject('CHECKIN_NOT_OPEN', $appointment, $from, $to, ['time' => $opensAt->format('H.i')]);
-            }
-
-            if ($now->greaterThan($session->ends_at)) {
-                $this->reject('CHECKIN_CLOSED', $appointment, $from, $to);
-            }
-        }
-
-        if ($window === 'same_day' && ! $isSessionDay) {
-            $this->reject('CORRECTION_NOT_SAME_DAY', $appointment, $from, $to);
-        }
-
-        if ($window === 'cancel_rule' && $actor->isPatient()) {
-            $deadline = $session->starts_at->subMinutes($rules->cancelCutoffMinutes);
-
-            if ($now->greaterThan($deadline)) {
-                // Nomor telepon rumah sakit boleh kosong di pengaturan: pesan tetap utuh.
-                $phone = trim($this->settings->string('contact.phone'));
-
-                $this->reject('CANCEL_CUTOFF_PASSED', $appointment, $from, $to, [
-                    'minutes' => $rules->cancelCutoffMinutes,
-                    'phone' => $phone === '' ? 'nomor rumah sakit' : $phone,
-                ]);
-            }
-        }
-
-        if ($window === 'after_end' && ! $now->greaterThan($session->ends_at)) {
-            $this->reject('SESSION_NOT_ENDED', $appointment, $from, $to, ['time' => $session->ends_at->format('H.i')]);
-        }
     }
 
     /**
@@ -323,12 +401,19 @@ final class AppointmentStatusService
         return $reason === '' ? null : $reason;
     }
 
+    /** Waktu "sekarang" dalam zona aplikasi (Asia/Jakarta); `$now` dari pemanggil menggantikan jam dinding. */
+    private function momentOf(?CarbonImmutable $now): CarbonImmutable
+    {
+        return CarbonImmutable::instance($now ?? now())->setTimezone((string) config('app.timezone'));
+    }
+
     /**
      * @param  array<string, scalar>  $replace
+     * @return array{code: string, key: string, replace: array<string, scalar>}
      */
-    private function reject(string $code, Appointment $appointment, AppointmentStatus $from, AppointmentStatus $to, array $replace = []): never
+    private function rejection(string $code, array $replace = [], ?string $key = null): array
     {
-        throw InvalidTransitionException::make($code, $replace, $this->context($appointment, $from, $to));
+        return ['code' => $code, 'key' => $key ?? $code, 'replace' => $replace];
     }
 
     /**
