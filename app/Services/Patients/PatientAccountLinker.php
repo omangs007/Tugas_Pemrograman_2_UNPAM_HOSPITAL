@@ -68,14 +68,17 @@ final class PatientAccountLinker
             $lockedAccountProfile = $accountProfileId === null ? null : $profiles->get((int) $accountProfileId);
             $lockedAccount = User::query()->whereKey($account->getKey())->lockForUpdate()->first();
 
-            // Profil milik akun berubah sejak dibaca (mis. sudah ditautkan petugas lain): anggap akun sudah berprofil.
-            $currentAccountProfileId = PatientProfile::query()->where('user_id', $account->getKey())->value('id');
+            // Read view REPEATABLE READ sudah terbuka sejak pembacaan pertama: pembacaan sesudah kunci wajib berkunci
+            // agar melihat data ter-commit terbaru. Profil milik akun berubah (ditautkan/dihapus petugas lain) atau
+            // hilang sesudah dikunci: anggap akun sudah berprofil/berriwayat.
+            $currentAccountProfileId = PatientProfile::query()->where('user_id', $account->getKey())->lockForUpdate()->value('id');
 
-            if (($currentAccountProfileId === null ? null : (int) $currentAccountProfileId) !== ($accountProfileId === null ? null : (int) $accountProfileId)) {
+            if (($currentAccountProfileId === null ? null : (int) $currentAccountProfileId) !== ($accountProfileId === null ? null : (int) $accountProfileId)
+                || ($accountProfileId !== null && $lockedAccountProfile === null)) {
                 throw ValidationException::withMessages(['account_email' => __('patients.link.ACCOUNT_HAS_HISTORY')]);
             }
 
-            $message = $this->evaluate($lockedWalkIn, $lockedAccount, $lockedAccountProfile);
+            $message = $this->evaluate($lockedWalkIn, $lockedAccount, $lockedAccountProfile, true);
 
             if ($message !== null) {
                 throw ValidationException::withMessages(['account_email' => $message]);
@@ -115,8 +118,9 @@ final class PatientAccountLinker
 
     /**
      * Urutan 06 §16: profil sudah terhubung, akun tidak ada atau bukan pasien, akun nonaktif, profil akun berriwayat.
+     * `$locking` = jalur `link()` (pembacaan riwayat berkunci); urutan pemeriksaan tetap satu.
      */
-    private function evaluate(PatientProfile $walkIn, ?User $account, ?PatientProfile $accountProfile): ?string
+    private function evaluate(PatientProfile $walkIn, ?User $account, ?PatientProfile $accountProfile, bool $locking = false): ?string
     {
         if ($walkIn->user_id !== null) {
             return __('patients.link.PROFILE_ALREADY_LINKED');
@@ -130,7 +134,10 @@ final class PatientAccountLinker
             return __('patients.link.ACCOUNT_INACTIVE');
         }
 
-        if ($accountProfile !== null && Appointment::query()->where('patient_profile_id', $accountProfile->getKey())->exists()) {
+        // Jalur `link()` memakai pembacaan berkunci (melihat booking yang baru ter-commit); `problem()` tanpa kunci.
+        $history = Appointment::query()->where('patient_profile_id', $accountProfile?->getKey());
+
+        if ($accountProfile !== null && ($locking ? $history->sharedLock() : $history)->exists()) {
             return __('patients.link.ACCOUNT_HAS_HISTORY');
         }
 
