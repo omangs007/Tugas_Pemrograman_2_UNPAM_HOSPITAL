@@ -1,7 +1,5 @@
 @php
-    // Route tambah dibuat T6; sebelum itu tombol tidak dirender (Route::has dahulu agar kebijakan tidak dievaluasi).
-    $canCreate = \Illuminate\Support\Facades\Route::has('admin.patients.create')
-        && (bool) auth()->user()?->can('create', \App\Models\PatientProfile::class);
+    $canCreate = (bool) auth()->user()?->can('create', \App\Models\PatientProfile::class);
     $hasQuery = collect(request()->query())
         ->except(['page', 'per_page'])
         ->filter(fn ($value) => is_array($value) ? $value !== [] : trim((string) $value) !== '')
@@ -90,6 +88,9 @@
                 </td>
                 <td data-label="Aksi" class="table-actions">
                     <a href="{{ route('admin.patients.show', $patient) }}" class="btn btn-sm btn-outline-secondary" aria-label="Lihat {{ $patient->full_name }}">Lihat</a>
+                    @can('update', $patient)
+                        <a href="{{ route('admin.patients.edit', $patient) }}" class="btn btn-sm btn-outline-primary" aria-label="Ubah {{ $patient->full_name }}">Ubah</a>
+                    @endcan
                 </td>
             </tr>
         @endforeach

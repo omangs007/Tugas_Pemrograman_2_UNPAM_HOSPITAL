@@ -313,14 +313,26 @@ class AdminPatientsIndexTest extends TestCase
             ->assertSee('Tidak ada data untuk ditampilkan.');
     }
 
-    public function test_the_walk_in_button_is_hidden_until_the_create_route_exists(): void
+    public function test_the_walk_in_buttons_are_shown_to_users_who_may_create_profiles(): void
     {
-        $this->assertFalse(Route::has('admin.patients.create'), 'T6 mendaftarkan route ini dan mengganti tes ini.');
+        $this->actingAs($this->createStaff('registration-officer'))
+            ->get(route('admin.patients.index'))
+            ->assertOk()
+            ->assertSee('Tambah Pasien Walk-in')
+            ->assertSee('href="'.route('admin.patients.create').'"', false)
+            ->assertSee('Buat profil baru');
+    }
+
+    public function test_each_row_offers_view_and_edit_links(): void
+    {
+        $profile = $this->profile(['full_name' => 'Siti Rahma', 'patient_number' => 'P000123']);
 
         $this->actingAs($this->createStaff('registration-officer'))
             ->get(route('admin.patients.index'))
             ->assertOk()
-            ->assertDontSee('Tambah Pasien Walk-in');
+            ->assertSee('href="'.route('admin.patients.show', $profile).'"', false)
+            ->assertSee('href="'.route('admin.patients.edit', $profile).'"', false)
+            ->assertSee('aria-label="Ubah Siti Rahma"', false);
     }
 
     // --- SEK-15 --------------------------------------------------------------------------------

@@ -201,6 +201,13 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
 
     // Pasien (halaman #37, 11 §2.3 G, F7A-R3): grup kelola (patients.manage) didaftarkan DAHULU agar /pasien/buat tidak
     // tertangkap {patient}, lalu grup lihat. Pasien tidak punya destroy (BR-109, 00 I.6).
+    Route::middleware('permission:patients.manage')->group(function (): void {
+        Route::resource('pasien', PatientController::class)
+            ->names('patients')
+            ->parameters(['pasien' => 'patient'])
+            ->only(['create', 'store', 'edit', 'update']);
+        Route::patch('pasien/{patient}/status', [PatientController::class, 'status'])->name('patients.status');
+    });
     Route::middleware('permission:patients.view')->group(function (): void {
         Route::resource('pasien', PatientController::class)
             ->names('patients')

@@ -12,6 +12,18 @@
     </x-slot:breadcrumb>
 
     <x-slot:actions>
+        @can('update', $patient)
+            <a href="{{ route('admin.patients.edit', $patient) }}" class="btn btn-primary">
+                <i class="bi bi-pencil" aria-hidden="true"></i> Ubah
+            </a>
+        @endcan
+        @can('changeStatus', $patient)
+            @if ($patient->is_active)
+                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modal-patient-deactivate">Nonaktifkan<span class="visually-hidden"> {{ $patient->full_name }}</span></button>
+            @else
+                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modal-patient-activate">Aktifkan Kembali<span class="visually-hidden"> {{ $patient->full_name }}</span></button>
+            @endif
+        @endcan
         <a href="{{ route('admin.patients.index') }}" class="btn btn-outline-secondary">Kembali ke daftar</a>
     </x-slot:actions>
 
@@ -133,4 +145,5 @@
             </section>
         </div>
     </div>
+    @include('admin.patients._status-modal')
 </x-layouts.admin>
