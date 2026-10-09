@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\LinkPatientAccountRequest;
 use App\Http\Requests\Admin\PatientIndexRequest;
 use App\Http\Requests\Admin\StorePatientRequest;
 use App\Http\Requests\Admin\UpdatePatientRequest;
 use App\Http\Requests\Admin\UpdatePatientStatusRequest;
 use App\Models\Appointment;
 use App\Models\PatientProfile;
+use App\Models\User;
+use App\Services\Patients\PatientAccountLinker;
 use App\Services\Patients\PatientRegistrationService;
 use App\Services\Patients\PatientSearch;
 use App\Support\Actor;
@@ -16,6 +19,8 @@ use App\Support\SafeRedirect;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -37,7 +42,7 @@ class PatientController extends Controller
         ]);
     }
 
-    public function show(PatientProfile $patient): View
+    public function show(Request $request, PatientProfile $patient, PatientAccountLinker $linker): View
     {
         $this->authorize('view', $patient);
 
@@ -53,6 +58,7 @@ class PatientController extends Controller
         return view('admin.patients.show', [
             'patient' => $patient,
             'appointments' => $appointments,
+            'linkPanel' => $this->linkPanel($request, $patient, $linker),
         ]);
     }
 
@@ -193,5 +199,70 @@ class PatientController extends Controller
         $query['pasien'] = (string) $patientId;
 
         return '/admin/pendaftaran/buat?'.http_build_query($query);
+    }
+
+    public function linkAccount(LinkPatientAccountRequest $request, PatientProfile $patient, PatientAccountLinker $linker): RedirectResponse
+    {
+        $this->authorize('linkAccount', $patient);
+
+        $account = $linker->findAccount($request->accountEmail());
+
+        if ($account === null) {
+            throw ValidationException::withMessages([
+                'account_email' => $linker->problem($patient, null) ?? __('patients.link.ACCOUNT_NOT_FOUND'),
+            ]);
+        }
+
+        $profile = $linker->link($patient, $account, Actor::staff($request->user()));
+
+        return redirect()->route('admin.patients.show', $patient)->with(
+            'success',
+            __('patients.link.linked', ['number' => $profile->patient_number, 'email' => $account->email]),
+        );
+    }
+
+    /**
+     * Panel "Hubungkan ke akun online" (F7A-R12). Null bila profil sudah terhubung atau pengguna tidak boleh
+     * menghubungkan. Profil nonaktif hanya mendapat penanda `inactive` (tanpa pencarian dan tanpa data akun). Murni baca:
+     * GET tidak menulis apa pun. Nilai `hubungkan` berupa larik atau kosong dianggap belum mencari.
+     *
+     * @return array{inactive: bool, email: string, searched: bool, invalid: ?string, problem: ?string, account: ?User}|null
+     */
+    private function linkPanel(Request $request, PatientProfile $patient, PatientAccountLinker $linker): ?array
+    {
+        if ($patient->user_id !== null || ! $request->user()->can('linkAccount', $patient)) {
+            return null;
+        }
+
+        $panel = ['inactive' => ! $patient->is_active, 'email' => '', 'searched' => false, 'invalid' => null, 'problem' => null, 'account' => null];
+
+        if ($panel['inactive']) {
+            return $panel;
+        }
+
+        $raw = $request->query('hubungkan');
+
+        if (! is_string($raw) || trim($raw) === '') {
+            return $panel;
+        }
+
+        $email = Str::lower(trim(mb_substr($raw, 0, 300)));
+        $panel['email'] = $email;
+        $panel['searched'] = true;
+
+        if (Validator::make(['email' => $email], ['email' => ['email:rfc', 'max:255']])->fails()) {
+            $panel['invalid'] = 'Format email tidak valid.';
+
+            return $panel;
+        }
+
+        $account = $linker->findAccount($email);
+        $panel['problem'] = $linker->problem($patient, $account);
+
+        if ($panel['problem'] === null && $account !== null) {
+            $panel['account'] = $account->loadMissing('patientProfile');
+        }
+
+        return $panel;
     }
 }

@@ -207,6 +207,7 @@ Route::middleware(['auth', 'account:staff', 'active', 'password.changed'])->grou
             ->parameters(['pasien' => 'patient'])
             ->only(['create', 'store', 'edit', 'update']);
         Route::patch('pasien/{patient}/status', [PatientController::class, 'status'])->name('patients.status');
+        Route::post('pasien/{patient}/hubungkan-akun', [PatientController::class, 'linkAccount'])->name('patients.link-account');
     });
     Route::middleware('permission:patients.view')->group(function (): void {
         Route::resource('pasien', PatientController::class)

@@ -12,6 +12,13 @@
     </x-slot:breadcrumb>
 
     <x-slot:actions>
+        @if ($patient->user_id === null && $patient->is_active)
+            @can('linkAccount', $patient)
+                <a href="#hubungkan-akun" class="btn btn-outline-primary">
+                    <i class="bi bi-link-45deg" aria-hidden="true"></i> Hubungkan ke akun online
+                </a>
+            @endcan
+        @endif
         @can('update', $patient)
             <a href="{{ route('admin.patients.edit', $patient) }}" class="btn btn-primary">
                 <i class="bi bi-pencil" aria-hidden="true"></i> Ubah
@@ -145,5 +152,6 @@
             </section>
         </div>
     </div>
+    @include('admin.patients._link-panel')
     @include('admin.patients._status-modal')
 </x-layouts.admin>
