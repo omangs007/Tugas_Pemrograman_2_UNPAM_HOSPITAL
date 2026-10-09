@@ -29,6 +29,9 @@ use Tests\Support\Concurrency\ConcurrencyTestCase;
 #[Group('concurrency')]
 class BookingParallelProcessesTest extends ConcurrencyTestCase
 {
+    /** Pesan T4 saat `DoctorService::archive()` kehabisan percobaan (F7A-R26). */
+    private const BUSY_MESSAGE = 'Sistem sedang sibuk, silakan coba lagi beberapa saat.';
+
     /**
      * @param  list<array<string, mixed>>  $results
      */
@@ -282,15 +285,15 @@ class BookingParallelProcessesTest extends ConcurrencyTestCase
         $this->waitUntil($startAt);
 
         $outcome = 'archived';
+        $busy = false;
 
         try {
             $this->app->make(DoctorService::class)->archive($doctor, 'Uji konkurensi', Actor::staff($staff));
-        } catch (ValidationException) {
+        } catch (ValidationException $e) {
+            // F7A-R26: arsip mengulang deadlock (attempts: 3) dan menerjemahkan sisa galat konkurensi menjadi pesan ramah
+            // (ValidationException kunci `status`); QueryException/DeadlockException mentah tidak lagi sah (tidak ada 500).
             $outcome = 'rejected';
-        } catch (QueryException|DeadlockException $e) {
-            // Korban siklus kunci (lihat Catatan teknis no. 7b): sah untuk invarian data, tetapi dicatat sebagai temuan.
-            $this->assertTrue($this->app->make(ConcurrencyErrorDetector::class)->causedByConcurrencyError($e), $e->getMessage());
-            $outcome = 'deadlock';
+            $busy = ($e->errors()['status'][0] ?? null) === self::BUSY_MESSAGE;
         }
 
         $results = array_combine($days, $this->gather(array_values($processes)));
@@ -298,7 +301,12 @@ class BookingParallelProcessesTest extends ConcurrencyTestCase
         $this->assertNoInfrastructureErrors(array_values($results));
 
         $isArchived = $doctor->fresh()->archived_at !== null;
+        $this->assertContains($outcome, ['archived', 'rejected'], 'Hasil sah hanya archived atau rejected (termasuk pesan sibuk).');
         $this->assertSame($outcome === 'archived', $isArchived, "Hasil arsip '{$outcome}' tidak sesuai status dokter.");
+
+        if ($busy) {
+            $this->assertFalse($isArchived, 'Pesan sibuk berarti arsip dibatalkan seluruhnya (tanpa tulisan parsial).');
+        }
 
         $upcomingActive = Appointment::query()->where('doctor_id', $doctor->id)->upcomingActive()->count();
 
