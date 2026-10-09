@@ -7,12 +7,16 @@ use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\SecurityHeaders;
 use App\Models\User;
 use App\Support\BookingRedirect;
+use App\Support\QueryLogSanitizer;
 use App\Support\SafeRedirect;
 use App\Support\SensitiveInput;
+use Illuminate\Database\DeadlockException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Exceptions\UnauthorizedException;
@@ -88,6 +92,19 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->dontFlash($sensitive);
         // Penolakan aturan booking (termasuk subkelas InvalidTransitionException) adalah keputusan bisnis, bukan galat sistem.
         $exceptions->dontReport([BookingException::class]);
+        // Galat basis data (F7A-R25): log hanya memuat koneksi, SQLSTATE, kode driver, dan SQL tanpa bindings, sehingga keluhan,
+        // alamat, dan nomor BPJS tidak pernah masuk laravel.log. Mengembalikan false menghentikan pelaporan bawaan; respons
+        // ke pengguna tidak berubah. DeadlockException (transaksi bersarang) memuat pesan galat asli yang berisi bindings.
+        $exceptions->report(function (QueryException $e): bool {
+            Log::error(QueryLogSanitizer::message($e));
+
+            return false;
+        });
+        $exceptions->report(function (DeadlockException $e): bool {
+            Log::error(QueryLogSanitizer::message($e));
+
+            return false;
+        });
         // Galat validasi pada admin.media.* hanya JSON bila klien meminta JSON; form HTML biasa mendapat redirect + $errors.
         $exceptions->shouldRenderJsonWhen(fn (Request $request, Throwable $e): bool => $request->expectsJson()
             || $request->routeIs('admin.dashboard.chart')
