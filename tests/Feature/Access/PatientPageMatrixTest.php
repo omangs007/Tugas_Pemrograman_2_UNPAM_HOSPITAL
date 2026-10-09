@@ -229,6 +229,53 @@ class PatientPageMatrixTest extends TestCase
         $this->actingAs($patient)->put('/admin/pengaturan')->assertNotFound();
     }
 
+    /**
+     * AKS-06 (fase 7a): seluruh URL admin 7a ditolak 403 untuk pasien, GET dan tulis, tanpa konten admin (T5 menutup
+     * `/admin/pasien` dan detailnya; di sini semua yang lain, dengan URL literal, bukan `route()`), dan tidak ada efek samping.
+     */
+    public function test_aks_06_patient_is_forbidden_from_every_phase_7a_admin_url_without_admin_content(): void
+    {
+        $this->travelTo('2026-10-05 07:00:00');
+
+        $patient = $this->createPatient();
+        $appointment = $this->appointmentFor($patient);
+        $profileId = $patient->patientProfile->id;
+        $code = $appointment->booking_code;
+        $sessionId = $appointment->practice_session_id;
+
+        $gets = [
+            '/admin/pasien', '/admin/pasien/buat', "/admin/pasien/{$profileId}", "/admin/pasien/{$profileId}/ubah",
+            '/admin/pendaftaran', '/admin/pendaftaran/buat', "/admin/pendaftaran/{$code}", "/admin/pendaftaran/{$code}/bukti",
+            '/admin/antrean',
+        ];
+
+        foreach ($gets as $url) {
+            $this->actingAs($patient)
+                ->get($url)
+                ->assertForbidden()
+                ->assertDontSee('admin-sidebar', false)
+                ->assertDontSee('Menu admin');
+        }
+
+        $writes = [
+            ['post', '/admin/pasien'],
+            ['put', "/admin/pasien/{$profileId}"],
+            ['patch', "/admin/pasien/{$profileId}"],
+            ['patch', "/admin/pasien/{$profileId}/status"],
+            ['post', "/admin/pasien/{$profileId}/hubungkan-akun"],
+            ['post', '/admin/pendaftaran'],
+            ['post', "/admin/pendaftaran/{$code}/status"],
+            ['post', "/admin/antrean/{$sessionId}/tidak-hadir"],
+        ];
+
+        foreach ($writes as [$method, $url]) {
+            $this->actingAs($patient)->{$method}($url)->assertForbidden();
+        }
+
+        $this->assertSame(AppointmentStatus::Confirmed, $appointment->fresh()->status);
+        $this->assertTrue($patient->patientProfile->fresh()->is_active);
+    }
+
     // --- fase 6: halaman berkode booking, mutasi wizard, kepemilikan, dan AKS-07 asli ----------------------------------
 
     /**

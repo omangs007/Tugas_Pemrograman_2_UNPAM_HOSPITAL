@@ -134,6 +134,39 @@ class RawOutputScanTest extends TestCase
         $this->assertSame(1, preg_match_all("/addEventListener\\(\\s*'error'/", $app));
     }
 
+    /** @return list<string> */
+    private function phase7aViews(): array
+    {
+        return array_values(array_filter($this->viewFiles(), fn (string $file): bool => str_contains($this->relative($file), 'admin/patients/')
+            || str_contains($this->relative($file), 'admin/appointments/')
+            || str_contains($this->relative($file), 'admin/queue/')
+            || str_contains($this->relative($file), 'partials/appointment-proof')));
+    }
+
+    /** SEK-15 (statis): view admin 7a tanpa `<script`, `javascript:`, atribut event inline, atau `{!!`; QR bukti hanya sebagai `<img>`. */
+    public function test_phase_7a_views_have_no_inline_script_event_handler_javascript_url_or_raw_output(): void
+    {
+        $files = $this->phase7aViews();
+
+        // patients 7 + appointments 8 + queue 1 + partial bukti 1 (kerangka D).
+        $this->assertGreaterThanOrEqual(17, count($files));
+
+        foreach ($files as $file) {
+            $source = (string) file_get_contents($file);
+            $name = $this->relative($file);
+
+            $this->assertStringNotContainsString('<script', $source, $name);
+            $this->assertStringNotContainsString('javascript:', $source, $name);
+            $this->assertStringNotContainsString('{!!', $source, $name);
+            $this->assertSame(0, preg_match('/\son[a-z]{3,}\s*=\s*["\']/i', $source), $name);
+
+            if (preg_match('/qr/i', $source) === 1) {
+                $this->assertStringContainsString('<img', $source, $name);
+                $this->assertStringNotContainsString('<svg', $source, $name);
+            }
+        }
+    }
+
     public function test_gallery_carousel_instance_is_created_eagerly_with_keyboard_support(): void
     {
         $app = (string) file_get_contents(base_path('resources/js/app.js'));

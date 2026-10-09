@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Access;
 
+use App\Enums\AppointmentStatus;
 use App\Enums\ContactMessageStatus;
 use App\Models\Media;
+use App\Models\PatientProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +24,9 @@ use Tests\TestCase;
  * ditambah matriks mutasi non-GET (15 §3 catatan) untuk modul master data, media, dan jadwal.
  * Hasil: 200 = tampil, 403 = ditolak, L = redirect ke admin.login, D = redirect dasbor sesuai tipe akun,
  * OK = lolos otorisasi (200/201/204/302/422, bukan 403/login), G = tamu (redirect login atau 401 JSON).
- * Baris 35c (`admin.sessions.review`, Sesi Terdampak) menyusul di fase 7 bersama route-nya.
+ * Fase 7a menambah baris 37 (`admin.patients.*`) dan 38 (`admin.appointments.*`, `admin.queue.index`) × lima aktor, mutasi
+ * `patients.manage` dan `appointments.manage`, pembagian izin lihat/kelola per route (peran kustom), dan PAS-07. Baris 35c
+ * (`admin.sessions.review`, Sesi Terdampak) menyusul di fase 7b dan 38b (ekspor CSV) di fase 8 bersama route-nya.
  */
 class AdminPageMatrixTest extends TestCase
 {
@@ -56,6 +60,12 @@ class AdminPageMatrixTest extends TestCase
 
     /** PATCH status pesan (`messages.manage`): Petugas dan Super Admin berhak. */
     private const MESSAGE_STATUS = ['G', '403', '403', 'OK', 'OK'];
+
+    /** #37 dan #38 (`patients.view`, `appointments.view`): Admin Konten 403, Petugas dan Super Admin 200 (15 §3.3). */
+    private const PATIENT_CARE_SCREEN = ['L', '403', '403', '200', '200'];
+
+    /** Mutasi #37 dan #38 (`patients.manage`, `appointments.manage`): Admin Konten 403, Petugas dan Super Admin berhak. */
+    private const PATIENT_CARE_MUTATION = ['G', '403', '403', 'OK', 'OK'];
 
     /** @return array<string, array{string, ?string, string, string}> */
     public static function matrix(): array
@@ -112,6 +122,15 @@ class AdminPageMatrixTest extends TestCase
             '36 Kategori kamar (ubah)' => ['admin.room-categories.edit', 'room-category', self::FACILITY_SCREEN],
             '39b Kotak pesan (daftar)' => ['admin.messages.index', null, self::MESSAGE_SCREEN],
             '39b Kotak pesan (detail)' => ['admin.messages.show', 'message', self::MESSAGE_SCREEN],
+            '37 Pasien (daftar)' => ['admin.patients.index', null, self::PATIENT_CARE_SCREEN],
+            '37 Pasien (detail)' => ['admin.patients.show', 'patient', self::PATIENT_CARE_SCREEN],
+            '37 Pasien (tambah)' => ['admin.patients.create', null, self::PATIENT_CARE_SCREEN],
+            '37 Pasien (ubah)' => ['admin.patients.edit', 'patient', self::PATIENT_CARE_SCREEN],
+            '38 Pendaftaran (daftar)' => ['admin.appointments.index', null, self::PATIENT_CARE_SCREEN],
+            '38 Pendaftaran (detail)' => ['admin.appointments.show', 'appointment', self::PATIENT_CARE_SCREEN],
+            '38 Pendaftaran (bukti admin)' => ['admin.appointments.proof', 'appointment', self::PATIENT_CARE_SCREEN],
+            '38 Pendaftaran (walk-in)' => ['admin.appointments.create', null, self::PATIENT_CARE_SCREEN],
+            '38 Antrean Hari Ini' => ['admin.queue.index', null, self::PATIENT_CARE_SCREEN],
         ];
 
         $cases = [];
@@ -224,6 +243,13 @@ class AdminPageMatrixTest extends TestCase
             'DELETE kategori kamar' => ['delete', 'admin.room-categories.destroy', 'room-category', self::MANAGE],
             'PATCH ketersediaan kamar (36c)' => ['patch', 'admin.room-categories.availability', 'room-category', self::AVAILABILITY],
             'PATCH status pesan kontak' => ['patch', 'admin.messages.status', 'message', self::MESSAGE_STATUS],
+            'POST pasien baru' => ['post', 'admin.patients.store', null, self::PATIENT_CARE_MUTATION],
+            'PUT ubah pasien' => ['put', 'admin.patients.update', 'patient', self::PATIENT_CARE_MUTATION],
+            'PATCH status pasien' => ['patch', 'admin.patients.status', 'patient', self::PATIENT_CARE_MUTATION],
+            'POST hubungkan akun' => ['post', 'admin.patients.link-account', 'patient', self::PATIENT_CARE_MUTATION],
+            'POST pendaftaran walk-in' => ['post', 'admin.appointments.store', null, self::PATIENT_CARE_MUTATION],
+            'POST transisi status pendaftaran' => ['post', 'admin.appointments.transition', 'appointment', self::PATIENT_CARE_MUTATION],
+            'POST tandai tidak hadir' => ['post', 'admin.queue.mark-no-show', 'session', self::PATIENT_CARE_MUTATION],
         ];
 
         $cases = [];
@@ -443,6 +469,111 @@ class AdminPageMatrixTest extends TestCase
         DB::disableQueryLog();
     }
 
+    /**
+     * 16 route #37/#38 dengan izin persisnya (15 §3.3, 04 matriks izin). `kind` = jenis parameter ('patient', 'appointment',
+     * 'session') atau null.
+     *
+     * @return array<string, array{string, string, ?string, string}>
+     */
+    public static function phase7aPermissionSplit(): array
+    {
+        return [
+            'GET pasien (daftar)' => ['get', 'admin.patients.index', null, 'patients.view'],
+            'GET pasien (tambah)' => ['get', 'admin.patients.create', null, 'patients.manage'],
+            'POST pasien baru' => ['post', 'admin.patients.store', null, 'patients.manage'],
+            'GET pasien (detail)' => ['get', 'admin.patients.show', 'patient', 'patients.view'],
+            'GET pasien (ubah)' => ['get', 'admin.patients.edit', 'patient', 'patients.manage'],
+            'PUT ubah pasien' => ['put', 'admin.patients.update', 'patient', 'patients.manage'],
+            'PATCH status pasien' => ['patch', 'admin.patients.status', 'patient', 'patients.manage'],
+            'POST hubungkan akun' => ['post', 'admin.patients.link-account', 'patient', 'patients.manage'],
+            'GET pendaftaran (daftar)' => ['get', 'admin.appointments.index', null, 'appointments.view'],
+            'GET pendaftaran (walk-in)' => ['get', 'admin.appointments.create', null, 'appointments.manage'],
+            'POST pendaftaran walk-in' => ['post', 'admin.appointments.store', null, 'appointments.manage'],
+            'GET pendaftaran (detail)' => ['get', 'admin.appointments.show', 'appointment', 'appointments.view'],
+            'POST transisi status' => ['post', 'admin.appointments.transition', 'appointment', 'appointments.manage'],
+            'GET pendaftaran (bukti admin)' => ['get', 'admin.appointments.proof', 'appointment', 'appointments.view'],
+            'GET antrean' => ['get', 'admin.queue.index', null, 'appointments.view'],
+            'POST tandai tidak hadir' => ['post', 'admin.queue.mark-no-show', 'session', 'appointments.manage'],
+        ];
+    }
+
+    /**
+     * AKS-01 sampai AKS-05 dengan peran kustom: pengguna yang HANYA memegang izin route itu lolos otorisasi, sedangkan pengguna
+     * yang memegang ketiga izin lain (dari `patients.view|manage`, `appointments.view|manage`) mendapat 403. `view` tidak
+     * mencakup `manage` dan sebaliknya.
+     */
+    #[DataProvider('phase7aPermissionSplit')]
+    public function test_each_phase_7a_route_follows_only_its_own_permission(string $method, string $routeName, ?string $kind, string $permission): void
+    {
+        $this->seedRoles();
+
+        $holder = User::factory()->staff()->create();
+        $holder->givePermissionTo($permission);
+
+        $others = User::factory()->staff()->create();
+        $others->givePermissionTo(array_values(array_diff(['patients.view', 'patients.manage', 'appointments.view', 'appointments.manage'], [$permission])));
+
+        $url = route($routeName, $this->parameters($kind));
+
+        $this->actingAs($others)->{$method}($url)->assertForbidden();
+
+        $allowed = $this->actingAs($holder)->{$method}($url);
+
+        $this->assertAuthorized($allowed->getStatusCode(), (string) $allowed->headers->get('Location'));
+    }
+
+    /**
+     * PAS-07 dan AKS-04: Admin Konten mendapat 403 di 16 route #37/#38 tanpa data pasien pada respons (route tanpa parameter
+     * juga tidak mengueri tabel pasien), dan dashboard hanya menyapa tanpa nama, telepon, atau keluhan pasien.
+     */
+    public function test_pas_07_content_admin_gets_403_on_every_phase_7a_route_and_sees_no_patient_data(): void
+    {
+        $this->travelTo('2026-10-05 07:00:00');
+
+        $contentAdmin = $this->createStaff('content-admin');
+        $profile = PatientProfile::factory()->create(['full_name' => 'Nama Rahasia Pasien Uji', 'phone' => '081299990000']);
+        $appointment = $this->bookAppointment($this->createSession(), AppointmentStatus::Confirmed, ['patient_profile_id' => $profile->id, 'complaint' => 'Keluhan rahasia uji']);
+        $secrets = ['Nama Rahasia Pasien Uji', '081299990000', 'Keluhan rahasia uji'];
+
+        $this->actingAs($contentAdmin);
+
+        foreach (self::phase7aPermissionSplit() as $label => [$method, $routeName, $kind]) {
+            $parameters = match ($kind) {
+                'patient' => ['patient' => $profile->id],
+                'appointment' => ['appointment' => $appointment->booking_code],
+                'session' => ['session' => $appointment->practice_session_id],
+                default => [],
+            };
+
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+
+            $response = $this->{$method}(route($routeName, $parameters))->assertForbidden();
+
+            foreach ($secrets as $secret) {
+                $this->assertStringNotContainsString($secret, (string) $response->getContent(), "{$label}: {$secret}");
+            }
+
+            if ($kind === null) {
+                foreach (DB::getQueryLog() as $entry) {
+                    $this->assertDoesNotMatchRegularExpression(
+                        '/\b(patient_profiles|appointments|appointment_status_histories)\b/',
+                        $entry['query'],
+                        "{$label} mengueri data pasien: {$entry['query']}",
+                    );
+                }
+            }
+        }
+
+        DB::disableQueryLog();
+
+        $dashboard = $this->get(route('admin.dashboard'))->assertOk();
+
+        foreach ($secrets as $secret) {
+            $this->assertStringNotContainsString($secret, (string) $dashboard->getContent(), "dashboard: {$secret}");
+        }
+    }
+
     /** @return array<string, string> */
     private function publicRoomParameters(string $slug, string $name): array
     {
@@ -490,6 +621,8 @@ class AdminPageMatrixTest extends TestCase
             'facility' => ['facility' => $this->createFacility()->id],
             'room-category' => ['roomCategory' => $this->createRoomCategory()->id],
             'message' => ['message' => $this->createContactMessage()->id],
+            'patient' => ['patient' => PatientProfile::factory()->create()->id],
+            'appointment' => ['appointment' => $this->bookAppointment($this->createSession(), AppointmentStatus::Confirmed)->booking_code],
             'public-facility' => ['facility' => $this->createFacility(['is_active' => true])->slug],
             'public-room-bpjs-kelas-1' => $this->publicRoomParameters('bpjs-kelas-1', 'Kamar BPJS Kelas 1'),
             'public-room-bpjs-kelas-2' => $this->publicRoomParameters('bpjs-kelas-2', 'Kamar BPJS Kelas 2'),
