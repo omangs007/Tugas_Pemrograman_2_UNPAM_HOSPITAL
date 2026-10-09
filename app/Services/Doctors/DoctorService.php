@@ -15,6 +15,10 @@ use App\Services\Media\MediaService;
 use App\Services\Scheduling\ScheduleChangeReport;
 use App\Services\Scheduling\ScheduleChangeService;
 use App\Support\Actor;
+use Closure;
+use Illuminate\Contracts\Database\ConcurrencyErrorDetector;
+use Illuminate\Database\DeadlockException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +54,8 @@ final class DoctorService
     /**
      * Dampak jadwal dari pemanggilan changeStatus() atau archive() terakhir (F3-R16): laporan hanya ada bila dokter
      * aktif baru saja dinonaktifkan atau diarsipkan; null untuk pengaktifan, pemulihan, dan perubahan tanpa efek.
-     * Controller memakainya untuk menambahkan ringkasan ke flash. Diatur ulang di awal setiap pemanggilan.
+     * Controller memakainya untuk menambahkan ringkasan ke flash. Diatur ulang di awal setiap pemanggilan dan setiap
+     * percobaan ulang transaksi, dan null bila perubahan gagal karena sistem sibuk (F7A-R26).
      */
     public function lastReport(): ?ScheduleChangeReport
     {
@@ -213,7 +218,8 @@ final class DoctorService
         $reason = $this->nullableTrim($reason);
         $this->lastReport = null;
 
-        return DB::transaction(function () use ($doctor, $status, $reason, $actor): Doctor {
+        return $this->transactionWithRetry(function () use ($doctor, $status, $reason, $actor): Doctor {
+            $this->lastReport = null;
             $this->lock($doctor);
 
             $current = $doctor->status;
@@ -273,7 +279,8 @@ final class DoctorService
         $reason = $this->nullableTrim($reason);
         $this->lastReport = null;
 
-        return DB::transaction(function () use ($doctor, $reason, $actor): Doctor {
+        return $this->transactionWithRetry(function () use ($doctor, $reason, $actor): Doctor {
+            $this->lastReport = null;
             $this->lock($doctor);
 
             if ($doctor->status === DoctorStatus::Archived) {
@@ -345,6 +352,30 @@ final class DoctorService
     private static function blockedMessage(int $count): string
     {
         return "Dokter masih memiliki {$count} pendaftaran aktif pada sesi mendatang. Selesaikan sesi terdampak terlebih dahulu, lalu arsipkan dokter.";
+    }
+
+    /**
+     * Transaksi tulis dokter dengan tiga percobaan (F7A-R26): arsip dan perubahan status dapat berebut kunci dengan booking
+     * (siklus kunci `doctors` ↔ `practice_sessions`) dan InnoDB memilih salah satu sebagai korban. Galat konkurensi yang
+     * lolos dari percobaan ketiga menjadi pesan ramah pada kunci `status` (bukan 500); transaksi sudah di-rollback sehingga
+     * tidak ada tulisan parsial. Di transaksi bersarang galat konkurensi muncul sebagai DeadlockException, karena itu
+     * keduanya ditangkap. Galat lain dilempar apa adanya. `lastReport` di-reset di awal tiap percobaan oleh pemanggil.
+     *
+     * @param  Closure(): Doctor  $callback
+     */
+    private function transactionWithRetry(Closure $callback): Doctor
+    {
+        try {
+            return DB::transaction($callback, 3);
+        } catch (QueryException|DeadlockException $e) {
+            if (! app(ConcurrencyErrorDetector::class)->causedByConcurrencyError($e)) {
+                throw $e;
+            }
+
+            $this->lastReport = null;
+
+            throw ValidationException::withMessages(['status' => __('booking.errors.SYSTEM_BUSY')]);
+        }
     }
 
     private function nullableTrim(?string $value): ?string
