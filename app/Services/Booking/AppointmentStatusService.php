@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Booking;
 
 use App\Enums\AppointmentStatus;
+use App\Enums\SessionStatus;
 use App\Exceptions\BookingException;
 use App\Exceptions\InvalidTransitionException;
 use App\Exceptions\SanitizedBookingFault;
@@ -16,8 +17,11 @@ use App\Services\Audit\AuditLogger;
 use App\Services\Settings\SettingsService;
 use App\Support\Actor;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Database\ConcurrencyErrorDetector;
 use Illuminate\Database\DeadlockException;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -174,6 +178,130 @@ final class AppointmentStatusService
         );
 
         return array_values(array_map(fn (TransitionCheck $check): AppointmentStatus => $check->to, $allowed));
+    }
+
+    /**
+     * Menandai `no_show` semua appointment `pending`/`confirmed` pada satu sesi yang sudah berakhir (F7A-R6,
+     * BR-65/BR-66). Setiap appointment diproses satu per satu lewat transition() (transaksi sendiri, urutan kunci
+     * baku, 3 percobaan) TANPA transaksi luar, sehingga deadlock tidak merembet lintas pasien dan proses aman
+     * diulang. Appointment yang statusnya sudah diubah pihak lain (transisi tak sah, status final) dilewati
+     * dan tidak dihitung; SYSTEM_BUSY menghentikan proses dan diteruskan ke pemanggil. `expected` tidak dipakai.
+     *
+     * @return int jumlah appointment yang benar-benar ditandai
+     *
+     * @throws InvalidTransitionException sesi `needs_review` (INVALID_TRANSITION) atau belum berakhir (SESSION_NOT_ENDED); tidak ada yang ditulis
+     * @throws BookingException SYSTEM_BUSY
+     */
+    public function markNoShowForSession(PracticeSession $session, Actor $actor, ?string $reason = null): int
+    {
+        $sessionId = (int) $session->getKey();
+        // Baca ulang (SELECT biasa): status dan jam pada instance pemanggil bisa basi.
+        $current = PracticeSession::query()->findOrFail($sessionId);
+
+        if ($current->status === SessionStatus::NeedsReview) {
+            throw InvalidTransitionException::makeVariant(
+                InvalidTransitionException::INVALID_TRANSITION,
+                'SESSION_UNDER_REVIEW',
+                [],
+                ['practice_session_id' => $sessionId],
+            );
+        }
+
+        // Batas strik (sama dengan jendela after_end): tepat pada end_time belum berakhir. Bukan PracticeSession::isEnded() (<=).
+        if (! $this->momentOf(null)->greaterThan($current->ends_at)) {
+            throw InvalidTransitionException::make(
+                InvalidTransitionException::SESSION_NOT_ENDED,
+                ['time' => $current->ends_at->format('H.i')],
+                ['practice_session_id' => $sessionId],
+            );
+        }
+
+        $appointments = Appointment::query()
+            ->where('appointments.practice_session_id', $sessionId)
+            ->whereIn('appointments.status', $this->awaitingStatuses())
+            ->orderBy('appointments.queue_number')
+            ->orderBy('appointments.id')
+            ->get();
+
+        $marked = 0;
+
+        foreach ($appointments as $appointment) {
+            try {
+                $this->transition($appointment, AppointmentStatus::NoShow, $actor, $reason);
+                $marked++;
+            } catch (InvalidTransitionException) {
+                // Diubah pihak lain sejak daftar dibaca (check-in, sudah no_show, dibatalkan): dilewati, tidak dihitung.
+                continue;
+            }
+        }
+
+        return $marked;
+    }
+
+    /**
+     * Menandai tidak hadir semua sesi yang sudah berakhir pada `$date` (null = semua sesi lampau yang masih punya
+     * appointment `pending`/`confirmed`). Sesi `needs_review` tidak pernah masuk daftar; sesi yang berubah
+     * menjadi `needs_review` di tengah proses dilewati. `SYSTEM_BUSY` diteruskan ke pemanggil.
+     *
+     * @return int total appointment yang ditandai
+     */
+    public function markNoShowForDate(?CarbonInterface $date, Actor $actor): int
+    {
+        $total = 0;
+
+        foreach ($this->sessionsAwaitingNoShow($date) as $session) {
+            try {
+                $total += $this->markNoShowForSession($session, $actor);
+            } catch (InvalidTransitionException) {
+                continue;
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Sesi yang sudah berakhir dan masih punya appointment `pending`/`confirmed` (F7A-R6): status `open`/`closed`
+     * (bukan `needs_review`/`cancelled`), `now > ends_at` STRIK (tepat `end_time` belum berakhir), opsional satu
+     * tanggal; urut `session_date`, `start_time`, `id`; eager `clinic` dan `doctor`.
+     *
+     * @return Collection<int, PracticeSession>
+     */
+    public function sessionsAwaitingNoShow(?CarbonInterface $date = null, ?CarbonImmutable $now = null): Collection
+    {
+        $moment = $this->momentOf($now);
+
+        return PracticeSession::query()
+            ->with(['clinic', 'doctor'])
+            ->whereIn('practice_sessions.status', [SessionStatus::Open->value, SessionStatus::Closed->value])
+            ->where(function (Builder $ended) use ($moment): void {
+                $ended->where('practice_sessions.session_date', '<', $moment->toDateString())
+                    ->orWhere(function (Builder $today) use ($moment): void {
+                        $today->where('practice_sessions.session_date', $moment->toDateString())
+                            ->where('practice_sessions.end_time', '<', $moment->format('H:i:s'));
+                    });
+            })
+            ->whereHas('appointments', fn (Builder $appointments): Builder => $appointments->whereIn('appointments.status', $this->awaitingStatuses()))
+            ->when($date !== null, fn (Builder $query): Builder => $query->where('practice_sessions.session_date', $date->toDateString()))
+            ->orderBy('practice_sessions.session_date')
+            ->orderBy('practice_sessions.start_time')
+            ->orderBy('practice_sessions.id')
+            ->get();
+    }
+
+    /** Jumlah appointment `pending`/`confirmed` pada sesi itu, tanpa syarat waktu (untuk banner antrean). */
+    public function pendingNoShowCount(PracticeSession $session): int
+    {
+        return Appointment::query()
+            ->where('appointments.practice_session_id', $session->getKey())
+            ->whereIn('appointments.status', $this->awaitingStatuses())
+            ->count();
+    }
+
+    /** @return list<string> */
+    private function awaitingStatuses(): array
+    {
+        return [AppointmentStatus::Pending->value, AppointmentStatus::Confirmed->value];
     }
 
     private function applyLocked(int $appointmentId, int $profileId, int $sessionId, AppointmentStatus $to, Actor $actor, ?string $reason, ?AppointmentStatus $expected): Appointment

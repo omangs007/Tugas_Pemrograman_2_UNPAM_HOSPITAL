@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 // Pemicu (c) 00 F.2: bangkitkan sesi setiap hari pukul 00.05 (idempoten, jendela booking.window_days).
 Schedule::command('sessions:generate')->dailyAt('00:05')->withoutOverlapping();
+
+// Tandai tidak hadir (00 F.8 T10, F7A-R7): setiap hari pukul 23.30 untuk semua sesi yang sudah berakhir.
+Schedule::command('appointments:mark-no-show')->dailyAt('23:30')->withoutOverlapping();

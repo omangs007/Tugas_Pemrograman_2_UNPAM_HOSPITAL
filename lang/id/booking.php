@@ -4,7 +4,8 @@ return [
 
     /*
     | Pesan galat domain booking (F6-R8). `errors` = BookingException (06 §3.F, final menurut 12 V-11, BR-45);
-    | `transitions` = InvalidTransitionException (BR-58..BR-79); `submit_in_progress` = BR-48.
+    | `transitions` = InvalidTransitionException (BR-58..BR-79); `no_show` = aksi Tandai tidak hadir (fase 7a);
+    | `submit_in_progress` = BR-48.
     | Placeholder Laravel: :days, :minutes, :max, :doctor, :start, :end, :dari, :ke, :status, :phone, :date, :time,
     | dan :subjek/:Subjek ("Anda" untuk kanal online, "pasien ini" untuk loket; :Subjek di awal kalimat).
     */
@@ -37,6 +38,13 @@ return [
         'CORRECTION_NOT_SAME_DAY' => 'Koreksi check-in hanya dapat dilakukan pada hari yang sama.',
         'SESSION_NOT_ENDED' => 'Tandai tidak hadir hanya dapat dilakukan setelah sesi berakhir (pukul :time).',
         'REASON_REQUIRED' => 'Alasan wajib diisi untuk pembatalan atau koreksi check-in.',
+        'SESSION_UNDER_REVIEW' => 'Sesi ini sedang menunggu penyelesaian di layar Sesi terdampak.',
+    ],
+
+    'no_show' => [
+        'done' => ':count pendaftaran ditandai tidak hadir.',
+        'nothing' => 'Tidak ada pendaftaran yang perlu ditandai tidak hadir pada sesi ini.',
+        'confirm_required' => 'Centang konfirmasi untuk menandai seluruh pendaftaran yang belum hadir sebagai tidak hadir.',
     ],
 
     'submit_in_progress' => 'Permintaan Anda sedang diproses. Mohon tunggu sebentar dan jangan menekan tombol berulang kali.',
