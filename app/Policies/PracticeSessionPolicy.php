@@ -56,4 +56,10 @@ final class PracticeSessionPolicy
     {
         return $user->can('sessions.review');
     }
+
+    /** Tandai tidak hadir massal pada antrean sesi (fase 7a, BR-65): staf dengan `appointments.manage`. */
+    public function markNoShow(User $user, PracticeSession $session): bool
+    {
+        return $user->isStaff() && $user->can('appointments.manage');
+    }
 }

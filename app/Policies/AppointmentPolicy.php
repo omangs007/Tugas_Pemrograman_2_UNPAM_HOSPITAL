@@ -46,6 +46,27 @@ final class AppointmentPolicy
         return $this->owns($user, $appointment) ? true : Response::denyAsNotFound();
     }
 
+    /** Daftar pendaftaran dan antrean (#38, fase 7a): staf dengan `appointments.view`. */
+    public function viewAny(User $user): bool
+    {
+        return $user->isStaff() && $user->can('appointments.view');
+    }
+
+    /** Pendaftaran walk-in di loket (W-20): staf dengan `appointments.manage`. */
+    public function createCounter(User $user): bool
+    {
+        return $user->isStaff() && $user->can('appointments.manage');
+    }
+
+    /**
+     * Transisi status individual oleh staf (konfirmasi, check-in, selesai, batal, koreksi): `appointments.manage`.
+     * Aturan status, pelaku, dan jendela waktu ada di AppointmentStatusService; pasien membatalkan lewat `cancel`.
+     */
+    public function transition(User $user, Appointment $appointment): bool
+    {
+        return $user->isStaff() && $user->can('appointments.manage');
+    }
+
     /** Profil walk-in (`user_id` NULL) tidak dimiliki siapa pun secara online. */
     private function owns(User $user, Appointment $appointment): bool
     {
