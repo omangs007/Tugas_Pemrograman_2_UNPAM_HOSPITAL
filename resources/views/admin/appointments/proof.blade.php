@@ -12,7 +12,7 @@
 
     <div class="d-print-none d-flex flex-wrap gap-2 mb-3" data-proof-actions>
         <button type="button" class="btn btn-primary" data-print><i class="bi bi-printer" aria-hidden="true"></i> Cetak Bukti</button>
-        <a class="btn btn-outline-secondary" href="{{ route('admin.appointments.show', ['appointment' => $code]) }}">Kembali ke Detail</a>
+        <a class="btn btn-outline-dark" href="{{ route('admin.appointments.show', ['appointment' => $code]) }}">Kembali ke Detail</a>
     </div>
     <noscript>
         <p class="d-print-none text-body-secondary">JavaScript nonaktif: gunakan menu cetak peramban (Ctrl+P).</p>

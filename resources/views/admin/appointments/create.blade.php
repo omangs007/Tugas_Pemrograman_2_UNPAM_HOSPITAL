@@ -7,7 +7,7 @@
     </x-slot:breadcrumb>
 
     <x-slot:actions>
-        <a href="{{ $backUrl }}" class="btn btn-outline-secondary">Batal</a>
+        <a href="{{ $backUrl }}" class="btn btn-outline-dark">Batal</a>
     </x-slot:actions>
 
     <x-form.errors-summary />

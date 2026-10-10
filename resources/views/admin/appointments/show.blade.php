@@ -19,7 +19,7 @@
     </x-slot:breadcrumb>
 
     <x-slot:actions>
-        <a href="{{ $backUrl }}" class="btn btn-outline-secondary">Kembali</a>
+        <a href="{{ $backUrl }}" class="btn btn-outline-dark">Kembali</a>
         @can('view', $appointment)
             <a href="{{ route('admin.appointments.proof', ['appointment' => $code]) }}" class="btn btn-primary">
                 <i class="bi bi-printer" aria-hidden="true"></i> Cetak Bukti

@@ -2,7 +2,7 @@
      Perbandingan identitas dan form POST hanya bila akun memenuhi syarat; selain itu hanya pesan penolakan. --}}
 @if ($linkPanel !== null)
     @if ($linkPanel['inactive'])
-        <p class="text-secondary mt-4 mb-0" id="hubungkan-akun-nonaktif">Aktifkan profil terlebih dahulu untuk menghubungkannya ke akun online.</p>
+        <p class="text-body-secondary mt-4 mb-0" id="hubungkan-akun-nonaktif">Aktifkan profil terlebih dahulu untuk menghubungkannya ke akun online.</p>
     @else
         @php $account = $linkPanel['account']; @endphp
         <section id="hubungkan-akun" class="card mt-4" aria-labelledby="hubungkan-akun-judul">
@@ -58,7 +58,7 @@
                         </table>
                     </div>
                     @if ($accountProfile !== null)
-                        <p class="small text-secondary">Profil kosong milik akun ini ({{ $accountProfile->patient_number ?? 'tanpa nomor' }}) akan dihapus; nomor pasien dan data profil walk-in tetap dipakai.</p>
+                        <p class="small text-body-secondary">Profil kosong milik akun ini ({{ $accountProfile->patient_number ?? 'tanpa nomor' }}) akan dihapus; nomor pasien dan data profil walk-in tetap dipakai.</p>
                     @endif
 
                     <form method="POST" action="{{ route('admin.patients.link-account', $patient) }}" class="mt-3">

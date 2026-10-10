@@ -16,7 +16,7 @@
 
     <x-slot:actions>
         <span class="small text-body-secondary align-self-center" data-loaded-at>Dimuat pukul {{ $loadedAt->format('H.i') }} WIB</span>
-        <a href="{{ $returnUrl }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Muat ulang</a>
+        <a href="{{ $returnUrl }}" class="btn btn-outline-dark"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Muat ulang</a>
     </x-slot:actions>
 
     <div class="mb-3">
@@ -99,12 +99,12 @@
     </section>
 
     @if ($session === null)
-        <p class="text-secondary">Antrean untuk <time datetime="{{ $date->toDateString() }}">{{ $date->translatedFormat('l, j F Y') }}</time>.</p>
+        <p class="text-body-secondary">Antrean untuk <time datetime="{{ $date->toDateString() }}">{{ $date->translatedFormat('l, j F Y') }}</time>.</p>
         <x-empty-state title="Tidak ada sesi praktik pada tanggal ini" message="Pilih tanggal lain atau ubah filter poliklinik dan dokter." icon="bi-calendar-x" />
     @else
         <section aria-labelledby="judul-antrean">
             <h2 class="h5 mb-1" id="judul-antrean">{{ $session->clinic->name }} - {{ $session->doctor->display_name }}</h2>
-            <p class="text-secondary mb-3">
+            <p class="text-body-secondary mb-3">
                 <time datetime="{{ $date->toDateString() }}">{{ $date->translatedFormat('l, j F Y') }}</time>, {{ $session->time_range }}
                 @if ($session->status !== \App\Enums\SessionStatus::Open)
                     <x-status-badge :status="$session->status" class="ms-1" />
@@ -174,7 +174,7 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="small text-secondary">Urut nomor antrean; nomor yang dibatalkan tidak dipakai ulang. Check-in nonaktif sebelum jam dibuka, dengan teks jam dibuka di sampingnya. Aksi yang memerlukan alasan dilakukan lewat halaman detail pendaftaran.</p>
+                <p class="small text-body-secondary">Urut nomor antrean; nomor yang dibatalkan tidak dipakai ulang. Check-in nonaktif sebelum jam dibuka, dengan teks jam dibuka di sampingnya. Aksi yang memerlukan alasan dilakukan lewat halaman detail pendaftaran.</p>
             @endif
         </section>
 

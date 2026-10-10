@@ -33,12 +33,12 @@
         @endcan
         @can('changeStatus', $patient)
             @if ($patient->is_active)
-                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modal-patient-deactivate">Nonaktifkan<span class="visually-hidden"> {{ $patient->full_name }}</span></button>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modal-patient-deactivate">Nonaktifkan<span class="visually-hidden"> {{ $patient->full_name }}</span></button>
             @else
                 <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#modal-patient-activate">Aktifkan Kembali<span class="visually-hidden"> {{ $patient->full_name }}</span></button>
             @endif
         @endcan
-        <a href="{{ route('admin.patients.index') }}" class="btn btn-outline-secondary">Kembali ke daftar</a>
+        <a href="{{ route('admin.patients.index') }}" class="btn btn-outline-dark">Kembali ke daftar</a>
     </x-slot:actions>
 
     <div class="row g-4">
@@ -90,10 +90,10 @@
                 <div class="card-body">
                     @if ($patient->user !== null)
                         <p class="mb-1">Terhubung ke akun <strong>{{ $patient->user->email }}</strong>.</p>
-                        <p class="small text-secondary mb-0">Status akun: {{ $patient->user->is_active ? 'aktif' : 'nonaktif' }}.</p>
+                        <p class="small text-body-secondary mb-0">Status akun: {{ $patient->user->is_active ? 'aktif' : 'nonaktif' }}.</p>
                     @else
                         <p class="mb-1">Tanpa akun</p>
-                        <p class="small text-secondary mb-0">Profil walk-in ini belum terhubung ke akun online.</p>
+                        <p class="small text-body-secondary mb-0">Profil walk-in ini belum terhubung ke akun online.</p>
                     @endif
                 </div>
             </section>
@@ -113,7 +113,7 @@
                         </x-empty-state>
                     </div>
                 @else
-                    <p class="px-3 pt-3 mb-2 text-secondary" aria-live="polite">Menampilkan {{ $appointments->firstItem() }}–{{ $appointments->lastItem() }} dari {{ $appointments->total() }} pendaftaran</p>
+                    <p class="px-3 pt-3 mb-2 text-body-secondary" aria-live="polite">Menampilkan {{ $appointments->firstItem() }}–{{ $appointments->lastItem() }} dari {{ $appointments->total() }} pendaftaran</p>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle table-cards bg-white mb-0">
                             <caption class="visually-hidden">Riwayat pendaftaran pasien</caption>

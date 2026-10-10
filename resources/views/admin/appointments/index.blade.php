@@ -15,7 +15,7 @@
         <x-module-tabs group="appointments" />
     </div>
 
-    <p class="small text-secondary">Bawaan: pendaftaran untuk kunjungan hari ini. Ubah rentang tanggal untuk melihat hari lain.</p>
+    <p class="small text-body-secondary">Bawaan: pendaftaran untuk kunjungan hari ini. Ubah rentang tanggal untuk melihat hari lain.</p>
 
     <x-data-table
         :rows="$appointments"

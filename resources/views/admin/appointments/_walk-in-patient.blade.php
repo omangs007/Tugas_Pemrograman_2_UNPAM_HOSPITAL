@@ -16,7 +16,7 @@
         </form>
 
         @if ($term !== null)
-            <p class="small text-secondary" role="status" aria-live="polite">
+            <p class="small text-body-secondary" role="status" aria-live="polite">
                 @if ($results->isEmpty())
                     Pasien tidak ditemukan.
                 @else
@@ -63,7 +63,7 @@
             <p class="mb-3">
                 Tidak ditemukan?
                 <a href="{{ route('admin.patients.create', ['kembali' => $returnPath]) }}" class="btn btn-sm btn-outline-primary">Buat profil baru</a>
-                <span class="small text-secondary">(lalu kembali ke formulir ini)</span>
+                <span class="small text-body-secondary">(lalu kembali ke formulir ini)</span>
             </p>
         @endcan
 

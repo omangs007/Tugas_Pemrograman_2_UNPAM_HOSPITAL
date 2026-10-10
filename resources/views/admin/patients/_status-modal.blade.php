@@ -12,7 +12,7 @@
             :action="route('admin.patients.status', $patient)">
             <input type="hidden" name="is_active" value="0">
             @if ($patient->user_id !== null)
-                <p class="small text-secondary">Akun login pasien ikut dinonaktifkan dan sesi login yang sedang berjalan diakhiri.</p>
+                <p class="small text-body-secondary">Akun login pasien ikut dinonaktifkan dan sesi login yang sedang berjalan diakhiri.</p>
             @endif
             <div class="mb-3">
                 <label for="modal-patient-deactivate-reason" class="form-label fw-semibold">Alasan <span class="required-mark" aria-hidden="true">*</span></label>
@@ -31,7 +31,7 @@
             :action="route('admin.patients.status', $patient)">
             <input type="hidden" name="is_active" value="1">
             @if ($patient->user_id !== null)
-                <p class="small text-secondary">Akun login pasien ikut diaktifkan kembali.</p>
+                <p class="small text-body-secondary">Akun login pasien ikut diaktifkan kembali.</p>
             @endif
             <div class="mb-3">
                 <label for="modal-patient-activate-reason" class="form-label fw-semibold">Alasan (opsional)</label>

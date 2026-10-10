@@ -39,7 +39,7 @@
 
                 <x-form.textarea name="complaint" label="Keluhan singkat (opsional, maks 500 karakter)" rows="3" maxlength="500" />
 
-                <p class="small text-secondary">Kanal: Loket. Status awal: Dikonfirmasi. Duplikat dan benturan jadwal tetap diperiksa.</p>
+                <p class="small text-body-secondary">Kanal: Loket. Status awal: Dikonfirmasi. Duplikat dan benturan jadwal tetap diperiksa.</p>
 
                 <div class="d-flex flex-wrap gap-2">
                     <x-loading-button icon="bi-check-lg" loading-text="Menyimpan…">Simpan Pendaftaran</x-loading-button>
