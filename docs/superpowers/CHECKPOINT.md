@@ -1,6 +1,6 @@
 # Checkpoint — UNPAM HOSPITAL
 
-**Terakhir diperbarui:** 2026-10-09 sesi 9, **dijeda** saat uji coba integrasi rencana fase 7a (T1–T13 sudah ditulis dan diperiksa; uji coba integrasi T1–T7 lulus, T8–T10 terhenti di tengah; insiden MySQL ketiga dipulihkan dan skrip start diperbaiki) · **Tag git:** `checkpoint/2026-10-09-fase-7a-integrasi` (sebelumnya `checkpoint/2026-10-09-fase-7a-penyusunan`, `checkpoint/2026-10-09-fase-6-merge`, `checkpoint/2026-10-09-fase-6-selesai`, `checkpoint/2026-10-08-fase-6-task-7`, `checkpoint/2026-10-08-fase-6-rencana`, `checkpoint/2026-10-08-fase-5-selesai`, `checkpoint/2026-10-08-fase-5-eksekusi`, `checkpoint/2026-10-08-fase-5-rencana`, `checkpoint/2026-10-07-fase-4b-selesai`, `checkpoint/2026-10-07-fase-4b-eksekusi`, `checkpoint/2026-10-06-fase-4b-task-1`, `checkpoint/2026-10-06-fase-4b-rencana`, `checkpoint/2026-10-06-fase-4a-selesai`, `checkpoint/2026-10-06-fase-4a-eksekusi`, `checkpoint/2026-10-05-fase-4a-rencana`, `checkpoint/2026-10-05-fase-3-selesai`, `checkpoint/2026-10-05-fase-3-eksekusi`, `checkpoint/2026-10-05-fase-3-rencana`, `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
+**Terakhir diperbarui:** 2026-10-10 sesi 11, **dijeda** saat gelombang perbaikan final fase 7a (Task 1–13 selesai dan lolos review; suite 7640 lulus + 1 dilewati; uji manual dan final review selesai; perbaikan F1 di-commit, F2 di stash, F3–F5 belum) · **Tag git:** `checkpoint/2026-10-10-fase-7a-perbaikan-final` (sebelumnya `checkpoint/2026-10-09-fase-7a-integrasi`, `checkpoint/2026-10-09-fase-7a-penyusunan`, `checkpoint/2026-10-09-fase-6-merge`, `checkpoint/2026-10-09-fase-6-selesai`, `checkpoint/2026-10-08-fase-6-task-7`, `checkpoint/2026-10-08-fase-6-rencana`, `checkpoint/2026-10-08-fase-5-selesai`, `checkpoint/2026-10-08-fase-5-eksekusi`, `checkpoint/2026-10-08-fase-5-rencana`, `checkpoint/2026-10-07-fase-4b-selesai`, `checkpoint/2026-10-07-fase-4b-eksekusi`, `checkpoint/2026-10-06-fase-4b-task-1`, `checkpoint/2026-10-06-fase-4b-rencana`, `checkpoint/2026-10-06-fase-4a-selesai`, `checkpoint/2026-10-06-fase-4a-eksekusi`, `checkpoint/2026-10-05-fase-4a-rencana`, `checkpoint/2026-10-05-fase-3-selesai`, `checkpoint/2026-10-05-fase-3-eksekusi`, `checkpoint/2026-10-05-fase-3-rencana`, `checkpoint/2026-10-05-fase-2`, `checkpoint/2026-10-04-fase-1`, `checkpoint/2026-10-03-fase-1-task-4`, `checkpoint/2026-10-02-fase-0`)
 
 Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah sebelum bekerja.
 
@@ -12,14 +12,14 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 | Fase 0 — Lingkungan & skeleton | **Selesai**, di-merge ke `master`. Rencana + catatan eksekusi: `docs/superpowers/plans/2026-10-02-fase-0-lingkungan-skeleton.md`. |
 | Fase 1 — Fondasi | **Selesai** dan **sudah di-merge** ke `master` (fast-forward `0b87342`, 2026-10-04; cabang `fase-1-fondasi` dihapus). Gerbang fase terpenuhi: 980 tes, Pint, `npm run build`, `migrate:fresh --seed`, dan login tiga akun demo. Login diverifikasi koordinator lewat otomasi browser (Playwright); konfirmasi manual pemilik disarankan. Final review seluruh cabang beserta perbaikannya sudah selesai. Rencana, catatan eksekusi, dan keputusan R1–R17: `docs/superpowers/plans/2026-10-03-fase-1-fondasi.md` (bagian akhir "Catatan Eksekusi"). |
 | Fase 2 — Master Data | **Eksekusi dan gerbang fase selesai** di cabang `fase-2-master-data`. Semua 16 tugas lulus review. Final review seluruh cabang beserta satu gelombang perbaikan (F1–F5) selesai. `migrate:fresh --seed` dijalankan dengan izin pemilik dan jumlah datanya persis sesuai target. Uji manual Step 19 dijalankan lewat Playwright (laporan bergambar di `Documents\UNPAM-Uji-Manual-2026-10-05`); dua cacat temuannya (M1 `&nbsp;` editor, M2 panah galeri) sudah diperbaiki di `929c13a`. Hasil akhir: 1845 tes lulus (8479 asersi), Pint PASS, `npm run build` OK, 31 route admin. **Sudah di-merge** ke `master` (fast-forward `51134af`, 2026-10-05; cabang `fase-2-master-data` dihapus; suite pada hasil merge 1845 lulus). Rencana, catatan eksekusi, dan keputusan X1–X14 ada di bagian akhir `docs/superpowers/plans/2026-10-04-fase-2-master-data.md`. |
-| Cabang git | `master` (fase 0 sampai 6, ujung `57fa3fe`) dan cabang kerja **`fase-7a-pasien-pendaftaran-antrean`** (checkout aktif; berisi commit desain `439b162`, perbaikan skrip MySQL `a39cfdf`, dan commit checkpoint jeda). Cabang fase 3 sampai 6 sudah di-merge lalu dihapus. Tidak ada stash. Repo tanpa remote. |
+| Cabang git | `master` (fase 0 sampai 6, ujung `57fa3fe`) dan cabang kerja **`fase-7a-pasien-pendaftaran-antrean`** (checkout aktif; Task 1–13 + perbaikan F1 `94f8648` + dump database + commit checkpoint). Cabang fase 3 sampai 6 sudah di-merge lalu dihapus. **`git stash@{0}`** = WIP perbaikan final F2. Remote **`origin`** = <https://github.com/omangs007/Tugas_Pemrograman_2_UNPAM_HOSPITAL.git> (sejak sesi 11; `master`, cabang 7a, dan tag diunggah). |
 | Keputusan tertunda pemilik | Butir K di `17-keputusan-konfirmasi.md`: semua punya default. K-07 dan K-22 sudah dijawab pemilik 2026-10-08: keduanya (a) — satu akun satu profil, dan email selamat datang tanpa verifikasi wajib. Keduanya dipindah ke 17 §1 oleh Task 8 fase 5. |
 | Fase 3 — Penjadwalan (Jadwal Dokter) | Rencana disetujui pemilik. **Task 1–16 selesai** lewat subagent-driven-development (Sonnet 5.5), semuanya lolos review. Putaran perbaikan terjadi di Task 3, 11 (juga view Task 10), dan 13. Final review seluruh cabang: **With fixes** (3 Important, tanpa Critical). Satu gelombang perbaikan final (F1–F3, F6, M1, M2; `49f966a`..`606cfbe`) lolos re-review terbatas. `migrate:fresh --seed` sudah dijalankan dengan izin pemilik, dan uji manual Playwright selesai dengan Lighthouse aksesibilitas 100/100/100 setelah perbaikan. **Gerbang fase terpenuhi:** 2933 tes lulus (14113 asersi), Pint PASS, `npm run build` OK, 50 route admin (19 baru). **Sudah di-merge** ke `master` atas persetujuan pemilik (fast-forward `1558f62`, 2026-10-05; cabang `fase-3-jadwal-dokter` dihapus; suite pada hasil merge 2933 lulus). Rencana, catatan eksekusi, dan keputusan E1–E13: bagian akhir `docs/superpowers/plans/2026-10-05-fase-3-penjadwalan.md`. Rinciannya di §3a. |
 | Fase 4a — Konten Publik dan CMS | **Selesai dan sudah di-merge** ke `master` atas pilihan pemilik "1" (fast-forward `92173df`, 2026-10-06; cabang dihapus; suite pada hasil merge 4348 lulus). Rencana disetujui pemilik ("lanjutkan"). Task 1–17 selesai lewat subagent-driven-development (Sonnet 5.5) dan lolos review; putaran perbaikan di Task 9 dan 15. Final review: Dengan perbaikan (1 Important, 0 Critical); gelombang perbaikan F1–F4 (`a57eccf`) lolos re-review. **Gerbang:** 4348 tes lulus (21166 asersi), Pint PASS, `npm run build` OK, 90 route admin. `migrate:fresh --seed` dijalankan dengan izin pemilik; uji manual Playwright 0 Critical/Important dan Lighthouse aksesibilitas 100. Catatan eksekusi dan keputusan E1–E14: bagian akhir `docs/superpowers/plans/2026-10-05-fase-4a-konten-publik.md`. Rinciannya di §3b. |
 | Fase 4b — Fasilitas, Kamar, dan Kontak | **Selesai dan sudah di-merge** ke `master` atas pilihan pemilik "1" (fast-forward `bac258a`, 2026-10-07; cabang dihapus; suite pada hasil merge 5200 lulus). Rencana disetujui pemilik ("sesuai"): `docs/superpowers/plans/2026-10-06-fase-4b-fasilitas-kamar-kontak.md` (11 tugas, F4B-R1–R40). Task 1–11 selesai lewat subagent-driven-development (Sonnet 5.5) dan lolos review pada percobaan pertama. Final review: **Siap merge** (0 Critical/Important); gelombang perbaikan F1–F2 (`4a4ca50`, `fe3716e`) lolos re-review. **Gerbang:** 5200 tes lulus (26035 asersi), Pint PASS, `npm run build` OK, 106 route admin. `migrate:fresh --seed` dijalankan dengan izin pemilik; uji manual Playwright 0 Critical/Important dan Lighthouse aksesibilitas/SEO 100. Catatan eksekusi dan keputusan E1–E11: bagian akhir rencana. Rinciannya di §3c. |
 | Fase 5 — Portal Pasien (Akun) | **Selesai dan sudah di-merge** ke `master` atas pilihan pemilik "1" (fast-forward `43aa92c`, 2026-10-08; cabang dihapus; suite pada hasil merge 5646 lulus (29278 asersi)). Rencana disetujui pemilik (bersama izin "Ya, jalankan migrate:fresh --seed"): `docs/superpowers/plans/2026-10-08-fase-5-akun-pasien.md` (8 tugas, F5-R1–R31). Task 1–8 selesai lewat subagent-driven-development (Sonnet 5.5) dan lolos review; satu putaran perbaikan dokumen di Task 8. Final review: **Siap merge** (0 Critical/Important, 8 Minor); gelombang perbaikan FX1–FX6 (`e86889c`, `8e23394`, `de5a11b`) lolos re-review. **Gerbang:** 5646 tes lulus (29278 asersi), Pint PASS, `npm run build` OK, 141 route (106 admin). `migrate:fresh --seed` dijalankan; uji manual Playwright 9/9 kelompok sesuai, Lighthouse aksesibilitas 100. Catatan eksekusi dan keputusan E1–E12: bagian akhir rencana. |
 | Fase 6 — Mesin Booking, Wizard, dan Bukti | **Selesai dan sudah di-merge** ke `master` atas pilihan pemilik "1" (fast-forward `7523a49`..`e4fe839`, 2026-10-09). **Suite pada hasil merge (`c807668`) 6692 lulus + 1 dilewati (38994 asersi, ±24 menit)**, dijalankan sesudah insiden MySQL dipulihkan (§2). Cabang `fase-6-booking-wizard-bukti`, workspace SDD fase 6, dan `.superpowers/plan-fase-6/` sudah dihapus. Rencana: `docs/superpowers/plans/2026-10-08-fase-6-booking-wizard-bukti.md` (13 tugas, F6-R1–R47; K-13 = (b), K-17 = (a)). Task 1–13 lolos review pada percobaan pertama (`64abcb2`..`d7a462c`). Final review dua kursi (produksi: With fixes; tes dan dokumen: Yes) dan uji manual (1 Important) ditutup gelombang perbaikan FX1–FX11 (`99b0535`..`dc927d4`). **Gerbang:** 6692 tes lulus + 1 dilewati opt-in, Pint PASS, `npm run build` OK, 150 route (106 admin, 13 di `/pasien`). Uji manual: Lighthouse aksesibilitas 100; laporan `Documents\UNPAM-Uji-Manual-2026-10-09-fase-6\index.html`. Catatan eksekusi, keputusan E1–E17, dan bawaan fase 7 ada di bagian akhir rencana. |
-| Fase 7a — Pasien, Walk-in, Pendaftaran, dan Antrean | **Penyusunan rencana dijeda saat uji coba integrasi** (2026-10-09 sesi 9) di cabang `fase-7a-pasien-pendaftaran-antrean`. Desain disetujui pemilik dan di-commit (`439b162`, `docs/superpowers/specs/2026-10-09-fase-7a-desain.md`). Ketiga belas tugas sudah ditulis dan diperiksa; uji coba integrasi T1–T7 lulus di salinan repo, sedangkan T8–T10 terhenti di tengah. Bahan rencana lokal ada di `.superpowers/plan-fase-7a/`. Rincian dan langkah lanjut: "Langkah lanjut" butir 3. Fase 7b (Sesi Terdampak) menyusul sesudah 7a di-merge. |
+| Fase 7a — Pasien, Walk-in, Pendaftaran, dan Antrean | **Eksekusi selesai, gelombang perbaikan final DIJEDA** (2026-10-10 sesi 11) di cabang `fase-7a-pasien-pendaftaran-antrean`. Rencana `docs/superpowers/plans/2026-10-09-fase-7a-pasien-pendaftaran-antrean.md` (`588c0c9`, disetujui "lanjutkan"). Task 1–13 lolos review (`2034b04`..`712433c`). Gerbang: suite 7640 lulus + 1 dilewati, 166 route (122 admin), `migrate:fresh --seed` + 17 invarian = 0, uji manual 0 Critical (Lighthouse 96–97). Final review: A Siap merge, B dan C With fixes. Perbaikan F1–F5 berjalan (F1 di-commit, F2 di stash). Rincian dan langkah lanjut: "Langkah lanjut" butir 3. Fase 7b (Sesi Terdampak) menyusul sesudah 7a di-merge. |
 
 ### 3a. Status fase 3 (selesai dan di-merge 2026-10-05)
 
@@ -59,38 +59,57 @@ Dokumen ini adalah titik lanjut untuk sesi berikutnya. Baca dari atas ke bawah s
 Langkah lanjut:
 1. Nyalakan Apache di `C:\xampp3\xampp-control.exe` dan MySQL dengan `powershell -ExecutionPolicy Bypass -File scripts\mysql-start.ps1` (bukan Control Panel; §2). Di awal sesi periksa induk proses `mysqld`: bila `xampp-control.exe`, MySQL dinyalakan dari Control Panel; periksa `CHECK TABLE mysql.db` dan nyalakan ulang lewat skrip (§2).
 2. Fase 6 sudah ditutup tuntas.
-   - DB pengembangan masih berisi data uji manual fase 6: akun `pasien2@unpamhospital.test` (P000009) dan lima pendaftaran milik `pasien@` (rincian di Catatan Eksekusi rencana fase 6).
-   - `AppointmentSeeder` dibuat di fase 7a, dan sesudahnya perlu `migrate:fresh --seed` dengan izin pemilik.
-3. **Fase 7a sedang dalam penyusunan rencana dan DIJEDA lagi** (2026-10-09 sesi 9 saat uji coba integrasi, pemilik: "di pause dulu lanjut nanti, buatkan checkpoint"; jeda sebelumnya di sesi 8 saat penulisan tugas). Cabang kerja `fase-7a-pasien-pendaftaran-antrean` (dari `master` `57fa3fe`).
-   - **Brainstorming selesai.** Keputusan pemilik:
-     - fase 7 dipecah **7a** (pasien #37, walk-in, pendaftaran dan antrean #38, `appointments:mark-no-show`, bukti admin, `AppointmentSeeder`, bawaan fase 6) dan **7b** (Sesi Terdampak, resolusi `keep`/`apply`/`cancel`, notifikasi perubahan jadwal, K-15);
-     - K-04 = (a), yaitu BPJS dan polis hanya 4 digit terakhir;
-     - urutan pengerjaan: domain dulu, lalu layar;
-     - keempat bagian desain disetujui ("setuju"/"lanjutkan").
-   - **Dokumen desain di-commit** (`439b162`): `docs/superpowers/specs/2026-10-09-fase-7a-desain.md`, berisi 16 route baru (total 166, admin 122), tanpa migration, dan penyimpangan dari blueprint di §9. Pemilik meminta lanjut ke rencana ("lanjutkan").
-   - **Bahan penyusunan rencana** (lokal, di-ignore git, JANGAN dihapus) ada di `.superpowers/plan-fase-7a/`:
-     - empat digest: `digest-data.md`, `digest-domain.md`, `digest-http.md`, `digest-tests.md`;
-     - `kerangka.md`: keputusan F7A-R1–R31 yang mengikat, route C.1/C.1a, jangkar C.1b/C.1c, antarmuka D (kini juga `WalkInReturn` dan hook `HasBookingRules`), Review Focus E, dan pembagian tugas F;
-     - `tasks/T1.md`–`T13.md` (lengkap);
-     - laporan pemeriksaan: `cek-T9-T12.md`, `cek-T10-T13.md`; laporan uji coba integrasi: `integrasi-1a.md` (T1–T4), `integrasi-1b.md` (T5–T7);
-     - `perbaikan-koordinator.md`: buku catatan PK-1–PK-9, yaitu semua perbaikan yang SUDAH diterapkan ke berkas tugas dari temuan penulis, pemeriksa, dan uji coba;
-     - bahan perakitan: `plan-head.md` (kepala rencana), `plan-limits.md` (keterbatasan), `assemble7a.py` (skrip perakitan, turunan skrip fase 6), serta pemindai bentrok nama method `clash.php`/`clash2.php`;
-     - bukti uji coba T8–T10 yang terhenti: `integrasi-2a-T8-T9-salinan.patch` (diff salinan `bd4474e..bab9ada`, T8 dan T9 sudah di-commit di salinan) dan `integrasi-2a-T10-wip.patch` (T10 setengah jalan; RED sudah benar).
-   - **Salinan repo uji coba** (scratchpad sesi 9, boleh dibuat ulang): `C:\Users\admin\AppData\Local\Temp\claude\D--Project-Web-RS\7c2abaa7-7129-43ed-98e2-0bf14dcab2bd\scratchpad\int7a\app`. Isinya clone lokal cabang ini dengan `vendor` disalin fisik (bukan junction, agar autoload menunjuk ke salinan), `.env`, `.env.testing`, dan `public/build`. Riwayatnya: T1–T4 `aae8fe2`, T5–T7 `bd4474e`, T8 `0626fe8`, T9 `bab9ada`, ditambah perubahan T10 yang belum di-commit.
-   - **Status per tugas:**
-     - Semua tugas T1–T13 sudah ditulis. T10 dan T13 ditulis sesi 9.
-     - T9 dan T12 sudah diperiksa: siap dengan perbaikan. Temuan C9-1..4 dan C12-1..5 diterapkan (PK-2, PK-3). Tambahan penting: tes `seedingMoments` membuktikan seeder selesai pada tujuh hari dan dua malam, karena tes lama menjalankan seeder pada jam nyata.
-     - T10 dan T13 diperiksa statis: tiga Blocker tes/view T10 dan empat Minor T13 diterapkan (PK-7, PK-8).
-     - Penulis T10 menemukan Blocker di T8: helper tes `private function post(Appointment …)` bentrok dengan `TestCase::post()`. Helper itu diganti nama `postTransition()` (PK-1); pemindai tidak menemukan bentrokan lain.
-     - Uji coba integrasi T1–T4 dan T5–T7 lulus. Semua route sesuai harapan (sampai 158/114). Regresi luas hijau (Unit 557; Feature terkait ±2900 dan ±3300). Temuannya I1a-1..3 dan I1b-1..6 diterapkan (PK-6, PK-9).
-     - Uji coba T8–T10 dihentikan karena jeda. T8 dan T9 sudah di-commit di salinan, tetapi laporan `integrasi-2a.md` belum ditulis, sehingga temuannya belum diketahui.
+3. **Fase 7a sedang dalam GELOMBANG PERBAIKAN FINAL dan DIJEDA** (2026-10-10 sesi 11, pemilik: "sebelum melanjutkan pause dulu lanjut nanti, buatkan checkpoint nya dan di bantu upload di github saya beserta database nya"). Cabang kerja `fase-7a-pasien-pendaftaran-antrean` (dari `master` `57fa3fe`).
+   - **Rencana** `docs/superpowers/plans/2026-10-09-fase-7a-pasien-pendaftaran-antrean.md` (`588c0c9`, 13 tugas, F7A-R1–R31) disetujui pemilik ("lanjutkan", sesi 11) dan dieksekusi lewat subagent-driven-development (Sonnet 5.5).
+   - **Task 1–13 selesai dan lolos review** (`2034b04`..`712433c`). Rinciannya ada di ledger SDD lokal `.superpowers/sdd/2026-10-09-fase-7a-pasien-pendaftaran-antrean/progress.md` (git-ignored, JANGAN dihapus sampai fase ditutup).
+     - Putaran perbaikan tugas:
+       - T3 I1: `PatientAccountLinker::link()` membaca ulang dengan `lockForUpdate`/`sharedLock` sesudah mengunci, karena snapshot InnoDB dibuka oleh pembacaan sebelum kunci (`629c369`, tes baru `PatientAccountLinkerSnapshotTest`). Ini dicatat di D-173.
+       - T13 I1: jorok tabel 03 §5.3 (`712433c`).
+     - Keputusan koordinator penting (lengkap di ledger, baris `Ruling:`):
+       - semua subagen memakai Sonnet;
+       - T6 RED diterima dari uji coba integrasi, karena checkout sementara diblokir izin;
+       - suite penuh T13 Step 17 dijalankan koordinator.
+     - T12 sempat dihentikan pemilik di tengah. Regresinya dijalankan ulang koordinator (191 lulus), lalu implementer penyelesai meng-commit `466e619`.
+   - **Gerbang yang sudah lulus:**
+     - Suite penuh di `712433c`: **7640 lulus + 1 dilewati** (KON-02c opt-in), 45070 asersi, ±24 menit.
+     - Route 166 (122 admin, 13 `/pasien`). Pint PASS. `npm run build` OK.
+   - **Step 18** dijalankan dengan izin pemilik ("Ya, jalankan migrate:fresh --seed"):
+     - 17 invarian = 0; 29 pendaftaran (6/9/1/8/2/3); profil 13 (loket 6); sesi 326 (seed hari Sabtu).
+     - Uji asap `appointments:mark-no-show` sesuai.
+     - `media:prune` membersihkan 166 berkas yatim.
+   - **Step 19** uji manual Playwright: laporan `Documents\UNPAM-Uji-Manual-2026-10-10-fase-7a\index.html`.
+     - Kelompok 1–10 OK, 0 Critical.
+     - I1 kontras: Lighthouse aksesibilitas 96–97, target 100.
+     - Minor M1–M8 tercatat di ledger.
+   - **Final review tiga kursi** (Sonnet):
+     - A domain/data: Siap merge.
+     - B HTTP/UI: With fixes. I1: cetak bukti admin kemungkinan menghasilkan halaman pertama nyaris kosong.
+     - C tes/dokumen: With fixes (redaksi D-179/NTF-03).
+   - **Gelombang perbaikan final F1–F5** ada di `.superpowers/sdd/2026-10-09-fase-7a-pasien-pendaftaran-antrean/final-fixes.md`:
+     - F1 kontras;
+     - F2 `d-print-none` page header bukti admin;
+     - F3 sanitasi `QueryException` yang terbungkus (`ViewException`);
+     - F4 kalimat loket pada sesi penuh;
+     - F5 catatan NTF-03 di 15.
+     - **Status saat jeda:**
+       - F1 sudah di-commit (`94f8648`, BELUM direview dan BELUM ada bukti Lighthouse/tes sesudahnya).
+       - F2 setengah jalan: tes `AdminAppointmentProofTest` diubah, belum RED. WIP disimpan di `git stash@{0}`, salinan patch di `final-fix-F2-wip.patch` di folder ledger.
+       - F3–F5 belum dikerjakan.
+   - **DB pengembangan** berisi data demo 7a ditambah data uji manual (P000014, P000015, UPH-K4FF-2MX4, P000012 terhubung ke Mulyani, P000007 terhapus). Ekspornya ada di `database/dump/unpam_hospital-2026-10-10.sql` (lihat `database/dump/README.md`).
    - **Langkah lanjut saat sesi dilanjutkan:**
-     1. Pulihkan temuan T8/T9 dari salinan. Kirim agen Sonnet yang membandingkan isi berkas di salinan (`git diff bd4474e bab9ada`, atau patch `integrasi-2a-T8-T9-salinan.patch`) dengan blok kode T8.md/T9.md, lalu menulis `integrasi-2a.md` (temuan + perbaikan persis). Cara lain yang lebih pasti: reset salinan ke `bd4474e` (`git reset --hard bd4474e; git clean -fd` di salinan, bukan di repo utama) lalu ulangi uji coba T8–T10 dari awal. Bila folder scratchpad sesi 9 hilang, buat ulang salinan dengan `git clone` lokal + salin `vendor`, `.env*`, `public/build`, lalu terapkan T1–T7 dari berkas tugas.
-     2. Uji coba T10 (lanjut) lalu T11–T13 di salinan, ditambah suite penuh di salinan (latar belakang, satu proses PHPUnit).
-     3. Terapkan semua temuan ke berkas tugas dan catat di `perbaikan-koordinator.md`.
-     4. Rakit rencana: `python -I .superpowers\plan-fase-7a\assemble7a.py` → `docs/superpowers/plans/2026-10-09-fase-7a-pasien-pendaftaran-antrean.md`. Lakukan self-review (placeholder, konsistensi nama, Review Focus), lalu commit.
-     5. Ajukan rencana ke pemilik bersama permintaan izin `migrate:fresh --seed`, dan tanyakan metode eksekusi (subagent-driven seperti fase sebelumnya).
-   - Bawaan fase 6 ada di bagian "Bawaan (carry)" rencana fase 6. Semua yang menjadi milik 7a sudah dipetakan di kerangka.
+     1. Nyalakan MySQL dengan skrip (§2). Periksa `git status` bersih dan `git stash list` (stash F2).
+     2. Kirim SATU implementer Sonnet baru untuk F1–F5. Dispatch-nya:
+        - membaca `final-fixes.md`;
+        - menyatakan F1 sudah di-commit `94f8648` (verifikasi Lighthouse 6 halaman = 100 dan tes terkait; perbaiki bila belum);
+        - menerapkan WIP F2 dari `git stash pop` sebagai draf, lalu membuktikan RED nyata. Caranya: implementasi disimpan sebagai patch sementara, berkas produksi tidak disentuh, tes dijalankan (berkas tes F2 belum punya implementasi, jadi RED muncul alami), baru implementasi;
+        - mengerjakan F3–F5 dengan TDD;
+        - menjalankan regresi `tests/Feature/Admin tests/Feature/Errors tests/Feature/Security tests/Feature/View tests/Feature/Access` di latar belakang.
+     3. Satu re-review terbatas atas rentang `712433c..HEAD` (lima butir F1–F5).
+     4. Suite penuh ulang di latar belakang oleh koordinator.
+     5. Tulis "Catatan Eksekusi" di akhir rencana: gerbang, final review, temuan uji manual, ruling dari ledger. Perbarui checkpoint, lalu tanyakan pemilik soal merge ke `master` (`superpowers:finishing-a-development-branch`; sebelumnya "1" = fast-forward lokal). Push ke GitHub sesudah merge.
+     6. Opsional, dengan izin pemilik: `migrate:fresh --seed` untuk membersihkan data uji manual dari DB pengembangan.
+   - **GitHub:** remote `origin` = <https://github.com/omangs007/Tugas_Pemrograman_2_UNPAM_HOSPITAL.git> (ditambahkan sesi 11). Yang diunggah: `master`, cabang `fase-7a-pasien-pendaftaran-antrean`, dan semua tag checkpoint. `.env*`, `vendor`, `node_modules`, `public/build`, `storage/app/public`, dan `.superpowers/` tidak ikut (git-ignored). Riwayat git sudah diperiksa: tidak memuat password DB atau APP_KEY.
+   - Bahan penyusunan rencana `.superpowers/plan-fase-7a/` boleh dihapus sesudah fase 7a di-merge.
 
 Yang sudah ada di aplikasi:
 - Fase 1: enum, akun & peran (Spatie), audit log, media + sanitasi HTML, pengaturan situs, tema & komponen Blade, layout publik/pasien/auth/admin, login/logout staf, ganti password wajib, header keamanan, `StaffAccountService`, `app:create-super-admin`, `media:prune`, seeder demo staf.
@@ -273,3 +292,17 @@ Ringkasan; rinciannya ada di bagian "Catatan Eksekusi" rencana fase 0, fase 1, d
    - Uji coba integrasi di salinan repo: T1–T4 dan T5–T7 lulus, temuannya diterapkan (PK-6, PK-9).
    - Pemilik menjeda ("di pause dulu lanjut nanti, buatkan checkpoint") saat uji coba T8–T10 berjalan. Agen dihentikan, dan bukti salinan disimpan sebagai patch di `.superpowers/plan-fase-7a/`.
    - Commit checkpoint dan tag `checkpoint/2026-10-09-fase-7a-integrasi`.
+16. **2026-10-10 (sesi 10):**
+   - Uji coba integrasi T8–T13 dan suite penuh di salinan repo selesai: 7638 lulus dan 2 dilewati.
+   - Perbaikan PK-10–PK-13 diterapkan ke berkas tugas.
+   - Rencana 7a dirakit (22397 baris), di-self-review, dan di-commit (`588c0c9`).
+17. **2026-10-10 (sesi 11):**
+   - Pemilik meminta "lanjutkan". Rencana 7a dieksekusi lewat subagent-driven-development (Sonnet 5.5).
+   - Task 1–13 lolos review (`2034b04`..`712433c`). Ada putaran perbaikan di T3 (pembacaan berkunci linker) dan T13 (jorok tabel 03).
+   - T6 melewatkan RED. Pembuktian belakangan diblokir pengklasifikasi izin, jadi RED diterima dari uji coba integrasi.
+   - Implementer T12 dihentikan pemilik di tengah. Regresinya dijalankan ulang koordinator.
+   - Izin pemilik "Ya, jalankan migrate:fresh --seed". Gerbang Step 17 dan 18 lulus, uji manual Step 19 selesai.
+   - Final review tiga kursi selesai. Gelombang perbaikan F1–F5 dimulai, lalu dijeda atas permintaan pemilik saat F1 sudah di-commit dan F2 setengah jalan (stash).
+   - Database pengembangan diekspor ke `database/dump/`.
+   - Remote GitHub `origin` ditambahkan, lalu `master`, cabang 7a, dan tag diunggah.
+   - Commit checkpoint dan tag `checkpoint/2026-10-10-fase-7a-perbaikan-final`.
